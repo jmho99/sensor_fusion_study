@@ -84,8 +84,16 @@ private:
         distortion_coeffs_ = (cv::Mat_<double>(1, 5) << -1.3724382468171908e-01, 4.9079709117302012e-01,
                               8.2971299771431115e-03, -4.5215579888173568e-03,
                               -7.7949268098546165e-01);
-
-        std::string absolute_path = "/home/antlab/fusion_study_ws/src/sensor_fusion_study";
+        std::string where = "home";
+        std::string absolute_path;
+        if (where == "company")
+        {
+            absolute_path = "/home/antlab/sensor_fusion_study/src/sensor_fusion_study";
+        }
+        else if (where == "home")
+        {
+            absolute_path = "/home/icrs/sensor_fusion_study_ws/src/sensor_fusion_study";
+        }
         // auto absolute_path = ament_index_cpp::get_package_share_directory("/src/sensor_fusion_study");
         img_path_ = absolute_path + "/capture/image.png";
         pcd_path_ = absolute_path + "/capture/pointcloud.pcd";
@@ -293,7 +301,7 @@ private:
                 cb_object_points.emplace_back(j * square_size_, i * square_size_, 0.0);
             }
         }
-        
+
         cv::Mat R;
         cv::Rodrigues(cb2cam_rvec_, R);
         std::vector<cv::Point3f> cb2cam_points;
