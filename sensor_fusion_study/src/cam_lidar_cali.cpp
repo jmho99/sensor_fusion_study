@@ -84,11 +84,11 @@ private:
         distortion_coeffs_ = (cv::Mat_<double>(1, 5) << -1.3724382468171908e-01, 4.9079709117302012e-01,
                               8.2971299771431115e-03, -4.5215579888173568e-03,
                               -7.7949268098546165e-01);
-        std::string where = "home";
+        std::string where = "company";
         std::string absolute_path;
         if (where == "company")
         {
-            absolute_path = "/home/antlab/sensor_fusion_study/src/sensor_fusion_study";
+            absolute_path = "/home/antlab/fusion_study_ws/src/sensor_fusion_study";
         }
         else if (where == "home")
         {
@@ -278,11 +278,12 @@ private:
         pcl::toROSMsg(*cloud_roi, plane_msg_);
         plane_msg_.header.frame_id = "map"; // RViz에서 사용하는 좌표계 설정
 
-        changeLidarCoordinates(cloud_roi);
+        calibrateLidarCamera(cloud, cloud_roi);
         // checkCenter(cloud_roi);
     }
 
-    void changeLidarCoordinates(const pcl::PointCloud<pcl::PointXYZ>::Ptr &plane_cloud_cLC)
+    void calibrateLidarCamera(const pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_all, 
+                                const pcl::PointCloud<pcl::PointXYZ>::Ptr &plane_cloud_cLC)
     {
         std::vector<cv::Point3f> lidar_points;
         for (const auto &p : plane_cloud_cLC->points)
@@ -361,7 +362,49 @@ private:
                 pt_transformed.at<double>(2));
         }
 
-        point3fVectorToPointCloud2(lidar2cam_points_transformed, lidar2cam_points_, "map", this->now());
+        // point3fVectorToPointCloud2(lidar2cam_points_transformed, lidar2cam_points_, "map", this->now());
+
+        std::vector<cv::Point3f> lidar_points_all;
+        for (const auto &p : cloud_all->points)
+        {
+            lidar_points_all.emplace_back(
+                p.x,
+                p.y,
+                p.z);
+        }
+
+        std::vector<cv::Point3f> lidar2cam_points_all;
+        for (const auto &pt : lidar_points_all)
+        {
+            cv::Mat pt_mat = (cv::Mat_<double>(3, 1) << pt.x, pt.y, pt.z);
+            cv::Mat pt_transformed = lidar2cam_R_ * pt_mat + lidar2cam_t_;
+
+            lidar2cam_points_all.emplace_back(
+                pt_transformed.at<double>(0),
+                pt_transformed.at<double>(1),
+                pt_transformed.at<double>(2));
+        }
+
+         point3fVectorToPointCloud2(lidar2cam_points_all, lidar2cam_points_, "map", this->now());
+
+        // 이미지 projection
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in_cam(new pcl::PointCloud<pcl::PointXYZ>);
+        for (const auto &pt : lidar2cam_points_all)
+        {
+            cloud_in_cam->emplace_back(pt.x, pt.y, pt.z);
+        }
+
+        cv::Mat img_color = cv::imread(img_path_, cv::IMREAD_COLOR);
+        if (img_color.empty())
+        {
+            RCLCPP_ERROR(this->get_logger(), "이미지를 불러오지 못했습니다.");
+            return;
+        }
+
+        projectLidarToImage(cloud_in_cam, img_color, last_image_);
+
+        cv::imshow("Lidar Overlaid (All points)", last_image_);
+        cv::waitKey(0);
     }
 
     void computeRigidTransformSVD(
@@ -410,6 +453,49 @@ private:
                                   dst_center.z);
 
         t = dst_center_mat - R * src_center_mat;
+    }
+
+    void projectLidarToImage(
+        const pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_in_cam,
+        const cv::Mat &image,
+        cv::Mat &image_out)
+    {
+        // 이미지 복사
+        image_out = image.clone();
+
+        // 카메라 내부 파라미터
+        double fx = camera_matrix_.at<double>(0, 0);
+        double fy = camera_matrix_.at<double>(1, 1);
+        double cx = camera_matrix_.at<double>(0, 2);
+        double cy = camera_matrix_.at<double>(1, 2);
+
+        for (const auto &pt : cloud_in_cam->points)
+        {
+            if (pt.z <= 0.0)
+                continue; // 카메라 앞에 있는 점만 사용
+
+            double x = pt.x;
+            double y = pt.y;
+            double z = pt.z;
+
+            // 투영
+            int u = static_cast<int>((fx * x / z) + cx);
+            int v = static_cast<int>((fy * y / z) + cy);
+
+            // 이미지 범위 체크
+            if (u >= 0 && u < image_out.cols && v >= 0 && v < image_out.rows)
+            {
+                // 색상 결정 (e.g. 깊이에 따른 컬러맵)
+                float depth = static_cast<float>(z);
+                cv::Scalar color = cv::Scalar(0, 255, 0); // Green
+                if (depth < 1.0)
+                    color = cv::Scalar(0, 0, 255); // Red
+                else if (depth < 2.0)
+                    color = cv::Scalar(0, 255, 255); // Yellow
+
+                cv::circle(image_out, cv::Point(u, v), 2, color, -1);
+            }
+        }
     }
 
     void point3fVectorToPointCloud2(
