@@ -57,16 +57,20 @@ public:
 
     if (where_ == "company")
     {
-      save_origin_path_ = "/home/antlab/sensor_fusion_study/src/sensor_fusion_study/origin_images/";
-      save_calib_path_ = "/home/antlab/sensor_fusion_study/src/sensor_fusion_study/calib_images/";
+      save_origin_path_ = "/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/origin_images/";
+      save_calib_path_ = "/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/calib_images/";
+      save_calib_result_ = "/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/";
     }
     else if (where_ == "home")
     {
       save_origin_path_ = "/home/icrs/sensor_fusion_study_ws/src/sensor_fusion_study/origin_images/";
       save_calib_path_ = "/home/icrs/sensor_fusion_study_ws/src/sensor_fusion_study/calib_images/";
+      save_calib_result_ = "/home/icrs/sensor_fusion_study_ws/src/sensor_fusion_study/";
+      
     }
     fs::create_directories(save_origin_path_);
     fs::create_directories(save_calib_path_);
+    fs::create_directories(save_calib_result_);
   }
 
 private:
@@ -222,7 +226,7 @@ private:
                                          camera_matrix_, dist_coeffs_, rvecs_, tvecs_);
 
         RCLCPP_INFO(this->get_logger(), "RMS error: %.4f", rms);
-        cv::FileStorage fs("calibration_result.yaml", cv::FileStorage::WRITE);
+        cv::FileStorage fs(save_calib_result_ + "calibration_result.yaml", cv::FileStorage::WRITE);
         fs << "camera_matrix_" << camera_matrix_;
         fs << "distortion_coefficients" << dist_coeffs_;
         fs << "rotation" << rvecs_;
@@ -323,6 +327,7 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;
   std::string save_origin_path_;
   std::string save_calib_path_;
+  std::string save_calib_result_;
   std::string where_;
   cv::Mat current_frame_;
   int frame_counter_;
