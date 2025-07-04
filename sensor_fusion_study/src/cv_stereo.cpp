@@ -18,23 +18,8 @@ public:
         right_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
             "/right/image_raw", 10, std::bind(&StereoCalibNode::rightCallback, this, _1));
 
-            std::string where_ = "company";
-
-        if (where_ == "company")
-        {
-            save_origin_path_ = "/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/origin_images/";
-            save_calib_path_ = "/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/calib_images/";
-            save_calib_result_ = "/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/";
-        }
-        else if (where_ == "home")
-        {
-            save_origin_path_ = "/home/icrs/sensor_fusion_study_ws/src/sensor_fusion_study/origin_images/";
-            save_calib_path_ = "/home/icrs/sensor_fusion_study_ws/src/sensor_fusion_study/calib_images/";
-            save_calib_result_ = "/home/icrs/sensor_fusion_study_ws/src/sensor_fusion_study/";
-        }
-        fs::create_directories(save_origin_path_);
-        fs::create_directories(save_calib_path_);
-        fs::create_directories(save_calib_result_);
+        std::string where_ = "company";
+        read_write_path(where_);
     }
 
 private:
@@ -47,8 +32,40 @@ private:
 
     std::vector<std::vector<cv::Point2f>> left_img_points_, right_img_points_;
     std::vector<std::vector<cv::Point3f>> obj_points_;
-    cv::Size board_size_ = cv::Size(10, 7);
+    cv::Size board_size_;
     int collected_ = 0;
+
+    void initializedParameters()
+    {
+        board_size_ = cv::Size(10, 7);
+
+        camera_matrix_ = (cv::Mat_<double>(3, 3) << 1.0412562786381386e+03, 0., 6.8565540026982239e+02, 0.,
+                          1.0505976084535532e+03, 5.9778012298164469e+02, 0., 0., 1.);
+
+        distortion_coeffs_ = (cv::Mat_<double>(1, 5) << -1.3724382468171908e-01, 4.9079709117302012e-01,
+                              8.2971299771431115e-03, -4.5215579888173568e-03,
+                              -7.7949268098546165e-01);
+        std::string where = "company";
+        read_write_path(where);
+    }
+    
+    void read_write_path(std::string where)
+    {
+        std::string change_path;
+        if (where == "company")
+        {
+            change_path = "/antlab/sensor_fusion_study_ws";
+        }
+        else if (where == "home")
+        {
+            change_path = "/icrs/sensor_fusion_study_ws";
+        }
+        save_origin_path_ = "/home" + change_path + "/src/sensor_fusion_study/stereo_cam_calib/origin_images/";
+        save_calib_path_ = "/home" + change_path + "/src/sensor_fusion_study/stereo_cam_calib/origin_images/";
+        save_calib_result_ = "/home" + change_path + "/src/sensor_fusion_study/one_cam_calib/";
+        fs::create_directories(save_origin_path_);
+        fs::create_directories(save_calib_path_);
+    }
 
     void leftCallback(const sensor_msgs::msg::Image::SharedPtr msg)
     {

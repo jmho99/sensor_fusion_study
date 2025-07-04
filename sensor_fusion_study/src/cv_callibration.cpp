@@ -55,27 +55,31 @@ public:
           std::bind(&CalibrationNode::timer_callback, this));
     }
 
-    if (where_ == "company")
-    {
-      save_origin_path_ = "/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/origin_images/";
-      save_calib_path_ = "/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/calib_images/";
-      save_calib_result_ = "/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/";
-    }
-    else if (where_ == "home")
-    {
-      save_origin_path_ = "/home/icrs/sensor_fusion_study_ws/src/sensor_fusion_study/origin_images/";
-      save_calib_path_ = "/home/icrs/sensor_fusion_study_ws/src/sensor_fusion_study/calib_images/";
-      save_calib_result_ = "/home/icrs/sensor_fusion_study_ws/src/sensor_fusion_study/";
-      
-    }
-    fs::create_directories(save_origin_path_);
-    fs::create_directories(save_calib_path_);
-    fs::create_directories(save_calib_result_);
+    read_write_path(where_);
   }
 
 private:
   rclcpp::TimerBase::SharedPtr timer_;
   cv::Mat last_image_;
+
+  void read_write_path(std::string where)
+    {
+        std::string change_path;
+        if (where == "company")
+        {
+            change_path = "/antlab/sensor_fusion_study_ws";
+        }
+        else if (where == "home")
+        {
+            change_path = "/icrs/sensor_fusion_study_ws";
+        }
+        save_origin_path_ = "/home" + change_path + "/src/sensor_fusion_study/one_cam_calib/origin_images/";
+        save_calib_path_ = "/home" + change_path + "/src/sensor_fusion_study/one_cam_calib/calib_images/";
+        save_calib_result_ = "/home" + change_path + "/src/sensor_fusion_study/one_cam_calib/";
+        fs::create_directories(save_origin_path_);
+        fs::create_directories(save_calib_path_);
+        fs::create_directories(save_calib_result_);
+    }
 
   void timer_callback()
   {
@@ -156,7 +160,7 @@ private:
 
   void save_current_frame(const cv::Mat &frame)
   {
-    std::string filename = save_origin_path_ + "img_" + std::to_string(frame_counter_) + ".png";
+    std::string filename = save_origin_path_ + "one_cam_calib_origin_img_" + std::to_string(frame_counter_) + ".png";
     cv::imwrite(filename, frame);
     RCLCPP_INFO(this->get_logger(), "Save Image: %s", filename.c_str());
     frame_counter_++;
@@ -226,7 +230,7 @@ private:
                                          camera_matrix_, dist_coeffs_, rvecs_, tvecs_);
 
         RCLCPP_INFO(this->get_logger(), "RMS error: %.4f", rms);
-        cv::FileStorage fs(save_calib_result_ + "calibration_result.yaml", cv::FileStorage::WRITE);
+        cv::FileStorage fs(save_calib_result_ + "one_cam_calib_result.yaml", cv::FileStorage::WRITE);
         fs << "camera_matrix_" << camera_matrix_;
         fs << "distortion_coefficients" << dist_coeffs_;
         fs << "rotation" << rvecs_;
@@ -240,7 +244,7 @@ private:
         // corners 만 표시 (체스보드 코너)
         cv::drawChessboardCorners(vis, pattern_size, corners, found);
 
-        std::string save_name = save_calib_path_ + "img_" + std::to_string(idx) + "_calib_result.png";
+        std::string save_name = save_calib_path_ + "one_cam_calib_result_img_" + std::to_string(idx) + ".png";
         cv::imwrite(save_name, vis);
         RCLCPP_INFO(this->get_logger(), "Save calibration image: %s", save_name.c_str());
       successful_indices_.push_back(idx);
@@ -249,7 +253,7 @@ private:
       {
         // 코너 검출 실패 시 원본 이미지만 저장
         cv::Mat vis = img.clone();
-        std::string failed_save_name = save_calib_path_ + "img_" + std::to_string(idx) + "_failed_result.png";
+        std::string failed_save_name = save_calib_path_ + "one_cam_calib_failed_img_" + std::to_string(idx) + ".png";
         cv::imwrite(failed_save_name, vis);
         RCLCPP_INFO(this->get_logger(), "Save failed image: %s", failed_save_name.c_str());
       }
@@ -276,7 +280,7 @@ private:
     int idx = successful_indices_[i];
 
     // 원본 이미지 경로
-    std::string origin_file = save_origin_path_ + "img_" + std::to_string(idx) + ".png";
+    std::string origin_file = save_origin_path_ + "one_cam_calib_origin_img_" + std::to_string(idx) + ".png";
     cv::Mat img = cv::imread(origin_file);
     if (img.empty())
     {
@@ -289,38 +293,22 @@ private:
     cv::projectPoints(obj_points_[i], rvecs_[i], tvecs_[i],
                       camera_matrix_, dist_coeffs_, projected_points);
 
-    cv::Mat ideal_dist = cv::Mat::zeros(1, 5, CV_64F);
-    double i_mat[] = {1014.5, 0.0, 720.0,
-                      0.0, 1014.5, 540.0,
-                      0.0, 0.0, 1.0};
-    cv::Mat ideal_camera_matrix(3, 3, CV_64F, i_mat);
-
-    std::vector<cv::Point2f> projected_ideal;
-    cv::projectPoints(obj_points_[i], rvecs_[i], tvecs_[i],
-                      ideal_camera_matrix, ideal_dist, projected_ideal);
-
     cv::Mat vis = img.clone();
     for (size_t j = 0; j < img_points_[i].size(); ++j)
     {
       cv::Point2f actual = img_points_[i][j];
       cv::Point2f reprojected = projected_points[j];
-      cv::Point2f reproj_ideal = projected_ideal[j];
 
-      cv::circle(vis, actual, 2, cv::Scalar(0, 255, 0), -1);
-      cv::circle(vis, reprojected, 2, cv::Scalar(0, 0, 255), -1);
-      cv::circle(vis, reproj_ideal, 4, cv::Scalar(255, 0, 0), -1);
-      cv::line(vis, actual, reprojected, cv::Scalar(255, 0, 0), 1);
+      cv::circle(vis, actual, 1, cv::Scalar(0, 255, 0), -1);
+      cv::circle(vis, reprojected, 1, cv::Scalar(0, 0, 255), -1);
     }
 
-    std::string save_name = save_calib_path_ + "img_" + std::to_string(idx) + "_error_calib_result.png";
+    std::string save_name = save_calib_path_ + "one_cam_calib_error_img_" + std::to_string(idx) + ".png";
     cv::imwrite(save_name, vis);
     RCLCPP_INFO(this->get_logger(), "Save error visualization: %s", save_name.c_str());
 
     cv::Point3f p = obj_points_[i][69];
     cv::Point2f c = img_points_[i][69];
-
-    std::cout << "세 번째 코너의 월드 좌표: " << p << std::endl;
-    std::cout << "세 번째 코너의 이미지 좌표: " << c << std::endl;
   }
   }
 

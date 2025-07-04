@@ -85,18 +85,25 @@ private:
                               8.2971299771431115e-03, -4.5215579888173568e-03,
                               -7.7949268098546165e-01);
         std::string where = "company";
-        std::string absolute_path;
+        read_write_path(where);
+    }
+
+    void read_write_path(std::string where)
+    {
+        std::string change_path;
         if (where == "company")
         {
-            absolute_path = "/home/antlab/fusion_study_ws/src/sensor_fusion_study";
+            change_path = "/antlab/sensor_fusion_study_ws";
         }
         else if (where == "home")
         {
-            absolute_path = "/home/icrs/sensor_fusion_study_ws/src/sensor_fusion_study";
+            change_path = "/icrs/sensor_fusion_study_ws";
         }
-        // auto absolute_path = ament_index_cpp::get_package_share_directory("/src/sensor_fusion_study");
-        img_path_ = absolute_path + "/capture/image.png";
-        pcd_path_ = absolute_path + "/capture/pointcloud.pcd";
+        
+        absolute_path = "/home" + change_path + "src/sensor_fusion_study/cam_lidar_images";
+        img_path_ = absolute_path + "/image.png";
+        pcd_path_ = absolute_path + "/pointcloud.pcd";
+        fs::create_directories(absolute_path);
     }
 
     void timer_callback()
