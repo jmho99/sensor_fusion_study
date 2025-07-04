@@ -87,7 +87,7 @@ private:
 
             RCLCPP_INFO(this->get_logger(), "📸 캘리브레이션 이미지 %d 장 수집됨", ++collected_);
 
-            if (collected_ >= 20)
+            if (collected_ >= 10)
             {
                 calibrateStereo();
             }

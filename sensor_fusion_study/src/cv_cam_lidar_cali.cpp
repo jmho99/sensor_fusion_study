@@ -116,7 +116,7 @@ private:
     {
         // Save image
         fs::create_directories("capture");
-        std::string img_path = "/home/antlab/fusion_study_ws/src/cv_test/capture/image.png";
+        std::string img_path = "/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/capture/image.png";
         cv::imwrite(img_path, image);
 
         // Save point cloud
@@ -124,7 +124,7 @@ private:
             RCLCPP_WARN(this->get_logger(), "No point cloud captured yet!");
             return;
         }
-        std::string pc_path = "/home/antlab/fusion_study_ws/src/cv_test/capture/pointcloud.pcd";
+        std::string pc_path = "/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/capture/pointcloud.pcd";
         pcl::io::savePCDFileBinary(pc_path, *last_cloud_);
         RCLCPP_INFO(this->get_logger(), "Saved image and pointcloud.");
     }
