@@ -15,11 +15,13 @@
 #include <pcl/filters/crop_box.h>
 #include <pcl/segmentation/extract_clusters.h>
 
-class CamLidarCali : public rclcpp::Node
+namespace fs = std::filesystem;
+
+class CamLidarCalibNode : public rclcpp::Node
 {
 public:
-    CamLidarCali()
-        : Node("cam_lidar_cali")
+    CamLidarCalibNode()
+        : Node("cam_lidar_calib")
     {
         initializedParameters();
 
@@ -32,11 +34,11 @@ public:
         // 타이머로 주기적 퍼블리시
         timer_ = this->create_wall_timer(
             std::chrono::milliseconds(30),
-            std::bind(&CamLidarCali::timer_callback, this));
+            std::bind(&CamLidarCalibNode::timer_callback, this));
 
         timer__ = this->create_wall_timer(
             std::chrono::milliseconds(500),
-            std::bind(&CamLidarCali::timerCallback, this));
+            std::bind(&CamLidarCalibNode::timerCallback, this));
     }
 
 private:
@@ -44,6 +46,9 @@ private:
     pcl::PointCloud<pcl::PointXYZ>::Ptr last_cloud_{new pcl::PointCloud<pcl::PointXYZ>}; // Latest point cloud data
     std::string img_path_;
     std::string pcd_path_;
+    std::string absolute_path_;
+    std::string one_cam_result_path_;
+    int frame_counter_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_plane_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_checker_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_lidar2cam_points_;
@@ -59,7 +64,7 @@ private:
     rclcpp::TimerBase::SharedPtr timer__;
     cv::Size board_size_;                       // Chessboard parameters
     double square_size_;                        // Chessboard parameters
-    cv::Mat camera_matrix_, distortion_coeffs_; // Camera intrinsics
+    cv::Mat intrinsic_matrix_, distortion_coeffs_; // Camera intrinsics
     cv::Mat cb2cam_rvec_, cb2cam_tvec_;
     cv::Mat lidar2cam_R_, lidar2cam_t_;
 
@@ -75,17 +80,27 @@ private:
 
     void initializedParameters()
     {
-        board_size_ = cv::Size(10, 7);
-        square_size_ = 0.02;
-
-        camera_matrix_ = (cv::Mat_<double>(3, 3) << 1.0412562786381386e+03, 0., 6.8565540026982239e+02, 0.,
-                          1.0505976084535532e+03, 5.9778012298164469e+02, 0., 0., 1.);
-
-        distortion_coeffs_ = (cv::Mat_<double>(1, 5) << -1.3724382468171908e-01, 4.9079709117302012e-01,
-                              8.2971299771431115e-03, -4.5215579888173568e-03,
-                              -7.7949268098546165e-01);
         std::string where = "company";
         read_write_path(where);
+
+        cv::FileStorage fs(one_cam_result_path_ + "/one_cam_calib_result.yaml", cv::FileStorage::READ);
+        if (!fs.isOpened())
+        {
+            RCLCPP_WARN(this->get_logger(), "Failed open one_cam_calib_result.yaml file!");
+            return;
+        }
+        else
+        {
+            int cols;
+            int rows;
+            fs["checkerboard_cols"] >> cols;
+            fs["checkerboard_rows"] >> rows;
+            fs["square_size"] >> square_size_;
+            fs["intrinsic_matrix"] >> intrinsic_matrix_;
+            fs["distortion_coefficients"] >> distortion_coeffs_;
+            fs.release();
+            board_size_ = cv::Size(cols, rows);
+        }
     }
 
     void read_write_path(std::string where)
@@ -99,11 +114,14 @@ private:
         {
             change_path = "/icrs/sensor_fusion_study_ws";
         }
-        
-        absolute_path = "/home" + change_path + "src/sensor_fusion_study/cam_lidar_images";
-        img_path_ = absolute_path + "/image.png";
-        pcd_path_ = absolute_path + "/pointcloud.pcd";
-        fs::create_directories(absolute_path);
+
+        absolute_path_ = "/home" + change_path + "src/sensor_fusion_study/cam_lidar_calib";
+        img_path_ = absolute_path_ + "/images";
+        pcd_path_ = absolute_path_ + "/pointclouds";
+        one_cam_result_path_ = "/home" + change_path + "src/sensor_fusion_study/one_cam_calib";
+
+        fs::create_directories(img_path_);
+        fs::create_directories(pcd_path_);
     }
 
     void timer_callback()
@@ -143,9 +161,8 @@ private:
 
     void save_current_frame(const cv::Mat &image)
     {
-        // Save image
-        std::filesystem::create_directories("capture");
-        cv::imwrite(img_path_, image);
+        std::string img_filename = img_path_ + "cam_lidar_calib_origin_img_" + std::to_string(frame_counter_) + ".png";
+        cv::imwrite(img_filename, image);
 
         // Save point cloud
         if (last_cloud_->empty())
@@ -153,8 +170,10 @@ private:
             RCLCPP_WARN(this->get_logger(), "No point cloud captured yet!");
             return;
         }
-        pcl::io::savePCDFileBinary(pcd_path_, *last_cloud_);
+        std::string pcd_filename = pcd_path_ + "cam_lidar_calib_origin_pcd_" + std::to_string(frame_counter_) + ".pcd";
+        pcl::io::savePCDFileBinary(pcd_filename, *last_cloud_);
         RCLCPP_INFO(this->get_logger(), "Saved image and pointcloud.");
+        frame_counter_++;
     }
 
     void findData()
@@ -207,7 +226,7 @@ private:
 
         // Solve PnP
         bool success = cv::solvePnP(object_points, corners,
-                                    camera_matrix_, distortion_coeffs_,
+                                    intrinsic_matrix_, distortion_coeffs_,
                                     cb2cam_rvec_, cb2cam_tvec_);
 
         if (!success)
@@ -244,8 +263,8 @@ private:
         // 추출 예시: 평면 검출
         pcl::CropBox<pcl::PointXYZ> crop;
         crop.setInputCloud(cloud);
-        crop.setMin(Eigen::Vector4f(-0.7, -0.329, -1.0, 1.0)); // ROI 최소 x,y,z
-        crop.setMax(Eigen::Vector4f(-0.3, 0.005, 1.0, 1.0));   // ROI 최대 x,y,z
+        crop.setMin(Eigen::Vector4f(-3.0, -0.8, -1.0, 1.0)); // ROI 최소 x,y,z
+        crop.setMax(Eigen::Vector4f(0.0, 0.65, 1.0, 1.0));   // ROI 최대 x,y,z
 
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_roi(new pcl::PointCloud<pcl::PointXYZ>);
         crop.filter(*cloud_roi);
@@ -289,8 +308,8 @@ private:
         // checkCenter(cloud_roi);
     }
 
-    void calibrateLidarCamera(const pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_all, 
-                                const pcl::PointCloud<pcl::PointXYZ>::Ptr &plane_cloud_cLC)
+    void calibrateLidarCamera(const pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_all,
+                              const pcl::PointCloud<pcl::PointXYZ>::Ptr &plane_cloud_cLC)
     {
         std::vector<cv::Point3f> lidar_points;
         for (const auto &p : plane_cloud_cLC->points)
@@ -351,7 +370,7 @@ private:
                   << lidar2cam_t_ << std::endl;
 
         // 저장
-        saveMultipleToFile("txt", "lidar2cam_extrinsic",
+        saveMultipleToFile("txt", "cam_lidar_calib_result",
                            "[Lidar → Camera] R:\n", lidar2cam_R_,
                            "[Lidar → Camera] t:\n", lidar2cam_t_);
 
@@ -392,7 +411,7 @@ private:
                 pt_transformed.at<double>(2));
         }
 
-         point3fVectorToPointCloud2(lidar2cam_points_all, lidar2cam_points_, "map", this->now());
+        point3fVectorToPointCloud2(lidar2cam_points_all, lidar2cam_points_, "map", this->now());
 
         // 이미지 projection
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in_cam(new pcl::PointCloud<pcl::PointXYZ>);
@@ -471,10 +490,10 @@ private:
         image_out = image.clone();
 
         // 카메라 내부 파라미터
-        double fx = camera_matrix_.at<double>(0, 0);
-        double fy = camera_matrix_.at<double>(1, 1);
-        double cx = camera_matrix_.at<double>(0, 2);
-        double cy = camera_matrix_.at<double>(1, 2);
+        double fx = intrinsic_matrix_.at<double>(0, 0);
+        double fy = intrinsic_matrix_.at<double>(1, 1);
+        double cx = intrinsic_matrix_.at<double>(0, 2);
+        double cy = intrinsic_matrix_.at<double>(1, 2);
 
         for (const auto &pt : cloud_in_cam->points)
         {
@@ -541,12 +560,9 @@ private:
     template <typename T>
     void saveToFile(const std::string &extension,
                     const std::string &filename,
-                    const T &data,
-                    const std::string &dir = "capture")
+                    const T &data)
     {
-        std::filesystem::create_directories(dir);
-
-        std::string fullpath = dir + "/" + filename + "." + extension;
+        std::string fullpath = absolute_path_ + "/" + filename + "." + extension;
         std::ofstream ofs(fullpath);
 
         if (!ofs.is_open())
@@ -564,12 +580,9 @@ private:
     // cv::Mat 저장용 오버로드
     void saveToFile(const std::string &extension,
                     const std::string &filename,
-                    const cv::Mat &mat,
-                    const std::string &dir = "capture")
+                    const cv::Mat &mat)
     {
-        std::filesystem::create_directories(dir);
-
-        std::string fullpath = dir + "/" + filename + "." + extension;
+        std::string fullpath = absolute_path_ + "/" + filename + "." + extension;
         std::ofstream ofs(fullpath);
 
         if (!ofs.is_open())
@@ -597,9 +610,7 @@ private:
                             const std::string &filename,
                             const Args &...args)
     {
-        std::filesystem::create_directories("capture");
-
-        std::string fullpath = "capture/" + filename + "." + extension;
+        std::string fullpath = absolute_path_ + "/" + filename + "." + extension;
         std::ofstream ofs(fullpath);
 
         if (!ofs.is_open())
@@ -640,7 +651,7 @@ private:
 int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
-    auto node = std::make_shared<CamLidarCali>();
+    auto node = std::make_shared<CamLidarCalibNode>();
     rclcpp::spin(node);
     rclcpp::shutdown();
     return 0;

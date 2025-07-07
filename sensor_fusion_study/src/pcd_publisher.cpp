@@ -19,16 +19,19 @@ class PcdPublisher : public rclcpp::Node
 {
 public:
     PcdPublisher()
-    : Node("pcd_publisher")
+        : Node("pcd_publisher")
     {
         // 퍼블리셔 생성
         publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("pcd_cloud", 10);
         pub_plane_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("plane_points", 10);
- 
+
+        std::string where = "company";
+        read_write_path(where);
+
         // PCD 파일 로드
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
-        std::string filename = "/home/antlab/fusion_study_ws/src/cv_test/capture/pointcloud.pcd";
+        std::string filename = pcd_path_ + "/pointcloud_05.pcd";
 
         if (pcl::io::loadPCDFile<pcl::PointXYZ>(filename, *cloud) == -1)
         {
@@ -39,8 +42,8 @@ public:
 
         pcl::CropBox<pcl::PointXYZ> crop;
         crop.setInputCloud(cloud);
-        crop.setMin(Eigen::Vector4f(-0.7, -0.329, -1.0, 1.0)); // ROI 최소 x,y,z
-        crop.setMax(Eigen::Vector4f(-0.3, 0.005, 1.0, 1.0));   // ROI 최대 x,y,z
+        crop.setMin(Eigen::Vector4f(-3.0, -0.8, -1.0, 1.0)); // ROI 최소 x,y,z
+        crop.setMax(Eigen::Vector4f(0.0, 0.65, 1.0, 1.0));   // ROI 최대 x,y,z
 
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_roi(new pcl::PointCloud<pcl::PointXYZ>);
         crop.filter(*cloud_roi);
@@ -58,7 +61,8 @@ public:
         seg.setInputCloud(cloud_roi);
         seg.segment(*inliers, *coefficients);
 
-        if (inliers->indices.empty()) {
+        if (inliers->indices.empty())
+        {
             RCLCPP_WARN(this->get_logger(), "No planar model found.");
             return;
         }
@@ -75,7 +79,7 @@ public:
         extract.setIndices(inliers);
         extract.setNegative(false);
         extract.filter(*cloud_roi);
-        
+
         RCLCPP_INFO(this->get_logger(), "Plane inliers: %zu", inliers->indices.size());
 #if 0
         float distance_threshold = 0.005; // 5 mm
@@ -157,9 +161,10 @@ else
     RCLCPP_WARN(this->get_logger(), "No Region Growing clusters found!");
 }
 
-#endif        
+#endif
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr plane_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        for (const auto& pt : cloud_roi->points) {
+        for (const auto &pt : cloud_roi->points)
+        {
             pcl::PointXYZRGB pt_rgb;
             pt_rgb.x = pt.x;
             pt_rgb.y = pt.y;
@@ -198,14 +203,31 @@ private:
         pub_plane_->publish(plane_msg_);
     }
 
+    void read_write_path(std::string where)
+    {
+        std::string change_path;
+        if (where == "company")
+        {
+            change_path = "/antlab/sensor_fusion_study_ws";
+        }
+        else if (where == "home")
+        {
+            change_path = "/icrs/sensor_fusion_study_ws";
+        }
+
+        std::string absolute_path = "/home" + change_path + "/src/sensor_fusion_study/cam_lidar_calib";
+        pcd_path_ = absolute_path + "/pointclouds";
+    }
+
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_plane_;
     sensor_msgs::msg::PointCloud2 cloud_msg_;
     sensor_msgs::msg::PointCloud2 plane_msg_;
     rclcpp::TimerBase::SharedPtr timer_;
+    std::string pcd_path_;
 };
 
-int main(int argc, char ** argv)
+int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
     auto node = std::make_shared<PcdPublisher>();

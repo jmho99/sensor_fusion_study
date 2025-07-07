@@ -8,15 +8,15 @@ using std::placeholders::_1;
 
 namespace fs = std::filesystem;
 
-class StereoCalibNode : public rclcpp::Node
+class StereoCamCalibNode : public rclcpp::Node
 {
 public:
-    StereoCalibNode() : Node("stereo_calib_node")
+    StereoCamCalibNode() : Node("stereo_cam_calib")
     {
         left_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-            "/left/image_raw", 10, std::bind(&StereoCalibNode::leftCallback, this, _1));
+            "/left/image_raw", 10, std::bind(&StereoCamCalibNode::leftCallback, this, _1));
         right_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-            "/right/image_raw", 10, std::bind(&StereoCalibNode::rightCallback, this, _1));
+            "/right/image_raw", 10, std::bind(&StereoCamCalibNode::rightCallback, this, _1));
 
         std::string where_ = "company";
         read_write_path(where_);
@@ -26,29 +26,43 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr left_sub_;
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr right_sub_;
 
+    std::string save_absolute_path_;
     std::string save_origin_path_;
     std::string save_calib_path_;
-    std::string save_calib_result_;
+    std::string one_cam_result_path_;
 
     std::vector<std::vector<cv::Point2f>> left_img_points_, right_img_points_;
     std::vector<std::vector<cv::Point3f>> obj_points_;
     cv::Size board_size_;
+    float square_size_;
+    int cols_, rows_;
+    cv::Mat intrinsic_matrix_, distortion_coeffs_;
     int collected_ = 0;
 
     void initializedParameters()
     {
-        board_size_ = cv::Size(10, 7);
-
-        camera_matrix_ = (cv::Mat_<double>(3, 3) << 1.0412562786381386e+03, 0., 6.8565540026982239e+02, 0.,
-                          1.0505976084535532e+03, 5.9778012298164469e+02, 0., 0., 1.);
-
-        distortion_coeffs_ = (cv::Mat_<double>(1, 5) << -1.3724382468171908e-01, 4.9079709117302012e-01,
-                              8.2971299771431115e-03, -4.5215579888173568e-03,
-                              -7.7949268098546165e-01);
         std::string where = "company";
         read_write_path(where);
+
+        cv::FileStorage fs(one_cam_result_path_ + "/one_cam_calib_result.yaml", cv::FileStorage::READ);
+        if (!fs.isOpened())
+        {
+            RCLCPP_WARN(this->get_logger(), "Failed open one_cam_calib_result.yaml file!");
+            return;
+        }
+        else
+        {
+            
+            fs["checkerboard_cols"] >> cols_;
+            fs["checkerboard_rows"] >> rows_;
+            fs["square_size"] >> square_size_;
+            fs["intrinsic_matrix"] >> intrinsic_matrix_;
+            fs["distortion_coefficients"] >> distortion_coeffs_;
+            fs.release();
+            board_size_ = cv::Size(cols_, rows_);
+        }
     }
-    
+
     void read_write_path(std::string where)
     {
         std::string change_path;
@@ -60,9 +74,11 @@ private:
         {
             change_path = "/icrs/sensor_fusion_study_ws";
         }
-        save_origin_path_ = "/home" + change_path + "/src/sensor_fusion_study/stereo_cam_calib/origin_images/";
-        save_calib_path_ = "/home" + change_path + "/src/sensor_fusion_study/stereo_cam_calib/origin_images/";
-        save_calib_result_ = "/home" + change_path + "/src/sensor_fusion_study/one_cam_calib/";
+
+        save_absolute_path_ = "/home" + change_path + "/src/sensor_fusion_study/stereo_cam_calib/";
+        save_origin_path_ = save_absolute_path_ + "origin_images/";
+        save_calib_path_ = save_absolute_path_ + "calib_images/";
+        one_cam_result_path_ = "/home" + change_path + "src/sensor_fusion_study/one_cam_calib";
         fs::create_directories(save_origin_path_);
         fs::create_directories(save_calib_path_);
     }
@@ -102,7 +118,15 @@ private:
             left_img_points_.push_back(corners_left);
             right_img_points_.push_back(corners_right);
 
+            // [ADD] Save origin images with numbering
+            std::string filename_left = save_origin_path_ + "img_" + std::to_string(collected_) + "_left_origin.png";
+            std::string filename_right = save_origin_path_ + "img_" + std::to_string(collected_) + "_right_origin.png";
+            cv::imwrite(filename_left, left_frame_);
+            cv::imwrite(filename_right, right_frame_);
+
             RCLCPP_INFO(this->get_logger(), "📸 캘리브레이션 이미지 %d 장 수집됨", ++collected_);
+            
+            collected_++;
 
             if (collected_ >= 10)
             {
@@ -114,12 +138,11 @@ private:
     void calibrateStereo()
     {
         cv::Mat R, T, E, F;
-        cv::FileStorage fss(save_calib_result_ + "calibration_result.yaml", cv::FileStorage::READ);
         cv::Mat K1, D1, K2, D2;
-        fss["camera_matrix"] >> K1;
-        fss["distortion_coefficients"] >> D1;
-        fss["camera_matrix"] >> K2;
-        fss["distortion_coefficients"] >> D2;
+        K1 = intrinsic_matrix_;
+        K2 = K1;
+        D1 = distortion_coeffs_;
+        D2 = D1;
 
         cv::Size img_size = left_frame_.size();
 
@@ -132,9 +155,21 @@ private:
         RCLCPP_INFO(this->get_logger(), "✅ 스테레오 캘리브레이션 완료");
 
         // 파일 저장도 가능
-        cv::FileStorage fs(save_calib_result_ + "stereo_calib.yaml", cv::FileStorage::WRITE);
+        cv::FileStorage fs(save_absolute_path_ + "stereo_cam_calib.yaml", cv::FileStorage::WRITE);
         RCLCPP_INFO(this->get_logger(), "K1 matrix:\n%s", matToString(K1).c_str());
         fs << "K1" << K1 << "D1" << D1 << "K2" << K2 << "D2" << D2 << "R" << R << "T" << T << "E" << E << "F" << F;
+        fs << "checkerboard_cols" << cols_;
+        fs << "checkerboard_rows" << rows_;
+        fs << "square_size" << square_size_;
+        fs << "left_intrinsic_matrix" << K1;
+        fs << "left_distortion_coefficients" << D1;
+        fs << "right_intrinsic_matrix" << K2;
+        fs << "right_distortion_coefficients" << D2;
+        fs << "rotation" << R;
+        fs << "translation" << T;
+        fs << "essential_matrix" << E;
+        fs << "fundamental_matrix" << F;
+        fs.release();
         fs.release();
 
         cv::Mat R1, R2, P1, P2, Q;
@@ -145,12 +180,34 @@ private:
         cv::initUndistortRectifyMap(K1, D1, R1, P1, img_size, CV_32FC1, map1x, map1y);
         cv::initUndistortRectifyMap(K2, D2, R2, P2, img_size, CV_32FC1, map2x, map2y);
 
-        cv::Mat rectified_left, rectified_right;
-        cv::remap(left_frame_, rectified_left, map1x, map1y, cv::INTER_LINEAR);
-        cv::remap(right_frame_, rectified_right, map2x, map2y, cv::INTER_LINEAR);
+        // [ADD] Rectify and save all collected images
+        for (int i = 0; i < collected_; i++)
+        {
+            // load original images
+            std::string fname_left = save_origin_path_ + "img_" + std::to_string(i) + "_left_origin.png";
+            std::string fname_right = save_origin_path_ + "img_" + std::to_string(i) + "_right_origin.png";
 
-        cv::imwrite(save_calib_result_ + "rectified_left.png", rectified_left);
-        cv::imwrite(save_calib_result_ + "rectified_right.png", rectified_right);
+            cv::Mat orig_left = cv::imread(fname_left.str(), cv::IMREAD_COLOR);
+            cv::Mat orig_right = cv::imread(fname_right.str(), cv::IMREAD_COLOR);
+
+            if (orig_left.empty() || orig_right.empty())
+            {
+                RCLCPP_WARN(this->get_logger(), "Failed to load original images for rectification!");
+                continue;
+            }
+
+            cv::Mat rect_left, rect_right;
+            cv::remap(orig_left, rect_left, map1x, map1y, cv::INTER_LINEAR);
+            cv::remap(orig_right, rect_right, map2x, map2y, cv::INTER_LINEAR);
+
+            std::string save_left = save_calib_path_ + "img_" + std::to_string(i) + "_left_calib.png";
+            std::string save_right = save_calib_path_ + "img_" + std::to_string(i) + "_right_calib.png";
+            
+            cv::imwrite(save_left, rect_left);
+            cv::imwrite(save_right, rect_right);
+        }
+
+        RCLCPP_INFO(this->get_logger(), "✅ 모든 rectified 이미지 저장 완료");
 
         rclcpp::shutdown(); // 작업 완료 후 노드 종료
     }
@@ -168,7 +225,7 @@ private:
 int main(int argc, char *argv[])
 {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<StereoCalibNode>());
+    rclcpp::spin(std::make_shared<StereoCamCalibNode>());
     rclcpp::shutdown();
     return 0;
 }
