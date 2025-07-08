@@ -18,9 +18,14 @@ public:
         right_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
             "/right/image_raw", 10, std::bind(&StereoCamCalibNode::rightCallback, this, _1));
 
+        timer_ = this->create_wall_timer(
+          std::chrono::milliseconds(30),
+          std::bind(&StereoCamCalibNode::timer_callback, this));
+    
         std::string where_ = "company";
         read_write_path(where_);
-    }
+        initializedParameters();
+          }
 
 private:
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr left_sub_;
@@ -38,7 +43,24 @@ private:
     int cols_, rows_;
     cv::Mat intrinsic_matrix_, distortion_coeffs_;
     int collected_ = 0;
+    int count_ = 0;
+    
+    rclcpp::TimerBase::SharedPtr timer_;
+  cv::Mat last_image_;
 
+    void timer_callback()
+  {
+    
+      // 빈 화면이라도 띄우도록 할 수 있음
+      cv::Mat dummy = cv::Mat::zeros(480, 640, CV_8UC3);
+      cv::putText(dummy, "No camera image", cv::Point(50, 240),
+                  cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 255), 2);
+      cv::imshow("Camera Image", dummy);
+    
+    input_keyboard(last_image_);
+  }
+ 
+  
     void initializedParameters()
     {
         std::string where = "company";
@@ -78,7 +100,7 @@ private:
         save_absolute_path_ = "/home" + change_path + "/src/sensor_fusion_study/stereo_cam_calib/";
         save_origin_path_ = save_absolute_path_ + "origin_images/";
         save_calib_path_ = save_absolute_path_ + "calib_images/";
-        one_cam_result_path_ = "/home" + change_path + "src/sensor_fusion_study/one_cam_calib";
+        one_cam_result_path_ = "/home" + change_path + "/src/sensor_fusion_study/one_cam_calib";
         fs::create_directories(save_origin_path_);
         fs::create_directories(save_calib_path_);
     }
@@ -86,23 +108,30 @@ private:
     void leftCallback(const sensor_msgs::msg::Image::SharedPtr msg)
     {
         left_frame_ = cv_bridge::toCvCopy(msg, "bgr8")->image;
-        processFrame();
+        
     }
 
     void rightCallback(const sensor_msgs::msg::Image::SharedPtr msg)
     {
         right_frame_ = cv_bridge::toCvCopy(msg, "bgr8")->image;
-        processFrame();
+        
     }
 
     void processFrame()
     {
         if (left_frame_.empty() || right_frame_.empty())
             return;
+            
 
+        // [ADD] Save origin images with numbering
+            std::string filename_left = save_origin_path_ + "img_" + std::to_string(count_) + "_left_origin.png";
+            std::string filename_right = save_origin_path_ + "img_" + std::to_string(count_) + "_right_origin.png";
+            cv::imwrite(filename_left, left_frame_);
+            cv::imwrite(filename_right, right_frame_);
+            
         std::vector<cv::Point2f> corners_left, corners_right;
-        bool found_left = cv::findChessboardCorners(left_frame_, board_size_, corners_left);
-        bool found_right = cv::findChessboardCorners(right_frame_, board_size_, corners_right);
+        bool found_left = cv::findChessboardCorners(left_frame_, board_size_, corners_left,cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE);
+        bool found_right = cv::findChessboardCorners(right_frame_, board_size_, corners_right,cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE);
 
         if (found_left && found_right)
         {
@@ -118,22 +147,31 @@ private:
             left_img_points_.push_back(corners_left);
             right_img_points_.push_back(corners_right);
 
-            // [ADD] Save origin images with numbering
-            std::string filename_left = save_origin_path_ + "img_" + std::to_string(collected_) + "_left_origin.png";
-            std::string filename_right = save_origin_path_ + "img_" + std::to_string(collected_) + "_right_origin.png";
-            cv::imwrite(filename_left, left_frame_);
-            cv::imwrite(filename_right, right_frame_);
 
             RCLCPP_INFO(this->get_logger(), "📸 캘리브레이션 이미지 %d 장 수집됨", ++collected_);
             
             collected_++;
+            count_++;
 
-            if (collected_ >= 10)
-            {
-                calibrateStereo();
-            }
         }
     }
+    
+    void input_keyboard(const cv::Mat &frame)
+  {
+    int key = cv::waitKey(1);
+    if (key == 's')
+    {
+      processFrame();
+    }
+    else if (key == 'c')
+    {
+
+    }
+    else if (key == 'e')
+    {
+
+    }
+  }
 
     void calibrateStereo()
     {
@@ -187,8 +225,8 @@ private:
             std::string fname_left = save_origin_path_ + "img_" + std::to_string(i) + "_left_origin.png";
             std::string fname_right = save_origin_path_ + "img_" + std::to_string(i) + "_right_origin.png";
 
-            cv::Mat orig_left = cv::imread(fname_left.str(), cv::IMREAD_COLOR);
-            cv::Mat orig_right = cv::imread(fname_right.str(), cv::IMREAD_COLOR);
+            cv::Mat orig_left = cv::imread(fname_left, cv::IMREAD_COLOR);
+            cv::Mat orig_right = cv::imread(fname_right, cv::IMREAD_COLOR);
 
             if (orig_left.empty() || orig_right.empty())
             {
