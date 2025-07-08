@@ -63,22 +63,22 @@ private:
   cv::Mat last_image_;
 
   void read_write_path(std::string where)
+  {
+    std::string change_path;
+    if (where == "company")
     {
-        std::string change_path;
-        if (where == "company")
-        {
-            change_path = "/antlab/sensor_fusion_study_ws";
-        }
-        else if (where == "home")
-        {
-            change_path = "/icrs/sensor_fusion_study_ws";
-        }
-        save_absolute_path_ = "/home" + change_path + "/src/sensor_fusion_study/one_cam_calib/";
-        save_origin_path_ = save_absolute_path_ + "origin_images/";
-        save_calib_path_ = save_absolute_path_ + "calib_images/";
-        fs::create_directories(save_origin_path_);
-        fs::create_directories(save_calib_path_);
+      change_path = "/antlab/sensor_fusion_study_ws";
     }
+    else if (where == "home")
+    {
+      change_path = "/icrs/sensor_fusion_study_ws";
+    }
+    save_absolute_path_ = "/home" + change_path + "/src/sensor_fusion_study/one_cam_calib/";
+    save_origin_path_ = save_absolute_path_ + "origin_images/";
+    save_calib_path_ = save_absolute_path_ + "calib_images/";
+    fs::create_directories(save_origin_path_);
+    fs::create_directories(save_calib_path_);
+  }
 
   void timer_callback()
   {
@@ -201,8 +201,7 @@ private:
       for (int j = 0; j < pattern_size.width; ++j)
         objp.emplace_back(j * square_size, i * square_size, 0.0f);
 
-        
-  successful_indices_.clear();
+    successful_indices_.clear();
 
     for (size_t idx = 0; idx < image_files_.size(); ++idx)
     {
@@ -233,6 +232,8 @@ private:
         fs << "checkerboard_cols" << cols_;
         fs << "checkerboard_rows" << rows_;
         fs << "square_size" << square_size_;
+        fs << "frame_width" << frame_width_;
+        fs << "frame_height" << frame_height_;
         fs << "intrinsic_matrix" << intrinsic_matrix_;
         fs << "distortion_coefficients" << dist_coeffs_;
         fs << "rotation" << rvecs_;
@@ -249,7 +250,7 @@ private:
         std::string save_name = save_calib_path_ + "img_" + std::to_string(idx) + "_one_cam_calib_result.png";
         cv::imwrite(save_name, vis);
         RCLCPP_INFO(this->get_logger(), "Save calibration image: %s", save_name.c_str());
-      successful_indices_.push_back(idx);
+        successful_indices_.push_back(idx);
       }
       else
       {
@@ -278,40 +279,40 @@ private:
   {
 
     for (size_t i = 0; i < successful_indices_.size(); ++i)
-  {
-    int idx = successful_indices_[i];
-
-    // 원본 이미지 경로
-    std::string origin_file = save_origin_path_ + "img_" + std::to_string(idx) + "_one_cam_calib_origin.png";
-    cv::Mat img = cv::imread(origin_file);
-    if (img.empty())
     {
-      RCLCPP_WARN(rclcpp::get_logger("calibration_error"),
-                  "Image load failed: %s", origin_file.c_str());
-      continue;
+      int idx = successful_indices_[i];
+
+      // 원본 이미지 경로
+      std::string origin_file = save_origin_path_ + "img_" + std::to_string(idx) + "_one_cam_calib_origin.png";
+      cv::Mat img = cv::imread(origin_file);
+      if (img.empty())
+      {
+        RCLCPP_WARN(rclcpp::get_logger("calibration_error"),
+                    "Image load failed: %s", origin_file.c_str());
+        continue;
+      }
+
+      std::vector<cv::Point2f> projected_points;
+      cv::projectPoints(obj_points_[i], rvecs_[i], tvecs_[i],
+                        intrinsic_matrix_, dist_coeffs_, projected_points);
+
+      cv::Mat vis = img.clone();
+      for (size_t j = 0; j < img_points_[i].size(); ++j)
+      {
+        cv::Point2f actual = img_points_[i][j];
+        cv::Point2f reprojected = projected_points[j];
+
+        cv::circle(vis, actual, 1, cv::Scalar(0, 255, 0), -1);
+        cv::circle(vis, reprojected, 1, cv::Scalar(0, 0, 255), -1);
+      }
+
+      std::string save_name = save_calib_path_ + "img_" + std::to_string(idx) + "_one_cam_calib_error.png";
+      cv::imwrite(save_name, vis);
+      RCLCPP_INFO(this->get_logger(), "Save error visualization: %s", save_name.c_str());
+
+      cv::Point3f p = obj_points_[i][69];
+      cv::Point2f c = img_points_[i][69];
     }
-
-    std::vector<cv::Point2f> projected_points;
-    cv::projectPoints(obj_points_[i], rvecs_[i], tvecs_[i],
-                      intrinsic_matrix_, dist_coeffs_, projected_points);
-
-    cv::Mat vis = img.clone();
-    for (size_t j = 0; j < img_points_[i].size(); ++j)
-    {
-      cv::Point2f actual = img_points_[i][j];
-      cv::Point2f reprojected = projected_points[j];
-
-      cv::circle(vis, actual, 1, cv::Scalar(0, 255, 0), -1);
-      cv::circle(vis, reprojected, 1, cv::Scalar(0, 0, 255), -1);
-    }
-
-    std::string save_name = save_calib_path_ + "img_" + std::to_string(idx) + "_one_cam_calib_error.png";
-    cv::imwrite(save_name, vis);
-    RCLCPP_INFO(this->get_logger(), "Save error visualization: %s", save_name.c_str());
-
-    cv::Point3f p = obj_points_[i][69];
-    cv::Point2f c = img_points_[i][69];
-  }
   }
 
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;

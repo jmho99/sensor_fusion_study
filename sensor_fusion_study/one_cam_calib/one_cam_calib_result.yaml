@@ -3,7 +3,9 @@
 checkerboard_cols: 14
 checkerboard_rows: 20
 square_size: 5.0000000745058060e-02
-camera_matrix_: !!opencv-matrix
+frame_width: 1440
+frame_height: 1080
+intrinsic_matrix: !!opencv-matrix
    rows: 3
    cols: 3
    dt: d
