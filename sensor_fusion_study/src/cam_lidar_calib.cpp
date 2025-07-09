@@ -34,7 +34,7 @@ public:
         // 타이머로 주기적 퍼블리시
         timer_ = this->create_wall_timer(
             std::chrono::milliseconds(30),
-            std::bind(&CamLidarCalibNode::timer_callback, this));
+            std::bind(&CamLidarCalibNode::pcdTimerCallback, this));
 
         timer__ = this->create_wall_timer(
             std::chrono::milliseconds(500),
@@ -68,7 +68,7 @@ private:
     cv::Mat cb2cam_rvec_, cb2cam_tvec_;
     cv::Mat lidar2cam_R_, lidar2cam_t_;
 
-    void timerCallback()
+    void pcdTimerCallback()
     {
         plane_msg_.header.stamp = this->now();
         pub_plane_->publish(plane_msg_);
@@ -81,7 +81,7 @@ private:
     void initializedParameters()
     {
         std::string where = "company";
-        read_write_path(where);
+        readWritePath(where);
 
         cv::FileStorage fs(one_cam_result_path_ + "/one_cam_calib_result.yaml", cv::FileStorage::READ);
         if (!fs.isOpened())
@@ -103,7 +103,7 @@ private:
         }
     }
 
-    void read_write_path(std::string where)
+    void readWritePath(std::string where)
     {
         std::string change_path;
         if (where == "company")
@@ -124,7 +124,7 @@ private:
         fs::create_directories(pcd_path_);
     }
 
-    void timer_callback()
+    void timerCallback()
     {
         if (!last_image_.empty())
         {
@@ -139,15 +139,15 @@ private:
             cv::imshow("Camera Image", dummy);
         }
 
-        input_keyboard(last_image_);
+        inputKeyboard(last_image_);
     }
 
-    void input_keyboard(const cv::Mat &frame)
+    void inputKeyboard(const cv::Mat &frame)
     {
         int key = cv::waitKey(1);
         if (key == 's')
         {
-            save_current_frame(frame.clone());
+            saveFrame(frame.clone());
         }
         else if (key == 'c')
         {
@@ -159,7 +159,7 @@ private:
         }
     }
 
-    void save_current_frame(const cv::Mat &image)
+    void saveFrame(const cv::Mat &image)
     {
         std::string img_filename = img_path_ + "cam_lidar_calib_origin_img_" + std::to_string(frame_counter_) + ".png";
         cv::imwrite(img_filename, image);

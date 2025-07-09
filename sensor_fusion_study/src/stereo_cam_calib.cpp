@@ -24,10 +24,10 @@ public:
 
         timer_ = this->create_wall_timer(
             std::chrono::milliseconds(30),
-            std::bind(&StereoCamCalibNode::timer_callback, this));
+            std::bind(&StereoCamCalibNode::timerCallback, this));
 
         std::string where_ = "company";
-        read_write_path(where_);
+        readWritePath(where_);
         initializedParameters();
     }
 
@@ -65,7 +65,7 @@ private:
         right_frame_ = cv_bridge::toCvCopy(msg, "bgr8")->image;
     }
 
-    void timer_callback()
+    void timerCallback()
     {
 
         // 빈 화면이라도 띄우도록 할 수 있음
@@ -74,13 +74,13 @@ private:
                     cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 255), 2);
         cv::imshow("Camera Image", dummy);
 
-        input_keyboard(last_image_);
+        inputKeyboard(last_image_);
     }
 
     void initializedParameters()
     {
         std::string where = "company";
-        read_write_path(where);
+        readWritePath(where);
 
         cv::FileStorage fs(one_cam_result_path_ + "/one_cam_calib_result.yaml", cv::FileStorage::READ);
         if (!fs.isOpened())
@@ -104,7 +104,7 @@ private:
         }
     }
 
-    void read_write_path(std::string where)
+    void readWritePath(std::string where)
     {
         std::string change_path;
         if (where == "company")
@@ -124,23 +124,23 @@ private:
         fs::create_directories(save_calib_path_);
     }
 
-    void input_keyboard(const cv::Mat &frame)
+    void inputKeyboard(const cv::Mat &frame)
     {
         int key = cv::waitKey(1);
         if (key == 's')
         {
-            processFrame();
+            saveFrame();
         }
         else if (key == 'c')
         {
-            loadImagesAndCalibrate();
+            calibrateEachCamera();
         }
         else if (key == 'e')
         {
         }
     }
 
-    void processFrame()
+    void saveFrame()
     {
         if (left_frame_.empty() || right_frame_.empty())
             return;
@@ -176,7 +176,7 @@ private:
         }
     }
 
-    void loadImagesAndCalibrate()
+    void calibrateEachCamera()
     {
         int i = 0;
         cv::Mat left_intrinsic_matrix_, right_intrinsic_matrix_;
@@ -373,14 +373,14 @@ private:
             cv::circle(rect_right, pt_right, 3, cv::Scalar(0, 255, 0), -1);
 
             float d = disparity.at<float>(pt_left.y, pt_left.x);
-std::cout << "Disparity at (" << pt_left.x << "," << pt_left.y << ") = " << d << std::endl;
+            std::cout << "Disparity at (" << pt_left.x << "," << pt_left.y << ") = " << d << std::endl;
 
             float z_left = depth.at<cv::Vec3f>(
                 static_cast<int>(pt_left.y),
                 static_cast<int>(pt_left.x))[2];
 
             std::ostringstream oss_left;
-            oss_left << "( " << std::fixed << std::setprecision(2) << pt_left.x 
+            oss_left << "( " << std::fixed << std::setprecision(2) << pt_left.x
                      << " , " << std::fixed << std::setprecision(2) << pt_left.y
                      << " , " << std::fixed << std::setprecision(1) << z_left << " )";
 
@@ -390,7 +390,7 @@ std::cout << "Disparity at (" << pt_left.x << "," << pt_left.y << ") = " << d <<
                         cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
 
             std::ostringstream oss_right;
-            oss_right << "( " << std::fixed << std::setprecision(2) << pt_right.x 
+            oss_right << "( " << std::fixed << std::setprecision(2) << pt_right.x
                       << " , " << std::fixed << std::setprecision(2) << pt_right.y
                       << " , " << std::fixed << std::setprecision(1) << z_left << " )";
 
