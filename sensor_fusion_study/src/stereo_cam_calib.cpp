@@ -51,6 +51,7 @@ private:
     cv::Mat intrinsic_matrix_, distortion_coeffs_;
     int collected_ = 0;
     int count_ = 0;
+    double rms_;
 
     rclcpp::TimerBase::SharedPtr timer_;
     cv::Mat last_image_;
@@ -267,12 +268,13 @@ private:
         D1 = left_dist_coeffs_;
         D2 = right_dist_coeffs_;
 
-        cv::stereoCalibrate(
+        rms_ = cv::stereoCalibrate(
             obj_points_, left_img_points_, right_img_points_,
             K1, D1, K2, D2, img_size_, R, T, E, F,
             cv::CALIB_FIX_INTRINSIC,
             cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 100, 1e-5));
 
+        RCLCPP_INFO(this->get_logger(), "RMS error: %.4f", rms_);
         RCLCPP_INFO(this->get_logger(), "✅ 스테레오 캘리브레이션 완료");
 
         // 파일 저장도 가능
@@ -291,6 +293,7 @@ private:
         fs << "translation" << T;
         fs << "essential_matrix" << E;
         fs << "fundamental_matrix" << F;
+        fs << "RMS error" << rms_;
         fs.release();
         fs.release();
 

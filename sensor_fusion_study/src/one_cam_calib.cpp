@@ -5,6 +5,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.hpp>
 #include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
 #include <filesystem>
 
 namespace fs = std::filesystem;
@@ -39,30 +40,30 @@ public:
 
     if (select_connect_ == "usb")
     {
-      connect_usb_camera();
+      connectUsbCamera();
     }
     else if (select_connect_ == "ethernet")
     {
       subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
           "/flir_camera/image_raw", rclcpp::SensorDataQoS(),
-          std::bind(&OneCamCalibNode::image_callback, this, std::placeholders::_1));
+          std::bind(&OneCamCalibNode::imageCallback, this, std::placeholders::_1));
       RCLCPP_INFO(this->get_logger(), "Open camera using ETHERNET");
     }
     else if (select_connect_ == "none")
     {
       timer_ = this->create_wall_timer(
           std::chrono::milliseconds(30),
-          std::bind(&OneCamCalibNode::timer_callback, this));
+          std::bind(&OneCamCalibNode::timerCallback, this));
     }
 
-    read_write_path(where_);
+    readWritePath(where_);
   }
 
 private:
   rclcpp::TimerBase::SharedPtr timer_;
   cv::Mat last_image_;
 
-  void read_write_path(std::string where)
+  void readWritePath(std::string where)
   {
     std::string change_path;
     if (where == "company")
@@ -80,7 +81,7 @@ private:
     fs::create_directories(save_calib_path_);
   }
 
-  void timer_callback()
+  void timerCallback()
   {
     if (!last_image_.empty())
     {
@@ -95,9 +96,9 @@ private:
       cv::imshow("Camera Image", dummy);
     }
 
-    input_keyboard(last_image_);
+    inputKeyboard(last_image_);
   }
-  void connect_usb_camera()
+  void connectUsbCamera()
   {
     cv::VideoCapture cap;
     cap.open(device_path_, cv::CAP_V4L2);
@@ -122,17 +123,17 @@ private:
     {
       cap >> frame;
       cv::imshow("MJPEG CAM", frame);
-      input_keyboard(frame);
+      inputKeyboard(frame);
     }
   }
 
-  void image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
+  void imageCallback(const sensor_msgs::msg::Image::SharedPtr msg)
   {
     try
     {
       current_frame_ = cv_bridge::toCvCopy(msg, "bgr8")->image;
       cv::imshow("FLIR View", current_frame_);
-      input_keyboard(current_frame_);
+      inputKeyboard(current_frame_);
     }
     catch (cv_bridge::Exception &e)
     {
@@ -140,31 +141,31 @@ private:
     }
   }
 
-  void input_keyboard(const cv::Mat &frame)
+  void inputKeyboard(const cv::Mat &frame)
   {
     int key = cv::waitKey(1);
     if (key == 's')
     {
-      save_current_frame(frame.clone());
+      saveCurrentFrame(frame.clone());
     }
     else if (key == 'c')
     {
-      run_calibration_from_folder();
+      runCalibrateFromFolder();
     }
     else if (key == 'e')
     {
-      calibration_error(obj_points_, img_points_, rvecs_, tvecs_, intrinsic_matrix_, dist_coeffs_, successful_indices_);
+      reporjectionError(obj_points_, img_points_, rvecs_, tvecs_, intrinsic_matrix_, dist_coeffs_, successful_indices_);
     }
   }
 
-  void save_current_frame(const cv::Mat &frame)
+  void saveCurrentFrame(const cv::Mat &frame)
   {
     std::string filename = save_origin_path_ + "img_" + std::to_string(frame_counter_) + "_one_cam_calib_origin.png";
     cv::imwrite(filename, frame);
     RCLCPP_INFO(this->get_logger(), "Save Image: %s", filename.c_str());
     frame_counter_++;
   }
-  int extract_number(const std::string &filename)
+  int extractNumber(const std::string &filename)
   {
     std::string number;
     for (char c : filename)
@@ -177,7 +178,7 @@ private:
     return number.empty() ? -1 : std::stoi(number);
   }
 
-  void run_calibration_from_folder()
+  void runCalibrateFromFolder()
   {
     RCLCPP_INFO(this->get_logger(), "Start calibration...");
 
@@ -190,7 +191,7 @@ private:
     std::sort(image_files_.begin(), image_files_.end(),
               [this](const std::string &a, const std::string &b)
               {
-                return extract_number(a) < extract_number(b);
+                return extractNumber(a) < extractNumber(b);
               });
 
     cv::Size pattern_size(cols_, rows_);
@@ -224,10 +225,10 @@ private:
         img_points_.push_back(corners);
         obj_points_.push_back(objp);
 
-        double rms = cv::calibrateCamera(obj_points_, img_points_, cv::Size(frame_width_, frame_height_),
+        rms_ = cv::calibrateCamera(obj_points_, img_points_, cv::Size(frame_width_, frame_height_),
                                          intrinsic_matrix_, dist_coeffs_, rvecs_, tvecs_);
 
-        RCLCPP_INFO(this->get_logger(), "RMS error: %.4f", rms);
+        RCLCPP_INFO(this->get_logger(), "RMS error: %.4f", rms_);
         cv::FileStorage fs(save_absolute_path_ + "one_cam_calib_result.yaml", cv::FileStorage::WRITE);
         fs << "checkerboard_cols" << cols_;
         fs << "checkerboard_rows" << rows_;
@@ -238,6 +239,7 @@ private:
         fs << "distortion_coefficients" << dist_coeffs_;
         fs << "rotation" << rvecs_;
         fs << "translation" << tvecs_;
+        fs << "RMS error" << rms_;
         fs.release();
         RCLCPP_INFO(this->get_logger(), "Succeeded result saving: calibration_result.yaml");
 
@@ -269,7 +271,7 @@ private:
     }
   }
 
-  void calibration_error(const std::vector<std::vector<cv::Point3f>> &obj_points_,
+  void reporjectionError(const std::vector<std::vector<cv::Point3f>> &obj_points_,
                          const std::vector<std::vector<cv::Point2f>> &img_points_,
                          const std::vector<cv::Mat> &rvecs_,
                          const std::vector<cv::Mat> &tvecs_,
@@ -287,16 +289,23 @@ private:
       cv::Mat img = cv::imread(origin_file);
       if (img.empty())
       {
-        RCLCPP_WARN(rclcpp::get_logger("calibration_error"),
+        RCLCPP_WARN(rclcpp::get_logger("reporjectionError"),
                     "Image load failed: %s", origin_file.c_str());
         continue;
       }
+      /*
+            cv::Mat optimal_intrinsic = cv::getOptimalNewCameraMatrix(intrinsic_matrix_, dist_coeffs_, cv::Size(frame_width_, frame_height_),
+                                                                      1, cv::Size(frame_width_, frame_height_));
+
+            cv::Mat undistort_img;
+            img = cv::undistort(img, undistort_img, intrinsic_matrix_, dist_coeffs_, optimal_intrinsic);*/
 
       std::vector<cv::Point2f> projected_points;
       cv::projectPoints(obj_points_[i], rvecs_[i], tvecs_[i],
                         intrinsic_matrix_, dist_coeffs_, projected_points);
 
       cv::Mat vis = img.clone();
+
       for (size_t j = 0; j < img_points_[i].size(); ++j)
       {
         cv::Point2f actual = img_points_[i][j];
@@ -305,6 +314,12 @@ private:
         cv::circle(vis, actual, 1, cv::Scalar(0, 255, 0), -1);
         cv::circle(vis, reprojected, 1, cv::Scalar(0, 0, 255), -1);
       }
+
+      cv::Mat act = cv::Mat(img_points_[i]);
+      cv::Mat reproj = cv::Mat(projected_points);
+      float mean_error = cv::norm(act, reproj, cv::NORM_L2);
+
+      RCLCPP_INFO(this->get_logger(), "norm error: %f", mean_error / img_points_[i].size());
 
       std::string save_name = save_calib_path_ + "img_" + std::to_string(idx) + "_one_cam_calib_error.png";
       cv::imwrite(save_name, vis);
@@ -330,6 +345,7 @@ private:
   float square_size_;
   int frame_width_;
   int frame_height_;
+  double rms_;
 
   std::vector<std::vector<cv::Point2f>> img_points_;
   std::vector<std::vector<cv::Point3f>> obj_points_;
