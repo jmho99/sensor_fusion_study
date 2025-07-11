@@ -43,6 +43,7 @@ private:
 
     std::vector<std::vector<cv::Point2f>> left_img_points_, right_img_points_;
     std::vector<std::vector<cv::Point3f>> obj_points_;
+    std::vector<cv::Point3f> objp_;
     cv::Size board_size_;
     cv::Size img_size_;
     float square_size_;
@@ -102,6 +103,10 @@ private:
             fs.release();
             board_size_ = cv::Size(cols_, rows_);
             img_size_ = cv::Size(frame_width_, frame_height_);
+
+            for (int y = 0; y < board_size_.height; ++y)
+                for (int x = 0; x < board_size_.width; ++x)
+                    objp_.emplace_back(x * square_size_, y * square_size_, 0.0f);
         }
     }
 
@@ -152,36 +157,21 @@ private:
         cv::imwrite(filename_left, left_frame_);
         cv::imwrite(filename_right, right_frame_);
 
-        std::vector<cv::Point2f> corners_left, corners_right;
-        bool found_left = cv::findChessboardCorners(left_frame_, board_size_, corners_left, cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE);
-        bool found_right = cv::findChessboardCorners(right_frame_, board_size_, corners_right, cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE);
+        RCLCPP_INFO(this->get_logger(), "📸 캘리브레이션 이미지 %d 장 수집됨", ++count_);
 
-        if (found_left && found_right)
-        {
-            cv::drawChessboardCorners(left_frame_, board_size_, corners_left, found_left);
-            cv::drawChessboardCorners(right_frame_, board_size_, corners_right, found_right);
-
-            std::vector<cv::Point3f> objp;
-            for (int i = 0; i < board_size_.height; ++i)
-                for (int j = 0; j < board_size_.width; ++j)
-                    objp.emplace_back(j * square_size_, i * square_size_, 0);
-
-            obj_points_.push_back(objp);
-            left_img_points_.push_back(corners_left);
-            right_img_points_.push_back(corners_right);
-
-            RCLCPP_INFO(this->get_logger(), "📸 캘리브레이션 이미지 %d 장 수집됨", ++collected_);
-
-            collected_++;
-            count_++;
-        }
+        count_++;
     }
 
-    void calibrateEachCamera()
+    void
+    calibrateEachCamera()
     {
         int i = 0;
+        int valid_pairs_count = 0;
         cv::Mat left_intrinsic_matrix_, right_intrinsic_matrix_;
         cv::Mat left_dist_coeffs_, right_dist_coeffs_;
+        cv::Mat left_rvecs_all, left_tvecs_all;
+        cv::Mat right_rvecs_all, right_tvecs_all;
+
         while (true)
         {
             std::string fname_left = save_origin_path_ + "img_" + std::to_string(i) + "_left_origin.png";
@@ -219,24 +209,12 @@ private:
                 cv::cornerSubPix(gray, corners_right, cv::Size(5, 5), cv::Size(-1, -1),
                                  cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 30, 0.001));
 
-                std::vector<cv::Point3f> objp;
-                for (int y = 0; y < board_size_.height; ++y)
-                    for (int x = 0; x < board_size_.width; ++x)
-                        objp.emplace_back(x * square_size_, y * square_size_, 0.0);
-
-                obj_points_.push_back(objp);
                 left_img_points_.push_back(corners_left);
                 right_img_points_.push_back(corners_right);
-
-                std::vector<cv::Mat> left_rvecs_, left_tvecs_;
-                std::vector<cv::Mat> right_rvecs_, right_tvecs_;
-
-                cv::calibrateCamera(obj_points_, left_img_points_, cv::Size(frame_width_, frame_height_),
-                                    left_intrinsic_matrix_, left_dist_coeffs_, left_rvecs_, left_tvecs_);
-                cv::calibrateCamera(obj_points_, right_img_points_, cv::Size(frame_width_, frame_height_),
-                                    right_intrinsic_matrix_, right_dist_coeffs_, right_rvecs_, right_tvecs_);
+                obj_points_.push_back(objp_);
 
                 RCLCPP_INFO(this->get_logger(), "✔︎ index %d chessboard corners detected and saved.", i);
+                valid_pairs_count++;
             }
             else
             {
@@ -245,16 +223,19 @@ private:
 
             i++;
         }
-
-        collected_ = static_cast<int>(left_img_points_.size());
-
-        if (collected_ > 0)
+        if (valid_pairs_count > 0)
         {
+            // 개별 카메라 캘리브레이션 (모든 이미지 쌍으로 한 번씩)
+            double rms_left = cv::calibrateCamera(obj_points_, left_img_points_, img_size_,
+                                                  left_intrinsic_matrix_, left_dist_coeffs_, left_rvecs_all, left_tvecs_all); // 초기값 사용
+            RCLCPP_INFO(this->get_logger(), "Left Camera Calibration RMS: %.4f", rms_left);
+
+            
+            double rms_right = cv::calibrateCamera(obj_points_, right_img_points_, img_size_,
+                                                   right_intrinsic_matrix_, right_dist_coeffs_, right_rvecs_all, right_tvecs_all);
+            RCLCPP_INFO(this->get_logger(), "Right Camera Calibration RMS: %.4f", rms_right);
+
             calibrateStereo(left_intrinsic_matrix_, right_intrinsic_matrix_, left_dist_coeffs_, right_dist_coeffs_);
-        }
-        else
-        {
-            RCLCPP_ERROR(this->get_logger(), "No valid image pairs found for calibration!");
         }
     }
 
@@ -279,7 +260,6 @@ private:
 
         // 파일 저장도 가능
         cv::FileStorage fs(save_absolute_path_ + "stereo_cam_calib.yaml", cv::FileStorage::WRITE);
-        RCLCPP_INFO(this->get_logger(), "K1 matrix:\n%s", matToString(K1).c_str());
         fs << "checkerboard_cols" << cols_;
         fs << "checkerboard_rows" << rows_;
         fs << "square_size" << square_size_;
@@ -296,6 +276,7 @@ private:
         fs << "RMS error" << rms_;
         fs.release();
         fs.release();
+        RCLCPP_INFO(this->get_logger(), "Successed save stereo_cam_calib.yaml");
 
         cv::Mat R1, R2, P1, P2, Q;
 
@@ -337,12 +318,7 @@ private:
             cv::cornerSubPix(right_gray, corners_right, cv::Size(5, 5), cv::Size(-1, -1),
                              cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 30, 0.001));
 
-            std::vector<cv::Point3f> objp;
-            for (int y = 0; y < board_size_.height; ++y)
-                for (int x = 0; x < board_size_.width; ++x)
-                    objp.emplace_back(x * square_size_, y * square_size_, 0.0);
-
-            obj_points_.push_back(objp);
+            obj_points_.push_back(objp_);
             left_img_points_.push_back(corners_left);
             right_img_points_.push_back(corners_right);
 

@@ -3,6 +3,7 @@
 #include <fstream>
 #include <string>
 #include <filesystem>
+#include "sensor_msgs/msg/image.hpp"
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 #include <Eigen/Dense>
@@ -14,6 +15,10 @@
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/filters/crop_box.h>
 #include <pcl/segmentation/extract_clusters.h>
+#include <pcl/filters/statistical_outlier_removal.h>
+#include <pcl/kdtree/kdtree.h>
+#include <pcl/filters/passthrough.h>
+#include <cv_bridge/cv_bridge.h>
 
 namespace fs = std::filesystem;
 
@@ -24,6 +29,12 @@ public:
         : Node("cam_lidar_calib")
     {
         initializedParameters();
+
+        sub_cam_ = this->create_subscription<sensor_msgs::msg::Image>("/flir_camera/image_raw", rclcpp::SensorDataQoS(),
+                                                                      std::bind(&CamLidarCalibNode::imageCallback, this, std::placeholders::_1));
+
+        sub_lidar_ = this->create_subscription<sensor_msgs::msg::PointCloud2>("/ouster/os_lidar", rclcpp::SensorDataQoS(),
+                                                                              std::bind(&CamLidarCalibNode::pcdCallback, this, std::placeholders::_1));
 
         pub_plane_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("plane_points", 10);
         pub_checker_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("checker_points", 10);
@@ -42,13 +53,16 @@ public:
     }
 
 private:
-    cv::Mat last_image_;                                                                 // Latest image data
-    pcl::PointCloud<pcl::PointXYZ>::Ptr last_cloud_{new pcl::PointCloud<pcl::PointXYZ>}; // Latest point cloud data
+    rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr sub_cam_;
+    rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_lidar_;
+    cv::Mat current_frame_;
+    cv::Mat last_image_;                                                                   // Latest image data
+    pcl::PointCloud<pcl::PointXYZI>::Ptr last_cloud_{new pcl::PointCloud<pcl::PointXYZI>}; // Latest point cloud data
     std::string img_path_;
     std::string pcd_path_;
     std::string absolute_path_;
     std::string one_cam_result_path_;
-    int frame_counter_;
+    int frame_counter_ = 0;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_plane_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_checker_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_lidar2cam_points_;
@@ -62,11 +76,28 @@ private:
     sensor_msgs::msg::PointCloud2 cam_points_msg_;
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::TimerBase::SharedPtr timer__;
-    cv::Size board_size_;                       // Chessboard parameters
-    double square_size_;                        // Chessboard parameters
+    cv::Size board_size_;                          // Chessboard parameters
+    double square_size_;                           // Chessboard parameters
     cv::Mat intrinsic_matrix_, distortion_coeffs_; // Camera intrinsics
     cv::Mat cb2cam_rvec_, cb2cam_tvec_;
     cv::Mat lidar2cam_R_, lidar2cam_t_;
+
+    // 이미지에서 찾은 2D 코너
+    std::vector<cv::Point2f> image_corners_latest_;
+    // 라이다에서 찾은 체스보드 평면 포인트
+    pcl::PointCloud<pcl::PointXYZI>::Ptr lidar_plane_points_latest_{new pcl::PointCloud<pcl::PointXYZI>};
+
+    void imageCallback(const sensor_msgs::msg::Image::SharedPtr msg)
+    {
+        current_frame_ = cv_bridge::toCvCopy(msg, "bgr8")->image;
+        cv::imshow("FLIR View", current_frame_);
+    }
+
+    void pcdCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
+    {
+
+        pcl::fromROSMsg(*msg, *last_cloud_);
+    }
 
     void pcdTimerCallback()
     {
@@ -86,8 +117,8 @@ private:
         cv::FileStorage fs(one_cam_result_path_ + "/one_cam_calib_result.yaml", cv::FileStorage::READ);
         if (!fs.isOpened())
         {
-            RCLCPP_WARN(this->get_logger(), "Failed open one_cam_calib_result.yaml file!");
-            return;
+            RCLCPP_WARN(rclcpp::get_logger("initializedParameters"), "Failed open one_cam_calib_result.yaml file!");
+            rclcpp::shutdown();
         }
         else
         {
@@ -115,10 +146,10 @@ private:
             change_path = "/icrs/sensor_fusion_study_ws";
         }
 
-        absolute_path_ = "/home" + change_path + "src/sensor_fusion_study/cam_lidar_calib";
+        absolute_path_ = "/home" + change_path + "/src/sensor_fusion_study/cam_lidar_calib";
         img_path_ = absolute_path_ + "/images";
         pcd_path_ = absolute_path_ + "/pointclouds";
-        one_cam_result_path_ = "/home" + change_path + "src/sensor_fusion_study/one_cam_calib";
+        one_cam_result_path_ = "/home" + change_path + "/src/sensor_fusion_study/one_cam_calib";
 
         fs::create_directories(img_path_);
         fs::create_directories(pcd_path_);
@@ -147,30 +178,32 @@ private:
         int key = cv::waitKey(1);
         if (key == 's')
         {
-            saveFrame(frame.clone());
+            saveFrame();
         }
         else if (key == 'c')
         {
+            findData();
             solveCameraPlane();
             detectLidarPlane();
         }
         else if (key == 'e')
         {
+            rclcpp::shutdown();
         }
     }
 
-    void saveFrame(const cv::Mat &image)
+    void saveFrame()
     {
-        std::string img_filename = img_path_ + "cam_lidar_calib_origin_img_" + std::to_string(frame_counter_) + ".png";
-        cv::imwrite(img_filename, image);
+        std::string img_filename = img_path_ + "/image_" + std::to_string(frame_counter_) + ".png";
+        cv::imwrite(img_filename, current_frame_);
 
         // Save point cloud
         if (last_cloud_->empty())
         {
-            RCLCPP_WARN(this->get_logger(), "No point cloud captured yet!");
-            return;
+            RCLCPP_WARN(rclcpp::get_logger("saveFrame"), "No point cloud captured yet!");
+            rclcpp::shutdown();
         }
-        std::string pcd_filename = pcd_path_ + "cam_lidar_calib_origin_pcd_" + std::to_string(frame_counter_) + ".pcd";
+        std::string pcd_filename = pcd_path_ + "/pointcloud_" + std::to_string(frame_counter_) + ".pcd";
         pcl::io::savePCDFileBinary(pcd_filename, *last_cloud_);
         RCLCPP_INFO(this->get_logger(), "Saved image and pointcloud.");
         frame_counter_++;
@@ -178,23 +211,67 @@ private:
 
     void findData()
     {
-        if (!std::filesystem::exists(img_path_) || !std::filesystem::exists(pcd_path_))
+        // 1. 이미지 파일 로드
+        std::vector<cv::String> image_files;
+        // img_path_ 디렉토리의 모든 .png 파일을 찾습니다.
+        cv::glob(img_path_ + "/*.png", image_files, false);
+
+        // 이미지 파일 개수 확인
+        if (image_files.empty())
         {
-            RCLCPP_WARN(this->get_logger(), "No saved data. Capture first!");
+            RCLCPP_WARN(rclcpp::get_logger("findData"), "No image files found in %s. Please capture some data first!", img_path_.c_str());
+            rclcpp::shutdown();
             return;
         }
+        RCLCPP_INFO(this->get_logger(), "Found %zu image files.", image_files.size());
+
+        // 첫 번째 이미지 파일을 로드합니다.
+        std::string first_image_path = image_files[0];
+        last_image_ = cv::imread(first_image_path, cv::IMREAD_COLOR);
+
+        if (last_image_.empty())
+        {
+            RCLCPP_ERROR(this->get_logger(), "Failed to load the first image from %s!", first_image_path.c_str());
+            rclcpp::shutdown();
+            return;
+        }
+        RCLCPP_INFO(this->get_logger(), "Loaded first image: %s", first_image_path.c_str());
+
+        // 2. PCD 파일 로드
+        std::vector<cv::String> pcd_files;
+        // pcd_path_ 디렉토리의 모든 .pcd 파일을 찾습니다.
+        cv::glob(pcd_path_ + "/*.pcd", pcd_files, false);
+
+        // PCD 파일 개수 확인
+        if (pcd_files.empty())
+        {
+            RCLCPP_WARN(rclcpp::get_logger("findData"), "No PCD files found in %s. Please capture some data first!", pcd_path_.c_str());
+            rclcpp::shutdown();
+            return;
+        }
+        RCLCPP_INFO(this->get_logger(), "Found %zu PCD files.", pcd_files.size());
+
+        // 첫 번째 PCD 파일을 로드합니다.
+        std::string first_pcd_path = pcd_files[0];
+        if (pcl::io::loadPCDFile<pcl::PointXYZI>(first_pcd_path, *last_cloud_) == -1) // -1은 로드 실패를 의미
+        {
+            RCLCPP_ERROR(this->get_logger(), "Failed to load the first PCD from %s!", first_pcd_path.c_str());
+            rclcpp::shutdown();
+            return;
+        }
+        RCLCPP_INFO(this->get_logger(), "Loaded first pointcloud: %s", first_pcd_path.c_str());
+
+        RCLCPP_INFO(this->get_logger(), "Successfully loaded calibration data (image and pointcloud).");
     }
 
     void solveCameraPlane()
     {
-        findData();
-
         // Load color image
-        cv::Mat img_color = cv::imread(img_path_, cv::IMREAD_COLOR);
+        cv::Mat img_color = last_image_;
         if (img_color.empty())
         {
             RCLCPP_ERROR(this->get_logger(), "Failed to load saved image!");
-            return;
+            rclcpp::shutdown();
         }
 
         // Convert to grayscale
@@ -207,10 +284,10 @@ private:
         if (!found)
         {
             RCLCPP_ERROR(this->get_logger(), "Chessboard not found in image!");
-            return;
+            rclcpp::shutdown();
         }
 
-        cv::cornerSubPix(img_gray, corners, cv::Size(11, 11),
+        cv::cornerSubPix(img_gray, corners, cv::Size(5, 5),
                          cv::Size(-1, -1),
                          cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 30, 0.1));
 
@@ -232,7 +309,7 @@ private:
         if (!success)
         {
             RCLCPP_ERROR(this->get_logger(), "solvePnP failed!");
-            return;
+            rclcpp::shutdown();
         }
 
         cv::Mat R;
@@ -254,27 +331,53 @@ private:
 
     void detectLidarPlane()
     {
-        findData();
-
         // Load pointcloud
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-        pcl::io::loadPCDFile(pcd_path_, *cloud);
+        pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>);
+        std::string filename = pcd_path_ + "/pointcloud_0.pcd";
+        pcl::io::loadPCDFile(filename, *cloud);
 
-        // 추출 예시: 평면 검출
-        pcl::CropBox<pcl::PointXYZ> crop;
-        crop.setInputCloud(cloud);
-        crop.setMin(Eigen::Vector4f(-3.0, -0.8, -1.0, 1.0)); // ROI 최소 x,y,z
-        crop.setMax(Eigen::Vector4f(0.0, 0.65, 1.0, 1.0));   // ROI 최대 x,y,z
+        pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_filtered_intensity(new pcl::PointCloud<pcl::PointXYZI>);
 
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_roi(new pcl::PointCloud<pcl::PointXYZ>);
+        // 1. 반사 강도 기반 필터링 (Reflectance Intensity Assisted)
+        // 체스보드의 흰색 칸은 높은 강도, 검은색 칸은 낮은 강도를 가집니다.
+        // 일반적인 체스보드 패턴의 반사 강도 범위에 맞춰 필터링합니다.
+        // 이 범위는 실제 사용하는 체스보드와 LiDAR에 따라 튜닝해야 합니다.
+        pcl::PassThrough<pcl::PointXYZI> pass_intensity;
+        pass_intensity.setInputCloud(cloud);
+        pass_intensity.setFilterFieldName("intensity");
+        pass_intensity.setFilterLimits(50.0, 255.0); // 예시: 50~255 강도 범위 (튜닝 필요)
+        pass_intensity.filter(*cloud_filtered_intensity);
+
+        if (cloud_filtered_intensity->empty())
+        {
+            RCLCPP_WARN(rclcpp::get_logger("detectLidarPlane"), "No points after intensity filtering.");
+            lidar_plane_points_latest_->clear();
+            rclcpp::shutdown();
+        }
+
+        pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_roi(new pcl::PointCloud<pcl::PointXYZI>);
+        // 2. ROI 필터링 (CropBox) - 체스보드가 있을 것으로 예상되는 영역
+        pcl::CropBox<pcl::PointXYZI> crop;
+        crop.setInputCloud(cloud_filtered_intensity);
+        // 이 값들도 실제 환경에 맞게 튜닝해야 합니다.
+        crop.setMin(Eigen::Vector4f(-3.0, -1.0, -0.5, 1.0)); // min x,y,z
+        crop.setMax(Eigen::Vector4f(3.0, 1.0, 1.5, 1.0));    // max x,y,z
         crop.filter(*cloud_roi);
 
-        // 평면 분할
-        pcl::SACSegmentation<pcl::PointXYZ> seg;
+        if (cloud_roi->empty())
+        {
+            RCLCPP_WARN(rclcpp::get_logger("detectLidarPlane"), "No points after ROI filtering.");
+            lidar_plane_points_latest_->clear();
+            rclcpp::shutdown();
+        }
+
+        // 3. RANSAC을 이용한 평면 분할
+        pcl::SACSegmentation<pcl::PointXYZI> seg;
         seg.setOptimizeCoefficients(true);
         seg.setModelType(pcl::SACMODEL_PLANE);
         seg.setMethodType(pcl::SAC_RANSAC);
-        seg.setDistanceThreshold(0.02);
+        seg.setDistanceThreshold(0.02); // 2cm 이내의 포인트
+        seg.setMaxIterations(1000);
 
         pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
         pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
@@ -284,32 +387,39 @@ private:
 
         if (inliers->indices.empty())
         {
-            RCLCPP_WARN(this->get_logger(), "No planar model found.");
-            return;
+            RCLCPP_WARN(rclcpp::get_logger("detectLidarPlane"), "No planar model found in filtered LiDAR data.");
+            lidar_plane_points_latest_->clear();
+            rclcpp::shutdown();
         }
 
-        RCLCPP_INFO(this->get_logger(), "Plane coefficients: %f %f %f %f",
-                    coefficients->values[0],
-                    coefficients->values[1],
-                    coefficients->values[2],
-                    coefficients->values[3]);
+        RCLCPP_INFO(this->get_logger(), "Detected Lidar Plane coefficients: %f %f %f %f",
+                    coefficients->values[0], coefficients->values[1],
+                    coefficients->values[2], coefficients->values[3]);
 
-        // 라이다 평면 상 점들 추출
-        pcl::ExtractIndices<pcl::PointXYZ> extract;
+        // 4. 평면 내 포인트 추출
+        pcl::ExtractIndices<pcl::PointXYZI> extract;
         extract.setInputCloud(cloud_roi);
         extract.setIndices(inliers);
-        extract.setNegative(false);
-        extract.filter(*cloud_roi);
+        extract.setNegative(false); // 인라이어(평면 내 점)만 추출
+        extract.filter(*lidar_plane_points_latest_);
 
-        pcl::toROSMsg(*cloud_roi, plane_msg_);
+        if (lidar_plane_points_latest_->empty())
+        {
+            RCLCPP_WARN(rclcpp::get_logger("detectLidarPlane"), "Extracted LiDAR plane points are empty.");
+            rclcpp::shutdown();
+        }
+
+        pcl::toROSMsg(*lidar_plane_points_latest_, plane_msg_);
         plane_msg_.header.frame_id = "map"; // RViz에서 사용하는 좌표계 설정
+
+        RCLCPP_INFO(this->get_logger(), "Detected %zu points in LiDAR plane.", lidar_plane_points_latest_->points.size());
 
         calibrateLidarCamera(cloud, cloud_roi);
         // checkCenter(cloud_roi);
     }
 
-    void calibrateLidarCamera(const pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_all,
-                              const pcl::PointCloud<pcl::PointXYZ>::Ptr &plane_cloud_cLC)
+    void calibrateLidarCamera(const pcl::PointCloud<pcl::PointXYZI>::Ptr &cloud_all,
+                              const pcl::PointCloud<pcl::PointXYZI>::Ptr &plane_cloud_cLC)
     {
         std::vector<cv::Point3f> lidar_points;
         for (const auto &p : plane_cloud_cLC->points)
@@ -345,7 +455,7 @@ private:
         if (n_points < 3)
         {
             RCLCPP_INFO(this->get_logger(), "Not enough points for SVD computation!");
-            return;
+            rclcpp::shutdown();
         }
         // evenly sample points
         std::vector<cv::Point3f> sampled;
@@ -414,7 +524,7 @@ private:
         point3fVectorToPointCloud2(lidar2cam_points_all, lidar2cam_points_, "map", this->now());
 
         // 이미지 projection
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in_cam(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_in_cam(new pcl::PointCloud<pcl::PointXYZI>);
         for (const auto &pt : lidar2cam_points_all)
         {
             cloud_in_cam->emplace_back(pt.x, pt.y, pt.z);
@@ -424,7 +534,7 @@ private:
         if (img_color.empty())
         {
             RCLCPP_ERROR(this->get_logger(), "이미지를 불러오지 못했습니다.");
-            return;
+            rclcpp::shutdown();
         }
 
         projectLidarToImage(cloud_in_cam, img_color, last_image_);
@@ -482,7 +592,7 @@ private:
     }
 
     void projectLidarToImage(
-        const pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_in_cam,
+        const pcl::PointCloud<pcl::PointXYZI>::Ptr &cloud_in_cam,
         const cv::Mat &image,
         cv::Mat &image_out)
     {
@@ -568,7 +678,7 @@ private:
         if (!ofs.is_open())
         {
             RCLCPP_ERROR(this->get_logger(), "파일 열기 실패: %s", fullpath.c_str());
-            return;
+            rclcpp::shutdown();
         }
 
         ofs << data << std::endl;
@@ -588,7 +698,7 @@ private:
         if (!ofs.is_open())
         {
             RCLCPP_ERROR(this->get_logger(), "파일 열기 실패: %s", fullpath.c_str());
-            return;
+            rclcpp::shutdown();
         }
 
         for (int i = 0; i < mat.rows; ++i)
@@ -616,7 +726,7 @@ private:
         if (!ofs.is_open())
         {
             RCLCPP_ERROR(this->get_logger(), "파일 열기 실패: %s", fullpath.c_str());
-            return;
+            rclcpp::shutdown();
         }
 
         // 각 인자 처리

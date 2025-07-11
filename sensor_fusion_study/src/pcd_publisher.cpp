@@ -31,7 +31,7 @@ public:
         // PCD 파일 로드
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
-        std::string filename = pcd_path_ + "/pointcloud_05.pcd";
+        std::string filename = pcd_path_ + "/pointcloud_00.pcd";
 
         if (pcl::io::loadPCDFile<pcl::PointXYZ>(filename, *cloud) == -1)
         {
