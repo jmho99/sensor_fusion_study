@@ -30,11 +30,21 @@ public:
     {
         initializedParameters();
 
-        sub_cam_ = this->create_subscription<sensor_msgs::msg::Image>("/flir_camera/image_raw", rclcpp::SensorDataQoS(),
-                                                                      std::bind(&CamLidarCalibNode::imageCallback, this, std::placeholders::_1));
+        std::string connect = "flir";
+        if (connect == "flir")
+        {
+            sub_cam_ = this->create_subscription<sensor_msgs::msg::Image>("/flir_camera/image_raw", rclcpp::SensorDataQoS(),
+                                                                          std::bind(&CamLidarCalibNode::imageCallback, this, std::placeholders::_1));
 
-        sub_lidar_ = this->create_subscription<sensor_msgs::msg::PointCloud2>("/ouster/os_lidar", rclcpp::SensorDataQoS(),
-                                                                              std::bind(&CamLidarCalibNode::pcdCallback, this, std::placeholders::_1));
+            sub_lidar_ = this->create_subscription<sensor_msgs::msg::PointCloud2>("/ouster/os_lidar", rclcpp::SensorDataQoS(),
+                                                                                  std::bind(&CamLidarCalibNode::pcdCallback, this, std::placeholders::_1));
+        }
+        else
+        {
+            timer__ = this->create_wall_timer(
+                std::chrono::milliseconds(500),
+                std::bind(&CamLidarCalibNode::timerCallback, this));
+        }
 
         pub_plane_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("plane_points", 10);
         pub_checker_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("checker_points", 10);
@@ -46,10 +56,6 @@ public:
         timer_ = this->create_wall_timer(
             std::chrono::milliseconds(30),
             std::bind(&CamLidarCalibNode::pcdTimerCallback, this));
-
-        timer__ = this->create_wall_timer(
-            std::chrono::milliseconds(500),
-            std::bind(&CamLidarCalibNode::timerCallback, this));
     }
 
 private:
@@ -89,8 +95,16 @@ private:
 
     void imageCallback(const sensor_msgs::msg::Image::SharedPtr msg)
     {
-        current_frame_ = cv_bridge::toCvCopy(msg, "bgr8")->image;
-        cv::imshow("FLIR View", current_frame_);
+        try
+        {
+            current_frame_ = cv_bridge::toCvCopy(msg, "bgr8")->image;
+            cv::imshow("FLIR View", current_frame_);
+            inputKeyboard(current_frame_);
+        }
+        catch (cv_bridge::Exception &e)
+        {
+            RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
+        }
     }
 
     void pcdCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
@@ -178,7 +192,7 @@ private:
         int key = cv::waitKey(1);
         if (key == 's')
         {
-            saveFrame();
+            saveFrame(frame.clone());
         }
         else if (key == 'c')
         {
@@ -192,16 +206,23 @@ private:
         }
     }
 
-    void saveFrame()
+    void saveFrame(const cv::Mat &frame)
     {
+        // current_frame_이 비어있는지 확인 (카메라 데이터가 수신되었는지)
+        if (frame.empty())
+        {
+            RCLCPP_WARN(rclcpp::get_logger("saveFrame"), "No current camera frame captured yet! Cannot save image.");
+            return; // 이미지 없으면 저장 안 함
+        }
+
         std::string img_filename = img_path_ + "/image_" + std::to_string(frame_counter_) + ".png";
-        cv::imwrite(img_filename, current_frame_);
+        cv::imwrite(img_filename, frame); // current_frame_을 저장
 
         // Save point cloud
         if (last_cloud_->empty())
         {
-            RCLCPP_WARN(rclcpp::get_logger("saveFrame"), "No point cloud captured yet!");
-            rclcpp::shutdown();
+            RCLCPP_WARN(rclcpp::get_logger("saveFrame"), "No point cloud captured yet! Cannot save PCD.");
+            return; // 포인트 클라우드 없으면 저장 안 함
         }
         std::string pcd_filename = pcd_path_ + "/pointcloud_" + std::to_string(frame_counter_) + ".pcd";
         pcl::io::savePCDFileBinary(pcd_filename, *last_cloud_);
