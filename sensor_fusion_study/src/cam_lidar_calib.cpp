@@ -30,7 +30,7 @@ public:
     {
         initializedParameters();
 
-        std::string connect = "flir";
+        std::string connect = "aa";
         if (connect == "flir")
         {
             sub_cam_ = this->create_subscription<sensor_msgs::msg::Image>("/flir_camera/image_raw", rclcpp::SensorDataQoS(),
@@ -87,6 +87,12 @@ private:
     cv::Mat intrinsic_matrix_, distortion_coeffs_; // Camera intrinsics
     cv::Mat cb2cam_rvec_, cb2cam_tvec_;
     cv::Mat lidar2cam_R_, lidar2cam_t_;
+    std::vector<int> successful_indices_;
+    std::vector<cv::String> image_files_;
+    std::vector<std::vector<cv::Point2f>> img_points_;
+    std::vector<std::vector<cv::Point3f>> obj_points_;
+    std::vector<cv::Mat> rvecs_, tvecs_;
+    double rms_;
 
     // 이미지에서 찾은 2D 코너
     std::vector<cv::Point2f> image_corners_latest_;
@@ -136,14 +142,17 @@ private:
         }
         else
         {
-            int cols;
-            int rows;
+            int cols = 4;
+            int rows = 6;
+            square_size_ = 0.095;
+            /*
             fs["checkerboard_cols"] >> cols;
             fs["checkerboard_rows"] >> rows;
             fs["square_size"] >> square_size_;
             fs["intrinsic_matrix"] >> intrinsic_matrix_;
             fs["distortion_coefficients"] >> distortion_coeffs_;
             fs.release();
+            */
             board_size_ = cv::Size(cols, rows);
         }
     }
@@ -196,6 +205,7 @@ private:
         }
         else if (key == 'c')
         {
+            runCalibrateFromFolder();
             findData();
             solveCameraPlane();
             detectLidarPlane();
@@ -283,6 +293,84 @@ private:
         RCLCPP_INFO(this->get_logger(), "Loaded first pointcloud: %s", first_pcd_path.c_str());
 
         RCLCPP_INFO(this->get_logger(), "Successfully loaded calibration data (image and pointcloud).");
+    }
+
+    int extractNumber(const std::string &filename)
+    {
+        std::string number;
+        for (char c : filename)
+        {
+            if (std::isdigit(c))
+            {
+                number += c;
+            }
+        }
+        return number.empty() ? -1 : std::stoi(number);
+    }
+
+    void runCalibrateFromFolder()
+    {
+        RCLCPP_INFO(this->get_logger(), "Start calibration...");
+
+        cv::glob(img_path_ + "/*.png", image_files_);
+        if (image_files_.size() < 5)
+        {
+            RCLCPP_WARN(this->get_logger(), "Not enough image (%lu)", image_files_.size());
+            return;
+        }
+        std::sort(image_files_.begin(), image_files_.end(),
+                  [this](const std::string &a, const std::string &b)
+                  {
+                      return extractNumber(a) < extractNumber(b);
+                  });
+
+        std::vector<cv::Point3f> objp;
+
+        for (int i = 0; i < board_size_.height; ++i)
+            for (int j = 0; j < board_size_.width; ++j)
+                objp.emplace_back(j * square_size_, i * square_size_, 0.0f);
+
+        successful_indices_.clear();
+
+        for (size_t idx = 0; idx < image_files_.size(); ++idx)
+        {
+            const auto &file = image_files_[idx];
+            cv::Mat img = cv::imread(file);
+            if (img.empty())
+                continue;
+
+            std::vector<cv::Point2f> corners;
+            bool found = cv::findChessboardCorners(img, board_size_, corners,
+                                                   cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE);
+
+            if (found)
+            {
+                cv::Mat gray;
+                cv::cvtColor(img, gray, cv::COLOR_BGR2GRAY);
+                cv::cornerSubPix(gray, corners, cv::Size(5, 5), cv::Size(-1, -1),
+                                 cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 30, 0.001));
+
+                img_points_.push_back(corners);
+                obj_points_.push_back(objp);
+
+                rms_ = cv::calibrateCamera(obj_points_, img_points_, board_size_,
+                                           intrinsic_matrix_, distortion_coeffs_, rvecs_, tvecs_);
+
+                RCLCPP_INFO(this->get_logger(), "RMS error: %.4f", rms_);
+                successful_indices_.push_back(idx);
+            }
+            else
+            {
+                // 코너 검출 실패 시 원본 이미지만 저장
+                RCLCPP_WARN(this->get_logger(), "Save failed image: %i", idx);
+            }
+
+            if (img_points_.empty())
+            {
+                RCLCPP_ERROR(this->get_logger(), "Failed calibration.");
+                return;
+            }
+        }
     }
 
     void solveCameraPlane()
