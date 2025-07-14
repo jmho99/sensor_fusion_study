@@ -36,7 +36,7 @@ public:
             sub_cam_ = this->create_subscription<sensor_msgs::msg::Image>("/flir_camera/image_raw", rclcpp::SensorDataQoS(),
                                                                           std::bind(&CamLidarCalibNode::imageCallback, this, std::placeholders::_1));
 
-            sub_lidar_ = this->create_subscription<sensor_msgs::msg::PointCloud2>("/ouster/os_lidar", rclcpp::SensorDataQoS(),
+            sub_lidar_ = this->create_subscription<sensor_msgs::msg::PointCloud2>("/ouster/points", rclcpp::SensorDataQoS(),
                                                                                   std::bind(&CamLidarCalibNode::pcdCallback, this, std::placeholders::_1));
         }
         else
