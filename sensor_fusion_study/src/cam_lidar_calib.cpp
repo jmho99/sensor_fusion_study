@@ -142,8 +142,8 @@ private:
         }
         else
         {
-            int cols = 4;
-            int rows = 6;
+            int cols = 5;
+            int rows = 7;
             square_size_ = 0.095;
             /*
             fs["checkerboard_cols"] >> cols;
@@ -359,11 +359,6 @@ private:
                 RCLCPP_INFO(this->get_logger(), "RMS error: %.4f", rms_);
                 successful_indices_.push_back(idx);
             }
-            else
-            {
-                // 코너 검출 실패 시 원본 이미지만 저장
-                RCLCPP_WARN(this->get_logger(), "Save failed image: %i", idx);
-            }
 
             if (img_points_.empty())
             {
@@ -371,6 +366,10 @@ private:
                 return;
             }
         }
+        std::cout << "[Camera calib] intrinsic_matrix:\n"
+                  << intrinsic_matrix_ << std::endl;
+        std::cout << "[Camera calib] distortion_coeffs:\n"
+                  << distortion_coeffs_ << std::endl;
     }
 
     void solveCameraPlane()
@@ -469,8 +468,8 @@ private:
         pcl::CropBox<pcl::PointXYZI> crop;
         crop.setInputCloud(cloud_filtered_intensity);
         // 이 값들도 실제 환경에 맞게 튜닝해야 합니다.
-        crop.setMin(Eigen::Vector4f(-3.0, -1.0, -0.5, 1.0)); // min x,y,z
-        crop.setMax(Eigen::Vector4f(3.0, 1.0, 1.5, 1.0));    // max x,y,z
+        // crop.setMin(Eigen::Vector4f(-3.0, -1.0, -0.5, 1.0)); // min x,y,z
+        // crop.setMax(Eigen::Vector4f(3.0, 1.0, 1.5, 1.0));    // max x,y,z
         crop.filter(*cloud_roi);
 
         if (cloud_roi->empty())
@@ -639,7 +638,8 @@ private:
             cloud_in_cam->emplace_back(pt.x, pt.y, pt.z);
         }
 
-        cv::Mat img_color = cv::imread(img_path_, cv::IMREAD_COLOR);
+        std::string filename = img_path_ + "/image_0.png";
+        cv::Mat img_color = cv::imread(filename, cv::IMREAD_COLOR);
         if (img_color.empty())
         {
             RCLCPP_ERROR(this->get_logger(), "이미지를 불러오지 못했습니다.");
