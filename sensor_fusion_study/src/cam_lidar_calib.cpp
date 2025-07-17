@@ -104,6 +104,8 @@ private:
         try
         {
             current_frame_ = cv_bridge::toCvCopy(msg, "bgr8")->image;
+            cv::namedWindow("FLIR View", cv::WINDOW_NORMAL);
+            cv::resizeWindow("FLIR View", 640, 480);
             cv::imshow("FLIR View", current_frame_);
             inputKeyboard(current_frame_);
         }
@@ -134,7 +136,7 @@ private:
         std::string where = "company";
         readWritePath(where);
 
-        cv::FileStorage fs(one_cam_result_path_ + "/one_cam_calib_result.yaml", cv::FileStorage::READ);
+        cv::FileStorage fs(one_cam_result_path_ + "one_cam_calib_result.yaml", cv::FileStorage::READ);
         if (!fs.isOpened())
         {
             RCLCPP_WARN(rclcpp::get_logger("initializedParameters"), "Failed open one_cam_calib_result.yaml file!");
@@ -142,17 +144,14 @@ private:
         }
         else
         {
-            int cols = 5;
-            int rows = 7;
-            square_size_ = 0.095;
-            /*
+            int cols, rows;
             fs["checkerboard_cols"] >> cols;
             fs["checkerboard_rows"] >> rows;
             fs["square_size"] >> square_size_;
             fs["intrinsic_matrix"] >> intrinsic_matrix_;
             fs["distortion_coefficients"] >> distortion_coeffs_;
             fs.release();
-            */
+
             board_size_ = cv::Size(cols, rows);
         }
     }
@@ -169,10 +168,10 @@ private:
             change_path = "/icrs/sensor_fusion_study_ws";
         }
 
-        absolute_path_ = "/home" + change_path + "/src/sensor_fusion_study/cam_lidar_calib";
-        img_path_ = absolute_path_ + "/images";
-        pcd_path_ = absolute_path_ + "/pointclouds";
-        one_cam_result_path_ = "/home" + change_path + "/src/sensor_fusion_study/one_cam_calib";
+        absolute_path_ = "/home" + change_path + "/src/sensor_fusion_study/cam_lidar_calib/";
+        img_path_ = absolute_path_ + "images/";
+        pcd_path_ = absolute_path_ + "pointclouds/";
+        one_cam_result_path_ = "/home" + change_path + "/src/sensor_fusion_study/one_cam_calib/";
 
         fs::create_directories(img_path_);
         fs::create_directories(pcd_path_);
@@ -182,6 +181,8 @@ private:
     {
         if (!last_image_.empty())
         {
+            cv::namedWindow("Camera Image", cv::WINDOW_NORMAL);
+            cv::resizeWindow("Camera Image", 640, 480);
             cv::imshow("Camera Image", last_image_);
         }
         else
@@ -205,7 +206,7 @@ private:
         }
         else if (key == 'c')
         {
-            runCalibrateFromFolder();
+            // runCalibrateFromFolder();
             findData();
             solveCameraPlane();
             detectLidarPlane();
@@ -225,7 +226,7 @@ private:
             return; // 이미지 없으면 저장 안 함
         }
 
-        std::string img_filename = img_path_ + "/image_" + std::to_string(frame_counter_) + ".png";
+        std::string img_filename = img_path_ + "img_" + std::to_string(frame_counter_) + ".png";
         cv::imwrite(img_filename, frame); // current_frame_을 저장
 
         // Save point cloud
@@ -234,7 +235,7 @@ private:
             RCLCPP_WARN(rclcpp::get_logger("saveFrame"), "No point cloud captured yet! Cannot save PCD.");
             return; // 포인트 클라우드 없으면 저장 안 함
         }
-        std::string pcd_filename = pcd_path_ + "/pointcloud_" + std::to_string(frame_counter_) + ".pcd";
+        std::string pcd_filename = pcd_path_ + "pcd_" + std::to_string(frame_counter_) + ".pcd";
         pcl::io::savePCDFileBinary(pcd_filename, *last_cloud_);
         RCLCPP_INFO(this->get_logger(), "Saved image and pointcloud.");
         frame_counter_++;
@@ -245,7 +246,7 @@ private:
         // 1. 이미지 파일 로드
         std::vector<cv::String> image_files;
         // img_path_ 디렉토리의 모든 .png 파일을 찾습니다.
-        cv::glob(img_path_ + "/*.png", image_files, false);
+        cv::glob(img_path_ + "*.png", image_files, false);
 
         // 이미지 파일 개수 확인
         if (image_files.empty())
@@ -271,7 +272,7 @@ private:
         // 2. PCD 파일 로드
         std::vector<cv::String> pcd_files;
         // pcd_path_ 디렉토리의 모든 .pcd 파일을 찾습니다.
-        cv::glob(pcd_path_ + "/*.pcd", pcd_files, false);
+        cv::glob(pcd_path_ + "*.pcd", pcd_files, false);
 
         // PCD 파일 개수 확인
         if (pcd_files.empty())
@@ -312,7 +313,7 @@ private:
     {
         RCLCPP_INFO(this->get_logger(), "Start calibration...");
 
-        cv::glob(img_path_ + "/*.png", image_files_);
+        cv::glob(img_path_ + "*.png", image_files_);
         if (image_files_.size() < 5)
         {
             RCLCPP_WARN(this->get_logger(), "Not enough image (%lu)", image_files_.size());
@@ -441,7 +442,7 @@ private:
     {
         // Load pointcloud
         pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>);
-        std::string filename = pcd_path_ + "/pointcloud_0.pcd";
+        std::string filename = pcd_path_ + "pcd_0.pcd";
         pcl::io::loadPCDFile(filename, *cloud);
 
         pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_filtered_intensity(new pcl::PointCloud<pcl::PointXYZI>);
@@ -638,7 +639,7 @@ private:
             cloud_in_cam->emplace_back(pt.x, pt.y, pt.z);
         }
 
-        std::string filename = img_path_ + "/image_0.png";
+        std::string filename = img_path_ + "/img_0.png";
         cv::Mat img_color = cv::imread(filename, cv::IMREAD_COLOR);
         if (img_color.empty())
         {
@@ -648,6 +649,8 @@ private:
 
         projectLidarToImage(cloud_in_cam, img_color, last_image_);
 
+        cv::namedWindow("Lidar Overlaid (All points)", cv::WINDOW_NORMAL);
+        cv::resizeWindow("Lidar Overlaid (All points)", 640, 480);
         cv::imshow("Lidar Overlaid (All points)", last_image_);
         cv::waitKey(0);
     }
@@ -781,7 +784,7 @@ private:
                     const std::string &filename,
                     const T &data)
     {
-        std::string fullpath = absolute_path_ + "/" + filename + "." + extension;
+        std::string fullpath = absolute_path_ + filename + "." + extension;
         std::ofstream ofs(fullpath);
 
         if (!ofs.is_open())
@@ -801,7 +804,7 @@ private:
                     const std::string &filename,
                     const cv::Mat &mat)
     {
-        std::string fullpath = absolute_path_ + "/" + filename + "." + extension;
+        std::string fullpath = absolute_path_ + filename + "." + extension;
         std::ofstream ofs(fullpath);
 
         if (!ofs.is_open())
@@ -829,7 +832,7 @@ private:
                             const std::string &filename,
                             const Args &...args)
     {
-        std::string fullpath = absolute_path_ + "/" + filename + "." + extension;
+        std::string fullpath = absolute_path_ + filename + "." + extension;
         std::ofstream ofs(fullpath);
 
         if (!ofs.is_open())

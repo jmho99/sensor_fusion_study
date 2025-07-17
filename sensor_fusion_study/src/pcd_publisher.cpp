@@ -31,7 +31,7 @@ public:
         // PCD 파일 로드
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
-        std::string filename = pcd_path_ + "/pointcloud_00.pcd";
+        std::string filename = pcd_path_ + "/pcd_10.pcd";
 
         if (pcl::io::loadPCDFile<pcl::PointXYZ>(filename, *cloud) == -1)
         {
@@ -42,8 +42,8 @@ public:
 
         pcl::CropBox<pcl::PointXYZ> crop;
         crop.setInputCloud(cloud);
-        crop.setMin(Eigen::Vector4f(-3.0, -0.8, -1.0, 1.0)); // ROI 최소 x,y,z
-        crop.setMax(Eigen::Vector4f(0.0, 0.65, 1.0, 1.0));   // ROI 최대 x,y,z
+        crop.setMin(Eigen::Vector4f(-3.0, -0.8, -0.63, 1.0)); // ROI 최소 x,y,z
+        crop.setMax(Eigen::Vector4f(0.0, 0.5, 3.0, 1.0));   // ROI 최대 x,y,z
 
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_roi(new pcl::PointCloud<pcl::PointXYZ>);
         crop.filter(*cloud_roi);
