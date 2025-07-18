@@ -94,12 +94,31 @@ target_include_directories(cam_lidar_calib PUBLIC
   $<INSTALL_INTERFACE:include>)
 target_compile_features(cam_lidar_calib PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
 
+add_executable(cam_lidar_calib_2 src/cam_lidar_calib_2.cpp)
+ament_target_dependencies(
+  cam_lidar_calib_2
+  "rclcpp"
+  "std_msgs"
+  "OpenCV"
+  "cv_bridge"
+  "sensor_msgs"
+  "image_transport"
+  "PCL"
+  "visualization_msgs"
+  "pcl_conversions"
+)
+target_include_directories(cam_lidar_calib_2 PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(cam_lidar_calib_2 PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
+
 install(TARGETS
   one_cam_calib
   stereo_cam_calib
   cv_random
   pcd_publisher
   cam_lidar_calib
+  cam_lidar_calib_2
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
