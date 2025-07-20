@@ -5,7 +5,7 @@
 #include <filesystem>
 #include "sensor_msgs/msg/image.hpp"
 #include <sensor_msgs/msg/point_cloud2.hpp>
-#include <sensor_msgs/point_cloud2_iterator.h>
+
 #include <Eigen/Dense>
 #include <opencv2/opencv.hpp>
 #include <pcl/io/pcd_io.h>

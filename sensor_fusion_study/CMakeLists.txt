@@ -16,6 +16,10 @@ find_package(image_transport REQUIRED)
 find_package(PCL REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(pcl_conversions REQUIRED)
+find_package(sensor_fusion_study_interfaces REQUIRED)
+
+find_package(ament_cmake_python REQUIRED)
+find_package(rclpy REQUIRED)
 
 add_executable(one_cam_calib src/one_cam_calib.cpp)
 ament_target_dependencies(
@@ -88,6 +92,7 @@ ament_target_dependencies(
   "PCL"
   "visualization_msgs"
   "pcl_conversions"
+  "sensor_fusion_study_interfaces"
 )
 target_include_directories(cam_lidar_calib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -120,6 +125,13 @@ install(TARGETS
   cam_lidar_calib
   cam_lidar_calib_2
   DESTINATION lib/${PROJECT_NAME})
+
+  #python module
+ament_python_install_package(${PROJECT_NAME})
+install (PROGRAMS
+  scripts/intensity.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

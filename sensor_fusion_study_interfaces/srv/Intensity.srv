@@ -1,0 +1,10 @@
+# Request
+string pcd_data_ascii
+float32 grid_size_x
+float32 grid_size_y
+float32 checker_size_m
+---
+# Response
+float32[] corners_x
+float32[] corners_y
+float32[] corners_z
