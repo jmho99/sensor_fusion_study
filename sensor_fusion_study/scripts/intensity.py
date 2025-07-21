@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D # 3D 플롯을 위한 Axes3D 임포트
 import cv2
 from scipy.optimize import minimize
 from scipy.signal import find_peaks # For finding peaks in histogram
@@ -8,14 +9,19 @@ import os # 파일 경로 처리를 위한 라이브러리
 import rclpy
 from rclpy.node import Node
 from sensor_fusion_study_interfaces.srv import Intensity # Custom service message (Intensity로 변경)
+import open3d as o3d # open3d 라이브러리 임포트 (더 이상 평면 세그멘테이션에 직접 사용되지 않지만, 다른 잠재적 용도를 위해 유지)
 
 # =============================================================================
 # 1. PCD 데이터 파싱 함수 (ASCII 문자열에서 직접 파싱으로 변경)
 # =============================================================================
 def parse_pcd_string(pcd_string):
     """
-    Parses a PCD ASCII string and extracts XYZ coordinates and intensity.
-    Assumes the PCD string is in ASCII format and explicitly contains 'intensity'.
+    Loads a PCD file and extracts XYZ coordinates and intensity by manual parsing for ASCII.
+    This bypasses open3d's limitation of not exposing intensity directly in pcd.points.
+    
+    IMPORTANT: For accurate corner detection, the input pcd_string should contain
+               points that clearly represent a checkerboard pattern with distinct
+               intensity variations between black and white squares.
     """
     xyz_points = []
     intensities = []
@@ -94,7 +100,9 @@ def parse_pcd_string(pcd_string):
 def pca_align_points(points_3d):
     """
     Performs PCA to align a 3D point cloud to the XY plane and center it at the origin.
-    The principal components are used as the new axes.
+    Derives Z-axis (plane normal) from PCA, forces Z to point towards the origin.
+    Then, attempts to align PCA X-axis with the global X-axis (or longest extent within the plane),
+    and derives Y-axis to ensure a right-handed system.
     Args:
         points_3d (numpy.ndarray): (N, 3) array of 3D points (x, y, z).
 
@@ -103,38 +111,62 @@ def pca_align_points(points_3d):
             - aligned_points (numpy.ndarray): (N, 3) array of aligned points.
             - R_inv (numpy.ndarray): Inverse rotation matrix to transform back to original frame.
             - centroid (numpy.ndarray): Centroid of original points.
+            - pca_axes (numpy.ndarray): The 3x3 rotation matrix for the PCA axes (v_x, v_y, v_z).
     """
     centroid = np.mean(points_3d, axis=0)
     centered_points = points_3d - centroid
 
-    # Compute covariance matrix
     covariance_matrix = np.cov(centered_points, rowvar=False)
-
-    # Compute eigenvalues and eigenvectors
     eigenvalues, eigenvectors = np.linalg.eigh(covariance_matrix)
 
     # Sort eigenvectors by descending eigenvalues
-    # The eigenvector corresponding to the smallest eigenvalue is the normal vector of the plane (new Z-axis)
-    # The other two correspond to the principal directions within the plane (new X and Y axes)
     sorted_indices = np.argsort(eigenvalues)[::-1]
-    eigenvectors = eigenvectors[:, sorted_indices]
-
-    # R is the rotation matrix that aligns the principal components with the standard axes
-    # New X-axis = eigenvectors[:, 0]
-    # New Y-axis = eigenvectors[:, 1]
-    # New Z-axis = eigenvectors[:, 2] (plane normal)
-    R = eigenvectors
-
-    aligned_points = centered_points @ R # Apply rotation
     
-    R_inv = R.T # Inverse of orthogonal matrix (like rotation matrix) is its transpose
+    # v_z_pca: Normal to the plane (eigenvector corresponding to the smallest eigenvalue)
+    v_z_pca = eigenvectors[:, sorted_indices[2]] 
 
-    # Note on PCA axis ambiguity: PCA only defines the axes, not their positive direction.
-    # The optimization's `theta_z` parameter is crucial for finding the correct chessboard orientation
-    # within this PCA-aligned plane, accounting for potential 90/180/270 degree rotations.
-    # If the initial PCA X or Y axis is flipped, the optimization should correct it via theta_z.
+    # Force v_z_pca (normal) to point towards the origin (0,0,0)
+    # The vector from the centroid to the origin is -centroid.
+    # If the dot product of v_z_pca with this vector is negative, flip v_z_pca.
+    if np.dot(v_z_pca, -centroid) < 0:
+        v_z_pca = -v_z_pca
+    
+    # Now, define v_x_pca and v_y_pca.
+    # We want v_x_pca to be as parallel as possible to the global X-axis [1,0,0]
+    # while being in the plane orthogonal to v_z_pca.
+    
+    # Project global X-axis onto the plane orthogonal to v_z_pca
+    global_x_ref = np.array([1.0, 0.0, 0.0])
+    v_x_pca = global_x_ref - np.dot(global_x_ref, v_z_pca) * v_z_pca
+    v_x_pca = v_x_pca / np.linalg.norm(v_x_pca) # Normalize
 
-    return aligned_points, R_inv, centroid
+    # Calculate v_y_pca to form a right-handed system: v_y_pca = cross(v_z_pca, v_x_pca)
+    v_y_pca = np.cross(v_z_pca, v_x_pca)
+    v_y_pca = v_y_pca / np.linalg.norm(v_y_pca) # Normalize
+
+    # Re-calculate v_x_pca to ensure perfect orthogonality with the derived v_y_pca and v_z_pca.
+    # This step is for numerical stability and ensuring a perfect right-handed system.
+    v_x_pca = np.cross(v_y_pca, v_z_pca)
+    v_x_pca = v_x_pca / np.linalg.norm(v_x_pca) # Normalize
+
+
+    # Construct the final rotation matrix R
+    R = np.column_stack((v_x_pca, v_y_pca, v_z_pca))
+    pca_axes = R
+    aligned_points = centered_points @ R
+    R_inv = R.T
+
+    print(f"PCA X-axis (v_x_pca) after orthogonality adjustment: {v_x_pca}")
+    print(f"PCA Y-axis (v_y_pca) after orthogonality adjustment: {v_y_pca}")
+    print(f"PCA Z-axis (v_z_pca) (normal to plane, forced towards origin): {v_z_pca}")
+    print(f"Dot product of v_z_pca with vector from centroid to origin (-centroid): {np.dot(v_z_pca, -centroid):.4f}")
+    print(f"Dot product of v_x_pca and v_y_pca: {np.dot(v_x_pca, v_y_pca):.4f}")
+    print(f"Dot product of v_x_pca and v_z_pca: {np.dot(v_x_pca, v_z_pca):.4f}")
+    print(f"Dot product of v_y_pca and v_z_pca: {np.dot(v_y_pca, v_z_pca):.4f}")
+    print(f"Determinant of PCA axes matrix (should be ~1 for right-handed): {np.linalg.det(pca_axes):.4f}")
+
+
+    return aligned_points, R_inv, centroid, pca_axes
 
 # =============================================================================
 # 3. Intensity 기반 흑백 분류 (Gray Zone 포함)
@@ -178,8 +210,8 @@ def get_checkerboard_pattern_color(x, y, grid_size_x_squares, grid_size_y_square
     Args:
         x (float): X-coordinate in the checkerboard's local frame (origin at bottom-left square corner).
         y (float): Y-coordinate in the checkerboard's local frame.
-        grid_size_x_squares (int): Number of horizontal checker squares (e.g., 7 for 7x8 board).
-        grid_size_y_squares (int): Number of vertical checker squares (e.g., 8 for 7x8 board).
+        grid_size_x_squares (int): Number of horizontal checker squares.
+        grid_size_y_squares (int): Number of vertical checker squares.
         checker_size_m (float): Size of each checker square in meters.
 
     Returns:
@@ -255,6 +287,47 @@ def cost_function(params, aligned_points_2d, classified_colors,
     return cost
 
 # =============================================================================
+# Helper function to save points (x,y,z,intensity) to a file
+# =============================================================================
+def save_points_to_file(points_array, filename="checkerboard_points_with_intensity.txt"):
+    """
+    Saves a NumPy array of points (x, y, z, intensity) to a text file.
+    Args:
+        points_array (numpy.ndarray): (N, 4) array of points (x, y, z, intensity).
+        filename (str): The name of the file to save to.
+    """
+    if points_array.shape[1] != 4:
+        print(f"Warning: Expected points_array with 4 columns (x,y,z,intensity), but got {points_array.shape[1]}. Skipping save.")
+        return
+
+    try:
+        np.savetxt(filename, points_array, fmt='%.4f', delimiter=' ', header='x y z intensity', comments='')
+        print(f"Saved {points_array.shape[0]} points to {filename}")
+    except Exception as e:
+        print(f"Error saving points to file {filename}: {e}")
+
+# =============================================================================
+# Helper function to save corner points (x,y,z) to a file
+# =============================================================================
+def save_corner_points_to_file(corners_array, filename="detected_corner_points.txt"):
+    """
+    Saves a NumPy array of corner points (x, y, z) to a text file.
+    Args:
+        corners_array (numpy.ndarray): (N, 3) array of corner points (x, y, z).
+        filename (str): The name of the file to save to.
+    """
+    if corners_array.shape[1] != 3:
+        print(f"Warning: Expected corners_array with 3 columns (x,y,z), but got {corners_array.shape[1]}. Skipping save.")
+        return
+
+    try:
+        np.savetxt(filename, corners_array, fmt='%.4f', delimiter=' ', header='corner_x corner_y corner_z', comments='')
+        print(f"Saved {corners_array.shape[0]} corner points to {filename}")
+    except Exception as e:
+        print(f"Error saving corner points to file {filename}: {e}")
+
+
+# =============================================================================
 # 6. 논문 방식의 코너 검출 메인 함수
 # =============================================================================
 def estimate_chessboard_corners_paper_method(lidar_points_full,
@@ -272,109 +345,168 @@ def estimate_chessboard_corners_paper_method(lidar_points_full,
     """
     print("\n--- 논문 방식의 코너 검출 시작 ---")
 
+    # Save the full LiDAR points with intensity to a file
+    save_points_to_file(lidar_points_full, "checkerboard_points_with_intensity.txt")
+
+    # Initialize visualization variables to empty arrays to prevent NameError
+    projected_points_on_plane = np.array([])
+    final_3d_corners_lidar_frame = np.array([])
+    initial_3d_corners_pca_aligned_model = np.array([])
+
     points_3d = lidar_points_full[:, :3]
     intensities = lidar_points_full[:, 3]
 
-    aligned_points_3d, R_inv, centroid = pca_align_points(points_3d)
+    if points_3d.shape[0] < 4: # PCA를 수행하기 위한 최소 점 개수 확인
+        print("Error: Not enough points for PCA and corner detection. Aborting.")
+        return np.array([])
+
+    aligned_points_3d, R_inv, centroid, pca_axes = pca_align_points(points_3d)
     aligned_points_2d = aligned_points_3d[:, :2] # Z-component is effectively 0 after PCA alignment to plane
 
     print(f"PCA 정렬 완료. 원본 중심: {centroid}, 정렬된 평면의 점 수: {aligned_points_2d.shape[0]}")
+    print(f"PCA 축 (R 행렬):\n{pca_axes}")
+    print(f"PCA 역회전 행렬 (R_inv):\n{R_inv}")
+    print(f"원본 포인트 중심 (Centroid):\n{centroid}")
 
-    classified_colors, tau_l, tau_h = classify_intensity_color(intensities)
+
+    # --- Step 0.5: Filter points outside the checkerboard bounding box in the PCA-aligned plane ---
+    # Calculate the expected bounding box of the checkerboard in the PCA-aligned frame
+    # (assuming the checkerboard's origin (0,0) is its bottom-left corner)
+    board_width = (internal_corners_x + 1) * checker_size_m
+    board_height = (internal_corners_y + 1) * checker_size_m
+
+    # Initial guess for the checkerboard's center in the PCA-aligned frame
+    # This is used to define a crop box around the expected checkerboard location.
+    # The `optimized_tx`, `optimized_ty` from the cost function will refine this.
+    # For initial cropping, we assume the checkerboard is roughly centered on the mean of the points.
+    mean_x_aligned = np.mean(aligned_points_2d[:, 0])
+    mean_y_aligned = np.mean(aligned_points_2d[:, 1])
+
+    # Define a crop box centered around the mean, with dimensions slightly larger than the board.
+    # This helps to initially isolate the checkerboard region.
+    # The actual checkerboard model will be placed by the optimizer.
+    crop_margin = 0.1 # meters, small margin around the board
+    min_x_crop = mean_x_aligned - (board_width / 2.0) - crop_margin
+    max_x_crop = mean_x_aligned + (board_width / 2.0) + crop_margin
+    min_y_crop = mean_y_aligned - (board_height / 2.0) - crop_margin
+    max_y_crop = mean_y_aligned + (board_height / 2.0) + crop_margin
+
+    # Create a mask for points within the crop box
+    x_mask = (aligned_points_2d[:, 0] >= min_x_crop) & (aligned_points_2d[:, 0] <= max_x_crop)
+    y_mask = (aligned_points_2d[:, 1] >= min_y_crop) & (aligned_points_2d[:, 1] <= max_y_crop)
+    
+    cropped_indices = x_mask & y_mask
+    
+    cropped_aligned_points_full = aligned_points_3d[cropped_indices, :]
+    intensities_for_optimization = intensities[cropped_indices] # FIX: Crop intensities as well
+    
+    if cropped_aligned_points_full.shape[0] < 4:
+        print("Error: Not enough points after cropping to checkerboard bounding box. Aborting.")
+        return np.array([])
+
+    # Update points_3d, intensities, aligned_points_2d with the cropped data
+    points_3d_for_optimization = cropped_aligned_points_full[:, :3]
+    aligned_points_2d_for_optimization = cropped_aligned_points_full[:, :2]
+
+    print(f"체커보드 영역으로 필터링 완료. 남은 점 수: {aligned_points_2d_for_optimization.shape[0]}") # Corrected variable name
+
+    classified_colors, tau_l, tau_h = classify_intensity_color(intensities_for_optimization)
     print(f"Intensity 분류 완료. Black (<{tau_l:.2f}), White (>{tau_h:.2f}), Gray Zone: [{tau_l:.2f}, {tau_h:.2f}]")
     print(f"분류된 점 수 (흑: {np.sum(classified_colors == 0)}, 백: {np.sum(classified_colors == 1)}, 회색: {np.sum(classified_colors == -1)})")
 
-    # Calculate number of squares based on internal corners
     num_squares_x = internal_corners_x + 1
     num_squares_y = internal_corners_y + 1
 
-    # Initial guess for (tx, ty, theta_z)
-    # The model's origin (bottom-left of the checkerboard squares) should align with the points.
-    # We estimate the center of the aligned points and use that as an initial translation offset
-    # to roughly center the model on the point cloud.
-    # This initial guess assumes the checkerboard's origin (bottom-left of the first square)
-    # is roughly at the mean of the aligned points, adjusted by half the board size.
-    initial_tx = np.mean(aligned_points_2d[:, 0]) - (num_squares_x * checker_size_m / 2.0)
-    initial_ty = np.mean(aligned_points_2d[:, 1]) - (num_squares_y * checker_size_m / 2.0)
-    initial_guess = [initial_tx, initial_ty, 0.0] # Start with no rotation relative to PCA axes
+    initial_theta_guesses = [0.0, np.pi / 2, np.pi, 3 * np.pi / 2]
+    
+    best_cost = float('inf')
+    best_params = None
 
-    print(f"최적화 시작. 초기 추정값 (tx, ty, theta_z): {initial_guess}")
+    for initial_theta in initial_theta_guesses:
+        # Initial guess for tx, ty should be based on the *cropped* points' mean
+        initial_tx = np.mean(aligned_points_2d_for_optimization[:, 0]) - (num_squares_x * checker_size_m / 2.0)
+        initial_ty = np.mean(aligned_points_2d_for_optimization[:, 1]) - (num_squares_y * checker_size_m / 2.0)
+        current_initial_guess = [initial_tx, initial_ty, initial_theta]
 
-    result = minimize(cost_function, initial_guess,
-                      args=(aligned_points_2d, classified_colors,
-                            num_squares_x, num_squares_y, checker_size_m),
-                      method='Powell', # Powell method is robust for derivative-free optimization
-                      options={'disp': True, 'maxiter': 1000})
+        print(f"최적화 시도: 초기 추정값 (tx, ty, theta_z): {current_initial_guess}")
+        current_result = minimize(cost_function, current_initial_guess,
+                                  args=(aligned_points_2d_for_optimization, classified_colors,
+                                        num_squares_x, num_squares_y, checker_size_m),
+                                  method='Powell',
+                                  options={'disp': False, 'maxiter': 1000})
 
-    optimized_tx, optimized_ty, optimized_theta_z = result.x
+        if current_result.fun < best_cost:
+            best_cost = current_result.fun
+            best_params = current_result.x
+            print(f"새로운 최적 결과 발견! 비용: {best_cost:.4f}, 파라미터: {best_params}")
+
+    if best_params is None:
+        raise RuntimeError("Optimization failed for all initial guesses.")
+
+    optimized_tx, optimized_ty, optimized_theta_z = best_params
     print(f"최적화 완료. 최종 (tx, ty, theta_z): {optimized_tx:.4f}, {optimized_ty:.4f}, {np.degrees(optimized_theta_z):.2f} deg")
-    print(f"최종 비용: {result.fun:.4f}")
+    print(f"최종 비용: {best_cost:.4f}")
 
     # 4. 최적화된 모델에서 3D 코너 추출
-    # Define ideal 2D internal corners in the checkerboard's own coordinate system
-    # Origin is at the bottom-left of the *internal corner grid*.
-    # These are the (X, Y) coordinates of the internal corners if the checkerboard
-    # were perfectly aligned with its origin at (0,0,0) and lying on the XY plane.
     ideal_2d_corners = []
     for r in range(internal_corners_y):
         for c in range(internal_corners_x):
-            # The internal corners are located at (c+1)*square_size, (r+1)*square_size
-            # relative to the checkerboard's origin (bottom-left of the first square).
             ideal_2d_corners.append([ (c + 1) * checker_size_m, (r + 1) * checker_size_m ])
     ideal_2d_corners = np.array(ideal_2d_corners)
 
-    # Apply optimized 2D transformation (rotation and translation) to ideal corners
-    # This transforms the ideal corners from the checkerboard's local frame
-    # to the PCA-aligned 2D plane.
+    # Calculate final optimized 3D corners
     cos_theta = np.cos(optimized_theta_z)
     sin_theta = np.sin(optimized_theta_z)
     R_opt = np.array([[cos_theta, -sin_theta],
                       [sin_theta, cos_theta]])
 
-    # Transform ideal corners from checkerboard local frame to PCA-aligned frame
-    # The optimized transformation (tx, ty, theta_z) maps the checkerboard's origin
-    # to (tx, ty) in the PCA-aligned frame, and rotates it by theta_z.
-    # So, to get the corners in the PCA-aligned frame, we rotate them by R_opt
-    # and then translate them by (tx, ty).
     transformed_2d_corners_aligned_frame = (R_opt @ ideal_2d_corners.T).T + np.array([optimized_tx, optimized_ty])
-
-    # Transform back to original 3D LiDAR coordinate system
-    # Add a Z-component (0) for the 2D corners in the aligned plane before transforming back to 3D
     transformed_2d_corners_3d_aligned = np.hstack((transformed_2d_corners_aligned_frame, np.zeros((transformed_2d_corners_aligned_frame.shape[0], 1))))
     
-    # Apply inverse PCA rotation and add back centroid
-    # This brings the points from the PCA-aligned frame back to the original LiDAR sensor frame.
+    # final_3d_corners_lidar_frame은 PCA-aligned frame에서 원본 LiDAR frame으로 역변환됩니다.
+    # 따라서 Z축 방향을 강제한 효과는 PCA-aligned frame 내에서만 적용되며,
+    # 최종 결과는 원본 LiDAR 센서의 좌표계로 다시 변환되므로 추가적인 "되돌리기" 작업은 필요하지 않습니다.
     final_3d_corners_lidar_frame = (R_inv @ transformed_2d_corners_3d_aligned.T).T + centroid
 
+    # Save the detected corner points to a file
+    save_corner_points_to_file(final_3d_corners_lidar_frame, "detected_corner_points.txt")
+
+    # Calculate initial PCA-aligned 3D corners (for visualization comparison)
+    # These corners are placed at the centroid with PCA axes alignment, but no further 2D optimization
+    initial_2d_corners_aligned_frame_pca_only = ideal_2d_corners - np.array([board_width/2.0, board_height/2.0]) # Center the ideal corners around (0,0) in PCA frame
+    initial_2d_corners_3d_aligned_pca_only = np.hstack((initial_2d_corners_aligned_frame_pca_only, np.zeros((initial_2d_corners_aligned_frame_pca_only.shape[0], 1))))
+    initial_3d_corners_pca_aligned_model = (R_inv @ initial_2d_corners_3d_aligned_pca_only.T).T + centroid
+
+
     print("--- 논문 방식 코너 검출 완료 ---")
+    print("\nC++로 전송될 최종 3D 코너 좌표 (라이다 센서 좌표계):\n")
+    # Print as lists for easy comparison with C++
+    print("corners_x: [", ", ".join(f"{x:.4f}" for x in final_3d_corners_lidar_frame[:, 0].tolist()), "]")
+    print("corners_y: [", ", ".join(f"{y:.4f}" for y in final_3d_corners_lidar_frame[:, 1].tolist()), "]")
+    print("corners_z: [", ", ".join(f"{z:.4f}" for z in final_3d_corners_lidar_frame[:, 2].tolist()), "]")
+    print(f"\n총 {final_3d_corners_lidar_frame.shape[0]}개의 코너가 검출되었습니다.")
+
 
     # =============================================================================
-    # 시각화 (Visualization)
+    # 시각화 (Visualization) - 2D PCA 정렬된 평면
     # =============================================================================
     plt.figure(figsize=(10, 8))
     
-    # PCA 정렬된 점들 (intensity에 따라 색상 구분)
-    # classified_colors: 0 (black), 1 (white), -1 (gray)
     colors = np.array(['black', 'white', 'gray'])
     
-    # Plot black points
-    black_points = aligned_points_2d[classified_colors == 0]
-    plt.scatter(black_points[:, 0], black_points[:, 1], color=colors[0], s=10, alpha=0.7, label='Black Squares (Intensity < tau_l)')
+    # Plot cropped points
+    black_points_cropped = aligned_points_2d_for_optimization[classified_colors == 0]
+    plt.scatter(black_points_cropped[:, 0], black_points_cropped[:, 1], color=colors[0], s=10, alpha=0.7, label='Black Squares (Intensity < tau_l)')
     
-    # Plot white points
-    white_points = aligned_points_2d[classified_colors == 1]
-    plt.scatter(white_points[:, 0], white_points[:, 1], color=colors[1], s=10, alpha=0.7, label='White Squares (Intensity > tau_h)')
+    white_points_cropped = aligned_points_2d_for_optimization[classified_colors == 1]
+    plt.scatter(white_points_cropped[:, 0], white_points_cropped[:, 1], color=colors[1], s=10, alpha=0.7, label='White Squares (Intensity > tau_h)')
 
-    # Plot gray points
-    gray_points = aligned_points_2d[classified_colors == -1]
-    plt.scatter(gray_points[:, 0], gray_points[:, 1], color=colors[2], s=10, alpha=0.3, label='Gray Zone Points')
+    gray_points_cropped = aligned_points_2d_for_optimization[classified_colors == -1]
+    plt.scatter(gray_points_cropped[:, 0], gray_points_cropped[:, 1], color=colors[2], s=10, alpha=0.3, label='Gray Zone Points')
 
-    # 최적화된 코너 표시
     plt.scatter(transformed_2d_corners_aligned_frame[:, 0], transformed_2d_corners_aligned_frame[:, 1],
                 color='red', marker='o', s=100, edgecolors='yellow', linewidth=2, label='Detected Corners (2D Aligned)')
 
-    # 최적화된 체커보드 모델의 경계선 그리기
-    # 체커보드 모델의 4개 코너 (로컬 좌표계)
     model_corners_local = np.array([
         [0, 0],
         [num_squares_x * checker_size_m, 0],
@@ -383,14 +515,70 @@ def estimate_chessboard_corners_paper_method(lidar_points_full,
         [0, 0] # Close the rectangle
     ])
     
-    # PCA 정렬된 프레임으로 변환
     model_corners_aligned = (R_opt @ model_corners_local.T).T + np.array([optimized_tx, optimized_ty])
     plt.plot(model_corners_aligned[:, 0], model_corners_aligned[:, 1], 'b--', label='Optimized Checkerboard Model Boundary')
 
-    plt.title('PCA Aligned Points, Optimized Model, and Detected Corners (2D View)')
+    pca_origin_2d = np.mean(aligned_points_2d, axis=0) # Use original aligned points mean for PCA axis visualization
+    pca_x_axis_2d = pca_axes[:2, 0] * 0.5 # X축
+    pca_y_axis_2d = pca_axes[:2, 1] * 0.5 # Y축
+    plt.arrow(pca_origin_2d[0], pca_origin_2d[1], pca_x_axis_2d[0], pca_x_axis_2d[1],
+              head_width=0.05, head_length=0.1, fc='purple', ec='purple', label='PCA X-axis')
+    plt.arrow(pca_origin_2d[0], pca_origin_2d[1], pca_y_axis_2d[0], pca_y_axis_2d[1],
+              head_width=0.05, head_length=0.1, fc='orange', ec='orange', label='PCA Y-axis')
+
+
+    plt.title('PCA Aligned Points (Cropped), Optimized Model, and Detected Corners (2D View)')
     plt.xlabel('X (meters) in PCA Aligned Frame')
     plt.ylabel('Y (meters) in PCA Aligned Frame')
     plt.axis('equal')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+    # =============================================================================
+    # 시각화 (Visualization) - 3D 라이다 평면, 최적화 코너, PCA 초기 코너 (모두 라이다 좌표계)
+    # =============================================================================
+    fig = plt.figure(figsize=(12, 10))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # 1. 라이다 포인트 (PCA 평면으로 투영된 점들 - 원본 라이다 좌표계)
+    centered_original_points = lidar_points_full[:, :3] - centroid
+    aligned_original_points_for_proj = centered_original_points @ pca_axes
+    
+    # Check if aligned_original_points_for_proj is not empty before proceeding
+    if aligned_original_points_for_proj.shape[0] > 0:
+        aligned_original_points_for_proj[:, 2] = 0 # Flatten Z to 0 on the PCA plane
+        projected_points_on_plane = (R_inv @ aligned_original_points_for_proj.T).T + centroid
+    else:
+        print("Warning: No points to project onto PCA plane for visualization.")
+        # projected_points_on_plane remains empty array as initialized at the top of the function.
+
+    # Use the projected points for plotting the plane in 3D
+    if projected_points_on_plane.shape[0] > 0:
+        scatter_original = ax.scatter(projected_points_on_plane[:, 0], projected_points_on_plane[:, 1], projected_points_on_plane[:, 2],
+                                      c=lidar_points_full[:, 3], cmap='viridis', s=5, alpha=0.7, label='Lidar Points Projected onto PCA Plane (Original Lidar Coords, Intensity)')
+    else:
+        print("Skipping scatter plot for projected_points_on_plane as it's empty.")
+
+    # 2. 최적화된 3D 코너 (C++로 전송될 결과 - 원본 라이다 좌표계)
+    if final_3d_corners_lidar_frame.shape[0] > 0:
+        ax.scatter(final_3d_corners_lidar_frame[:, 0], final_3d_corners_lidar_frame[:, 1], final_3d_corners_lidar_frame[:, 2],
+                   c='red', marker='o', s=150, edgecolors='yellow', linewidth=2, label='Optimized Detected Corners (Original Lidar Coords, to C++)')
+    else:
+        print("Skipping plotting of final_3d_corners_lidar_frame as it's empty.")
+
+    # 3. PCA 기반 초기 3D 코너 (비교용 - 원본 라이다 좌표계)
+    if initial_3d_corners_pca_aligned_model.shape[0] > 0:
+        ax.scatter(initial_3d_corners_pca_aligned_model[:, 0], initial_3d_corners_pca_aligned_model[:, 1], initial_3d_corners_pca_aligned_model[:, 2],
+                   c='blue', marker='x', s=150, linewidth=3, label='Initial PCA-Aligned Model Corners (Original Lidar Coords, for comparison)')
+    else:
+        print("Skipping plotting of initial_3d_corners_pca_aligned_model as it's empty.")
+
+
+    ax.set_xlabel('X (meters) in Original Lidar Frame')
+    ax.set_ylabel('Y (meters) in Original Lidar Frame')
+    ax.set_zlabel('Z (meters) in Original Lidar Frame')
+    ax.set_title('Detected Chessboard Corners in Original Lidar Coordinate System (3D View)')
     plt.legend()
     plt.grid(True)
     plt.show()
@@ -419,8 +607,8 @@ class LidarCornerDetectionService(Node):
         try:
             lidar_points_full = parse_pcd_string(pcd_data_ascii)
 
-            if lidar_points_full is None:
-                self.get_logger().error("Failed to parse PCD data from string.")
+            if lidar_points_full is None or lidar_points_full.shape[0] == 0:
+                self.get_logger().error("Failed to parse PCD data or no points received.")
                 response.corners_x = []
                 response.corners_y = []
                 response.corners_z = []
@@ -435,10 +623,16 @@ class LidarCornerDetectionService(Node):
             )
 
             # Populate the response with the 3D corners in the LiDAR sensor's coordinate system
-            response.corners_x = final_3d_corners_lidar_frame[:, 0].tolist()
-            response.corners_y = final_3d_corners_lidar_frame[:, 1].tolist()
-            response.corners_z = final_3d_corners_lidar_frame[:, 2].tolist()
-            self.get_logger().info(f'Detected {len(final_3d_corners_lidar_frame)} corners and sent response.')
+            if final_3d_corners_lidar_frame.size > 0:
+                response.corners_x = final_3d_corners_lidar_frame[:, 0].tolist()
+                response.corners_y = final_3d_corners_lidar_frame[:, 1].tolist()
+                response.corners_z = final_3d_corners_lidar_frame[:, 2].tolist()
+                self.get_logger().info(f'Detected {len(final_3d_corners_lidar_frame)} corners and sent response.')
+            else:
+                self.get_logger().warn("No corners detected after processing. Sending empty response.")
+                response.corners_x = []
+                response.corners_y = []
+                response.corners_z = []
 
         except Exception as e:
             self.get_logger().error(f"Error during corner detection: {e}")

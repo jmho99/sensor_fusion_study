@@ -289,7 +289,7 @@ private:
 
     void initializedParameters()
     {
-        std::string where = "home";
+        std::string where = "company";
         readWritePath(where);
 
         cv::FileStorage fs(one_cam_result_path_ + "one_cam_calib_result.yaml", cv::FileStorage::READ);
@@ -377,10 +377,6 @@ private:
             cv::putText(dummy, "No camera image", cv::Point(50, 240),
                         cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 255), 2);
             cv::imshow("Camera Image", dummy); // Uncommented for display
-        }
-        else
-        {
-            cv::imshow("Camera Image", last_image_); // Display last_image_ if available
         }
         inputKeyboard(last_image_);
     }
@@ -794,6 +790,15 @@ private:
         point3fVectorToPointCloud2(estimated_cv_corners, service_corners_msg_, "map", this->now());
         pub_service_corners_->publish(service_corners_msg_);
         RCLCPP_INFO(this->get_logger(), "Published service raw corners to /service_raw_corners topic.");
+
+        // Python에서 보낸 값과 비교하기 위해 수신된 코너 좌표 출력 (이 부분이 전체 결과값을 터미널에 출력합니다)
+        RCLCPP_INFO(this->get_logger(), "--- Received Lidar Corners from Python Service ---");
+        for (size_t i = 0; i < response->corners_x.size(); ++i) {
+            RCLCPP_INFO(this->get_logger(), "  Corner %zu: X=%.4f, Y=%.4f, Z=%.4f",
+                                i, response->corners_x[i], response->corners_y[i], response->corners_z[i]);
+        }
+        RCLCPP_INFO(this->get_logger(), "--------------------------------------------------");
+
 
         // 검출 결과를 result로 다시 cpp파일로 보내서 calibrateLidarCameraFinal함수에 있는 svd를 진행할 수 있도록 구성
         calibrateLidarCameraFinal(last_cloud_, estimated_cv_corners);
