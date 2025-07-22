@@ -122,6 +122,9 @@ private:
     std::vector<cv::Mat> rvecs_, tvecs_;
     double rms_;
 
+    std::string img_file_= "img_6.png";
+    std::string pcd_file_= "pcd_6.pcd";
+
     // 이미지에서 찾은 2D 코너
     std::vector<cv::Point2f> image_corners_latest_;
     // 라이다에서 찾은 체스보드 평면 포인트
@@ -449,7 +452,7 @@ private:
         }
         RCLCPP_INFO(this->get_logger(), "Found %zu image files.", image_files.size());
 
-        std::string first_image_path = img_path_ + "img_6.png"; // index 6 고정
+        std::string first_image_path = img_path_ + img_file_; // index 6 고정
         last_image_ = cv::imread(first_image_path, cv::IMREAD_COLOR);
 
         if (last_image_.empty())
@@ -471,7 +474,7 @@ private:
         }
         RCLCPP_INFO(this->get_logger(), "Found %zu PCD files.", pcd_files.size());
 
-        std::string first_pcd_path = pcd_path_ + "pcd_6.pcd"; // index 6 고정
+        std::string first_pcd_path = pcd_path_ + pcd_file_; // index 6 고정
         if (pcl::io::loadPCDFile<pcl::PointXYZI>(first_pcd_path, *last_cloud_) == -1)
         {
             RCLCPP_ERROR(this->get_logger(), "SHUTDOWN_CAUSE: Failed to load the first PCD from %s! Shutting down node.", first_pcd_path.c_str());
@@ -961,7 +964,7 @@ private:
             cloud_in_cam->emplace_back(pt.x, pt.y, pt.z);
         }
 
-        std::string filename = img_path_ + "/img_6.png";
+        std::string filename = img_path_ + img_file_;
         cv::Mat img_color = cv::imread(filename, cv::IMREAD_COLOR);
         if (img_color.empty())
         {
