@@ -36,9 +36,9 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr right_sub_;
     cv::Mat left_frame_, right_frame_;
 
-    std::string save_absolute_path_;
-    std::string save_origin_path_;
-    std::string save_calib_path_;
+    std::string setero_cam_path_;
+    std::string origin_path_;
+    std::string calib_path_;
     std::string one_cam_result_path_;
 
     std::vector<std::vector<cv::Point2f>> left_img_points_, right_img_points_;
@@ -112,22 +112,15 @@ private:
 
     void readWritePath(std::string where)
     {
-        std::string change_path;
-        if (where == "company")
-        {
-            change_path = "/antlab/sensor_fusion_study_ws";
-        }
-        else if (where == "home")
-        {
-            change_path = "/icrs/sensor_fusion_study_ws";
-        }
+        std::string home_dir = std::getenv("HOME");
+        std::string calibration_path = home_dir + "/sensor_fusion_study_ws/src/sensor_fusion_study/calibration";
 
-        save_absolute_path_ = "/home" + change_path + "/src/sensor_fusion_study/stereo_cam_calib/";
-        save_origin_path_ = save_absolute_path_ + "origin_images/";
-        save_calib_path_ = save_absolute_path_ + "calib_images/";
-        one_cam_result_path_ = "/home" + change_path + "/src/sensor_fusion_study/one_cam_calib/";
-        fs::create_directories(save_origin_path_);
-        fs::create_directories(save_calib_path_);
+        setero_cam_path_ = calibration_path + "/stereo_cam_calib/";
+        origin_path_ = setero_cam_path_ + "origin_images/";
+        calib_path_ = setero_cam_path_ + "calib_images/";
+        one_cam_result_path_ = calibration_path + "/one_cam_calib/";
+        fs::create_directories(origin_path_);
+        fs::create_directories(calib_path_);
     }
 
     void inputKeyboard(const cv::Mat &frame)
@@ -152,8 +145,8 @@ private:
             return;
 
         // [ADD] Save origin images with numbering
-        std::string filename_left = save_origin_path_ + "img_" + std::to_string(count_) + "_left.png";
-        std::string filename_right = save_origin_path_ + "img_" + std::to_string(count_) + "_right.png";
+        std::string filename_left = origin_path_ + "img_" + std::to_string(count_) + "_left.png";
+        std::string filename_right = origin_path_ + "img_" + std::to_string(count_) + "_right.png";
         cv::imwrite(filename_left, left_frame_);
         cv::imwrite(filename_right, right_frame_);
 
@@ -174,8 +167,8 @@ private:
 
         while (true)
         {
-            std::string fname_left = save_origin_path_ + "img_" + std::to_string(i) + "_left.png";
-            std::string fname_right = save_origin_path_ + "img_" + std::to_string(i) + "_right.png";
+            std::string fname_left = origin_path_ + "img_" + std::to_string(i) + "_left.png";
+            std::string fname_right = origin_path_ + "img_" + std::to_string(i) + "_right.png";
 
             if (!fs::exists(fname_left) || !fs::exists(fname_right))
             {
@@ -230,7 +223,6 @@ private:
                                                   left_intrinsic_matrix_, left_dist_coeffs_, left_rvecs_all, left_tvecs_all); // 초기값 사용
             RCLCPP_INFO(this->get_logger(), "Left Camera Calibration RMS: %.4f", rms_left);
 
-            
             double rms_right = cv::calibrateCamera(obj_points_, right_img_points_, img_size_,
                                                    right_intrinsic_matrix_, right_dist_coeffs_, right_rvecs_all, right_tvecs_all);
             RCLCPP_INFO(this->get_logger(), "Right Camera Calibration RMS: %.4f", rms_right);
@@ -259,7 +251,7 @@ private:
         RCLCPP_INFO(this->get_logger(), "✅ 스테레오 캘리브레이션 완료");
 
         // 파일 저장도 가능
-        cv::FileStorage fs(save_absolute_path_ + "stereo_cam_calib_result.yaml", cv::FileStorage::WRITE);
+        cv::FileStorage fs(setero_cam_path_ + "stereo_cam_calib_result.yaml", cv::FileStorage::WRITE);
         fs << "checkerboard_cols" << cols_;
         fs << "checkerboard_rows" << rows_;
         fs << "square_size" << square_size_;
@@ -290,8 +282,8 @@ private:
         for (int i = 0; i < collected_; i++)
         {
             // load original images
-            std::string fname_left = save_origin_path_ + "img_" + std::to_string(i) + "_left.png";
-            std::string fname_right = save_origin_path_ + "img_" + std::to_string(i) + "_right.png";
+            std::string fname_left = origin_path_ + "img_" + std::to_string(i) + "_left.png";
+            std::string fname_right = origin_path_ + "img_" + std::to_string(i) + "_right.png";
 
             cv::Mat orig_left = cv::imread(fname_left, cv::IMREAD_COLOR);
             cv::Mat orig_right = cv::imread(fname_right, cv::IMREAD_COLOR);
@@ -384,8 +376,8 @@ private:
             cv::line(rect_left, cv::Point(0, y_line_left), cv::Point(rect_left.cols, y_line_left), cv::Scalar(0, 0, 255), 1);
             cv::line(rect_right, cv::Point(0, y_line_right), cv::Point(rect_right.cols, y_line_right), cv::Scalar(0, 255, 0), 1);
 
-            std::string save_left = save_calib_path_ + "img_" + std::to_string(i) + "_left_calib.png";
-            std::string save_right = save_calib_path_ + "img_" + std::to_string(i) + "_right_calib.png";
+            std::string save_left = calib_path_ + "img_" + std::to_string(i) + "_left_calib.png";
+            std::string save_right = calib_path_ + "img_" + std::to_string(i) + "_right_calib.png";
 
             cv::imwrite(save_left, rect_left);
             cv::imwrite(save_right, rect_right);
@@ -407,8 +399,8 @@ private:
     {
         for (int i = 0; i < collected_; i++)
         {
-            std::string fname_left = save_origin_path_ + "img_" + std::to_string(i) + "_left.png";
-            std::string fname_right = save_origin_path_ + "img_" + std::to_string(i) + "_right.png";
+            std::string fname_left = origin_path_ + "img_" + std::to_string(i) + "_left.png";
+            std::string fname_right = origin_path_ + "img_" + std::to_string(i) + "_right.png";
 
             cv::Mat img_left = cv::imread(fname_left);
             cv::Mat img_right = cv::imread(fname_right);
@@ -452,7 +444,6 @@ private:
                 cv::line(img_left, pt1, pt2, cv::Scalar(255, 0, 0), 1);
             }
 
-            
             cv::namedWindow("Left Epipolar Lines", cv::WINDOW_NORMAL);
             cv::resizeWindow("Left Epipolar Lines", 640, 480);
             cv::imshow("Left Epipolar Lines", img_left);

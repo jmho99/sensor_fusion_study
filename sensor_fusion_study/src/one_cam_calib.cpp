@@ -65,20 +65,14 @@ private:
 
   void readWritePath(std::string where)
   {
-    std::string change_path;
-    if (where == "company")
-    {
-      change_path = "/antlab/sensor_fusion_study_ws";
-    }
-    else if (where == "home")
-    {
-      change_path = "/icrs/sensor_fusion_study_ws";
-    }
-    save_absolute_path_ = "/home" + change_path + "/src/sensor_fusion_study/one_cam_calib/";
-    save_origin_path_ = save_absolute_path_ + "origin_images/";
-    save_calib_path_ = save_absolute_path_ + "calib_images/";
-    fs::create_directories(save_origin_path_);
-    fs::create_directories(save_calib_path_);
+    std::string home_dir = std::getenv("HOME");
+    std::string calibration_path = home_dir + "/sensor_fusion_study_ws/src/sensor_fusion_study/calibration";
+
+    one_cam_path_ = calibration_path + "/one_cam_calib/";
+    origin_path_ = one_cam_path_ + "origin_images/";
+    calib_path_ = one_cam_path_ + "calib_images/";
+    fs::create_directories(origin_path_);
+    fs::create_directories(calib_path_);
   }
 
   void timerCallback()
@@ -164,7 +158,7 @@ private:
 
   void saveCurrentFrame(const cv::Mat &frame)
   {
-    std::string filename = save_origin_path_ + "img_" + std::to_string(frame_counter_) + ".png";
+    std::string filename = origin_path_ + "img_" + std::to_string(frame_counter_) + ".png";
     cv::imwrite(filename, frame);
     RCLCPP_INFO(this->get_logger(), "Save Image: %s", filename.c_str());
     frame_counter_++;
@@ -186,7 +180,7 @@ private:
   {
     RCLCPP_INFO(this->get_logger(), "Start calibration...");
 
-    cv::glob(save_origin_path_ + "*.png", image_files_);
+    cv::glob(origin_path_ + "*.png", image_files_);
     if (image_files_.size() < 5)
     {
       RCLCPP_WARN(this->get_logger(), "Not enough image (%lu)", image_files_.size());
@@ -233,7 +227,7 @@ private:
                                    intrinsic_matrix_, dist_coeffs_, rvecs_, tvecs_);
 
         RCLCPP_INFO(this->get_logger(), "RMS error: %.4f", rms_);
-        cv::FileStorage fs(save_absolute_path_ + "one_cam_calib_result.yaml", cv::FileStorage::WRITE);
+        cv::FileStorage fs(one_cam_path_ + "one_cam_calib_result.yaml", cv::FileStorage::WRITE);
         fs << "checkerboard_cols" << cols_;
         fs << "checkerboard_rows" << rows_;
         fs << "square_size" << square_size_;
@@ -253,7 +247,7 @@ private:
         // corners 만 표시 (체스보드 코너)
         cv::drawChessboardCorners(vis, pattern_size, corners, found);
 
-        std::string save_name = save_calib_path_ + "img_" + std::to_string(idx) + "_calib.png";
+        std::string save_name = calib_path_ + "img_" + std::to_string(idx) + "_calib.png";
         cv::imwrite(save_name, vis);
         RCLCPP_INFO(this->get_logger(), "Save calibration image: %s", save_name.c_str());
         successful_indices_.push_back(idx);
@@ -262,7 +256,7 @@ private:
       {
         // 코너 검출 실패 시 원본 이미지만 저장
         cv::Mat vis = img.clone();
-        std::string failed_save_name = save_calib_path_ + "img_" + std::to_string(idx) + "_failed.png";
+        std::string failed_save_name = calib_path_ + "img_" + std::to_string(idx) + "_failed.png";
         cv::imwrite(failed_save_name, vis);
         RCLCPP_INFO(this->get_logger(), "Save failed image: %s", failed_save_name.c_str());
       }
@@ -289,7 +283,7 @@ private:
       int idx = successful_indices_[i];
 
       // 원본 이미지 경로
-      std::string origin_file = save_origin_path_ + "img_" + std::to_string(idx) + ".png";
+      std::string origin_file = origin_path_ + "img_" + std::to_string(idx) + ".png";
       cv::Mat img = cv::imread(origin_file);
       if (img.empty())
       {
@@ -325,7 +319,7 @@ private:
 
       RCLCPP_INFO(this->get_logger(), "norm error: %f", mean_error / img_points_[i].size());
 
-      std::string save_name = save_calib_path_ + "img_" + std::to_string(idx) + "_error.png";
+      std::string save_name = calib_path_ + "img_" + std::to_string(idx) + "_error.png";
       cv::imwrite(save_name, vis);
       RCLCPP_INFO(this->get_logger(), "Save error visualization: %s", save_name.c_str());
 
@@ -335,9 +329,9 @@ private:
   }
 
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;
-  std::string save_origin_path_;
-  std::string save_calib_path_;
-  std::string save_absolute_path_;
+  std::string origin_path_;
+  std::string calib_path_;
+  std::string one_cam_path_;
   std::string where_;
   cv::Mat current_frame_;
   int frame_counter_;

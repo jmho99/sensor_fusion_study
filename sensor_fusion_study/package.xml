@@ -19,8 +19,9 @@
   <depend>PCL</depend>
   <depend>visualization_msgs</depend>
   <depend>pcl_conversions</depend>
+  <depend>eigen</depend>
 
-   <depend>sensor_fusion_study_interfaces</depend>
+  <depend>sensor_fusion_study_interfaces</depend>
 
   <depend>rclpy</depend>
 

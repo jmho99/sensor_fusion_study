@@ -5,6 +5,7 @@
 #include <filesystem>
 #include "sensor_msgs/msg/image.hpp"
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <cstdlib>
 
 #include <Eigen/Dense>
 #include <opencv2/opencv.hpp>
@@ -25,9 +26,13 @@
 #include <pcl/common/pca.h>      // For PCA
 #include <limits>                // For std::numeric_limits
 #include <pcl/point_cloud.h>     // For pcl::PointCloud
+#include <cmath>                 // For std::acos, std::fabs
+#include <random>                // For random number generation
 
-// ROS2 Custom Service Header (Intensity.srv 파일에서 생성된 헤더로 변경)
-#include "sensor_fusion_study_interfaces/srv/intensity.hpp"
+// Lidar Corner Detection Library Header (경로 변경)
+// intensity_lidar_corner_detection_lib의 PUBLIC include directory가 추가되었으므로,
+// 해당 라이브러리의 include 폴더 내에서 직접 헤더 파일을 찾습니다.
+#include "intensity_lidar_corner_detection.hpp"
 
 namespace fs = std::filesystem;
 
@@ -62,21 +67,15 @@ public:
         pub_cb_points_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("cb_object_points", 10);
         pub_cam_points_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("cam_points", 10);
         pub_binarized_intensity_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("binarized_intensity_points", 10); // New publisher for binarized intensity
-        // 서비스에서 받은 코너 포인트를 퍼블리시할 새로운 퍼블리셔
-        pub_service_corners_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("service_raw_corners", 10);
-
+        // 서비스에서 받은 코너 포인트를 퍼블리시할 새로운 퍼블리셔 (이제 직접 검출된 코너를 퍼블리시)
+        pub_service_corners_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("detected_lidar_corners", 10);
 
         // PointCloud2 메시지를 주기적으로 퍼블리시하는 타이머 (주석 해제됨)
         timer_ = this->create_wall_timer(
             std::chrono::milliseconds(30), // 30ms 주기로 퍼블리시
             std::bind(&CamLidarCalibNode::pcdTimerCallback, this));
 
-        // Create ROS2 service client for Python node (서비스 타입도 Intensity로 변경)
-        corner_detection_client_ = this->create_client<sensor_fusion_study_interfaces::srv::Intensity>("detect_lidar_corners");
-        while (!corner_detection_client_->wait_for_service(std::chrono::seconds(1))) {
-            RCLCPP_INFO(this->get_logger(), "Service not available, waiting again...");
-        }
-        RCLCPP_INFO(this->get_logger(), "Lidar Corner Detection Service client created.");
+        // Removed ROS2 service client creation and waiting for service
     }
 
 private:
@@ -87,7 +86,7 @@ private:
     pcl::PointCloud<pcl::PointXYZI>::Ptr last_cloud_{new pcl::PointCloud<pcl::PointXYZI>}; // Latest point cloud data
     std::string img_path_;
     std::string pcd_path_;
-    std::string absolute_path_;
+    std::string cam_lidar_path_;
     std::string one_cam_result_path_;
     int frame_counter_ = 0;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_plane_;
@@ -96,7 +95,7 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_cb_points_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_cam_points_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_binarized_intensity_; // New publisher
-    // 서비스에서 받은 코너 포인트를 퍼블리시할 새로운 퍼블리셔 선언
+    // 서비스에서 받은 코너 포인트를 퍼블리시할 새로운 퍼블리셔 선언 (이제 직접 검출된 코너)
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_service_corners_;
 
     sensor_msgs::msg::PointCloud2 plane_msg_;
@@ -105,14 +104,14 @@ private:
     sensor_msgs::msg::PointCloud2 cb_points_msg_;
     sensor_msgs::msg::PointCloud2 cam_points_msg_;
     sensor_msgs::msg::PointCloud2 binarized_intensity_msg_; // New message for binarized intensity
-    // 서비스에서 받은 코너 포인트를 담을 새로운 메시지
+    // 서비스에서 받은 코너 포인트를 담을 새로운 메시지 (이제 직접 검출된 코너)
     sensor_msgs::msg::PointCloud2 service_corners_msg_;
 
-    rclcpp::TimerBase::SharedPtr timer_;                    // pcdTimerCallback을 위한 타이머
-    rclcpp::TimerBase::SharedPtr timer__;                   // timerCallback을 위한 타이머
-    cv::Size board_size_;                                   // Chessboard parameters (internal corners)
-    double square_size_;                                    // Chessboard parameters
-    cv::Mat intrinsic_matrix_, distortion_coeffs_;          // Camera intrinsics
+    rclcpp::TimerBase::SharedPtr timer_;           // pcdTimerCallback을 위한 타이머
+    rclcpp::TimerBase::SharedPtr timer__;          // timerCallback을 위한 타이머
+    cv::Size board_size_;                          // Chessboard parameters (internal corners)
+    double square_size_;                           // Chessboard parameters
+    cv::Mat intrinsic_matrix_, distortion_coeffs_; // Camera intrinsics
     cv::Mat cb2cam_rvec_, cb2cam_tvec_;
     cv::Mat lidar2cam_R_, lidar2cam_t_;
     std::vector<int> successful_indices_;
@@ -122,8 +121,8 @@ private:
     std::vector<cv::Mat> rvecs_, tvecs_;
     double rms_;
 
-    std::string img_file_= "img_6.png";
-    std::string pcd_file_= "pcd_6.pcd";
+    std::string img_file_ = "img_10.png";
+    std::string pcd_file_ = "pcd_10.pcd";
 
     // 이미지에서 찾은 2D 코너
     std::vector<cv::Point2f> image_corners_latest_;
@@ -152,110 +151,10 @@ private:
     // 체커보드 코너를 저장할 벡터
     std::vector<Eigen::Vector3d> chessboard_corners_3d_;
 
-    // ROS2 Service Client
-    rclcpp::Client<sensor_fusion_study_interfaces::srv::Intensity>::SharedPtr corner_detection_client_;
+    // Removed ROS2 Service Client
+    // rclcpp::Client<sensor_fusion_study_interfaces::srv::Intensity>::SharedPtr corner_detection_client_;
 
-    // 강도 분류를 위한 enum (GRAY 제거)
-    enum PatternColor
-    {
-        BLACK,
-        WHITE
-    };
-
-    // 강도 값을 흑색 또는 백색으로 분류하는 도우미 함수 (극단화)
-    PatternColor classifyIntensity(float intensity)
-    {
-        if (intensity < tau_l_)
-        {
-            return BLACK;
-        }
-        else
-        { // 기준보다 높으면 최대값과 같은 색 (WHITE)
-            return WHITE;
-        }
-    }
-
-    // PointCloud의 강도 분포를 기반으로 흑백 패턴 분류 임계값을 추정하는 함수
-    // 사용자 요청에 따라 intensity_min_threshold_와 intensity_max_threshold_의 중간값을 단일 임계값으로 사용
-    void calculateIntensityThresholds(const pcl::PointCloud<pcl::PointXYZI>::Ptr &cloud)
-    {
-        if (cloud->empty())
-            {
-                tau_l_ = (intensity_min_threshold_ + intensity_max_threshold_) / 2.0;
-                RCLCPP_WARN(this->get_logger(), "Input cloud is empty for intensity threshold calculation. Using default mid-point.");
-                return;
-            }
-
-            // 파라미터로 설정된 최소/최대 강도 값을 사용하여 단일 임계값 계산
-            tau_l_ = (intensity_min_threshold_ + intensity_max_threshold_) / 2.0;
-
-            RCLCPP_INFO(this->get_logger(), "Calculated single intensity threshold (tau_l_): %.2f", tau_l_);
-    }
-
-    // 로컬 PointCloud 내에서 강도(색상) 변화 횟수를 확인하는 함수
-    // 코너 주변에서 색상 변화가 최소 3번 일어나는지 확인
-    // NOTE: This function's name is misleading. It counts transitions but doesn't *refine* the corner.
-    // It's used as a *validation* step.
-    int checkIntensityTransitions(const pcl::PointCloud<pcl::PointXYZI>::Ptr &local_cloud,
-                                  const Eigen::Vector3d &corner_center,
-                                  const Eigen::Vector3d &board_x_axis,
-                                  const Eigen::Vector3d &board_y_axis)
-    {
-        if (local_cloud->empty())
-        {
-            return 0;
-        }
-
-        // 코너 중심을 기준으로 점들을 2D 평면에 투영하고 각도와 색상 정보를 저장
-        std::vector<std::pair<double, PatternColor>> projected_points_with_color;
-        projected_points_with_color.reserve(local_cloud->points.size());
-
-        for (const auto &pt : local_cloud->points)
-        {
-            Eigen::Vector3d vec = pt.getVector3fMap().cast<double>() - corner_center;
-            // 평면 내 2D 좌표로 투영
-            double proj_x = vec.dot(board_x_axis);
-            double proj_y = vec.dot(board_y_axis);
-
-            // 코너 중심으로부터의 각도를 계산하여 정렬에 사용
-            double angle = std::atan2(proj_y, proj_x);
-            projected_points_with_color.push_back({angle, classifyIntensity(pt.intensity)});
-        }
-
-        // 각도 기준으로 정렬
-        std::sort(projected_points_with_color.begin(), projected_points_with_color.end());
-
-        int transitions = 0;
-        if (projected_points_with_color.size() < 2)
-        {
-            return 0; // 점이 충분하지 않으면 변화 없음
-        }
-
-        // 정렬된 점들을 순회하며 색상 변화 횟수 계산
-        PatternColor prev_color = projected_points_with_color[0].second;
-
-        for (size_t i = 1; i < projected_points_with_color.size(); ++i)
-        {
-            PatternColor current_color = projected_points_with_color[i].second;
-            // 이전 색상과 다르면 변화로 간주
-            if (current_color != prev_color)
-            {
-                transitions++;
-            }
-            prev_color = current_color;
-        }
-        // 마지막 점과 첫 점 사이의 변화도 확인 (원형으로 연결된 것으로 간주)
-        // This last check can be problematic if the angular range doesn't truly wrap around
-        // e.g., if points are only on one side of the 0/2pi boundary.
-        // For chessboard corners, transitions should generally be 4 (black->white->black->white or vice versa)
-        // This transition count logic is more about *validation* a corner region than refining its position.
-        if (projected_points_with_color.back().second != projected_points_with_color[0].second)
-        {
-            transitions++;
-        }
-
-        return transitions;
-    }
+    // --- 함수 선언 순서 조정 끝 ---
 
     void imageCallback(const sensor_msgs::msg::Image::SharedPtr msg)
     {
@@ -263,8 +162,8 @@ private:
         {
             current_frame_ = cv_bridge::toCvCopy(msg, "bgr8")->image;
             cv::namedWindow("FLIR View", cv::WINDOW_NORMAL); // Uncommented for display
-            cv::resizeWindow("FLIR View", 640, 480); // Uncommented for display
-            cv::imshow("FLIR View", current_frame_); // Uncommented for display
+            cv::resizeWindow("FLIR View", 640, 480);         // Uncommented for display
+            cv::imshow("FLIR View", current_frame_);         // Uncommented for display
             inputKeyboard(current_frame_);
         }
         catch (cv_bridge::Exception &e)
@@ -287,7 +186,7 @@ private:
         pub_cb_points_->publish(cb_points_msg_);
         pub_cam_points_->publish(cam_points_msg_);
         pub_binarized_intensity_->publish(binarized_intensity_msg_); // Publish binarized intensity message
-        pub_service_corners_->publish(service_corners_msg_); // 서비스에서 받은 코너 포인트 퍼블리시
+        pub_service_corners_->publish(service_corners_msg_);         // 직접 검출된 코너 포인트 퍼블리시
     }
 
     void initializedParameters()
@@ -333,6 +232,7 @@ private:
         this->declare_parameter<double>("roi_max_z", 3.0);
         this->declare_parameter<double>("ransac_distance_threshold", 0.02);
         this->declare_parameter<int>("ransac_max_iterations", 1000);
+        this->declare_parameter<bool>("flip_normal_direction", false); // Declare flip_normal_direction parameter
 
         this->get_parameter("intensity_min_threshold", intensity_min_threshold_);
         this->get_parameter("intensity_max_threshold", intensity_max_threshold_);
@@ -344,29 +244,24 @@ private:
         this->get_parameter("roi_max_z", roi_max_z_);
         this->get_parameter("ransac_distance_threshold", ransac_distance_threshold_);
         this->get_parameter("ransac_max_iterations", ransac_max_iterations_);
+        this->get_parameter("flip_normal_direction", flip_normal_direction_); // Get flip_normal_direction parameter
 
         RCLCPP_INFO(this->get_logger(), "Loaded intensity filter: [%.1f, %.1f]", intensity_min_threshold_, intensity_max_threshold_);
         RCLCPP_INFO(this->get_logger(), "Loaded ROI X: [%.1f, %.1f], Y: [%.1f, %.1f], Z: [%.1f, %.1f]",
                     roi_min_x_, roi_max_x_, roi_min_y_, roi_max_y_, roi_min_z_, roi_max_z_);
         RCLCPP_INFO(this->get_logger(), "Loaded RANSAC: dist_thresh=%.3f, max_iter=%d", ransac_distance_threshold_, ransac_max_iterations_);
+        RCLCPP_INFO(this->get_logger(), "Loaded flip_normal_direction: %s", flip_normal_direction_ ? "true" : "false"); // Log the parameter
     }
 
     void readWritePath(std::string where)
     {
-        std::string change_path;
-        if (where == "company")
-        {
-            change_path = "/antlab/sensor_fusion_study_ws";
-        }
-        else if (where == "home")
-        {
-            change_path = "/icrs/sensor_fusion_study_ws";
-        }
+        std::string home_dir = std::getenv("HOME");
+        std::string calibration_path = home_dir + "/sensor_fusion_study_ws/src/sensor_fusion_study/calibration";
 
-        absolute_path_ = "/home" + change_path + "/src/sensor_fusion_study/cam_lidar_calib/";
-        img_path_ = absolute_path_ + "images/";
-        pcd_path_ = absolute_path_ + "pointclouds/";
-        one_cam_result_path_ = "/home" + change_path + "/src/sensor_fusion_study/one_cam_calib/";
+        cam_lidar_path_ = calibration_path + "/cam_lidar_calib/";
+        img_path_ = cam_lidar_path_ + "images/";
+        pcd_path_ = cam_lidar_path_ + "pointclouds/";
+        one_cam_result_path_ = calibration_path + "/one_cam_calib/";
 
         fs::create_directories(img_path_);
         fs::create_directories(pcd_path_);
@@ -706,280 +601,57 @@ private:
 
         RCLCPP_INFO(this->get_logger(), "Detected %zu points in LiDAR plane.", lidar_plane_points_latest_->points.size());
 
-        // 강도 임계값 계산 (전체 평면 PointCloud 기반)
-        calculateIntensityThresholds(lidar_plane_points_latest_);
-
-        // 이진화된 강도 포인트 시각화
-        publishBinarizedIntensity(lidar_plane_points_latest_); // Call the new function here
-
-        // Save to a temporary file, read, and then delete
-        std::string temp_pcd_filename = absolute_path_ + "temp_lidar_plane_points.pcd";
-        savePlanePointCloud(lidar_plane_points_latest_, temp_pcd_filename);
-
-        std::string pcd_ascii_string;
-        std::ifstream temp_file(temp_pcd_filename);
-        if (temp_file.is_open()) {
-            std::stringstream buffer;
-            buffer << temp_file.rdbuf();
-            pcd_ascii_string = buffer.str();
-            temp_file.close();
-            fs::remove(temp_pcd_filename); // Delete the temporary file
-        } else {
-            RCLCPP_ERROR(this->get_logger(), "Failed to open temporary PCD file for reading: %s", temp_pcd_filename.c_str());
-            rclcpp::shutdown();
-            return;
+        // Convert PCL PointCloud to std::vector<PointXYZI> for the external function
+        std::vector<PointXYZI> lidar_points_for_corner_detection;
+        lidar_points_for_corner_detection.reserve(lidar_plane_points_latest_->points.size());
+        for (const auto &p : lidar_plane_points_latest_->points)
+        {
+            lidar_points_for_corner_detection.push_back({p.x, p.y, p.z, p.intensity});
         }
 
-        auto request = std::make_shared<sensor_fusion_study_interfaces::srv::Intensity::Request>(); // 서비스 타입 변경
-        request->pcd_data_ascii = pcd_ascii_string;
-        request->grid_size_x = static_cast<float>(pattern_size_cols_);
-        request->grid_size_y = static_cast<float>(pattern_size_rows_);
-        request->checker_size_m = static_cast<float>(square_size_);
+        RCLCPP_INFO(this->get_logger(), "Calling external corner detection function...");
 
-        RCLCPP_INFO(this->get_logger(), "Sending PCD data to Python service for corner detection...");
-
-        // 비동기 서비스 호출 및 응답 콜백 연결
-        corner_detection_client_->async_send_request(
-            request,
-            std::bind(&CamLidarCalibNode::handle_service_response, this, std::placeholders::_1)
+        // Call the external corner detection function directly, passing the parameter
+        std::vector<PointXYZI> detected_corners_xyz_i = estimateChessboardCornersPaperMethod(
+            lidar_points_for_corner_detection,
+            pattern_size_cols_,    // internal_corners_x
+            pattern_size_rows_,    // internal_corners_y
+            square_size_,          // checker_size_m
+            flip_normal_direction_ // Pass the parameter from ROS
         );
-    }
 
-    // LiDAR Chessboard Corner Refinement (Intensity-based) - Modified to refine position
-    bool refineCornerWithIntensity(
-        const Eigen::Vector3d &initial_corner,
-        const Eigen::Vector3d &plane_normal,
-        const Eigen::Vector3d &board_x_axis,
-        const Eigen::Vector3d &board_y_axis,
-        double square_size,
-        const pcl::PointCloud<pcl::PointXYZI>::Ptr &plane_points_cloud,
-        int r_idx, int c_idx, // 그리드 인덱스 (코너의 위치 파악용)
-        Eigen::Vector3d &refined_corner)
-    {
-        // 이 함수는 C++에서 더 이상 직접 호출되지 않습니다. 코너 정밀화는 Python 서비스에서 처리됩니다.
-        // 향후 C++ 전용 정밀화가 필요할 경우를 대비하여 유지합니다.
-        RCLCPP_WARN(this->get_logger(), "refineCornerWithIntensity in C++ is deprecated. Corner refinement is handled by Python service.");
-        refined_corner = initial_corner; // Simply return initial corner if called
-        return true;
-    }
-
-    // 서비스 응답을 처리하는 새로운 콜백 함수
-    void handle_service_response(rclcpp::Client<sensor_fusion_study_interfaces::srv::Intensity>::SharedFuture future)
-    {
-        auto response = future.get();
-        if (response->corners_x.empty()) {
-            RCLCPP_ERROR(this->get_logger(), "Python service returned no corners or an error occurred.");
+        if (detected_corners_xyz_i.empty())
+        {
+            RCLCPP_ERROR(this->get_logger(), "External corner detection function returned no corners.");
             return;
         }
-        
-        std::vector<cv::Point3f> estimated_cv_corners;
-        chessboard_corners_3d_.clear(); // 기존 코너 데이터 초기화
-        for (size_t i = 0; i < response->corners_x.size(); ++i) {
-            estimated_cv_corners.emplace_back(
-                response->corners_x[i],
-                response->corners_y[i],
-                response->corners_z[i]
-            );
-            // Python에서 받은 3D 코너를 Eigen::Vector3d로 변환하여 저장
-            chessboard_corners_3d_.emplace_back(
-                static_cast<double>(response->corners_x[i]),
-                static_cast<double>(response->corners_y[i]),
-                static_cast<double>(response->corners_z[i])
-            );
-        }
-        RCLCPP_INFO(this->get_logger(), "Received %zu corners from Python service and stored for reprojection error calculation.", estimated_cv_corners.size());
 
-        // 서비스에서 받은 raw 코너 포인트를 RViz에 퍼블리시
+        std::vector<cv::Point3f> estimated_cv_corners;
+        chessboard_corners_3d_.clear(); // Clear existing corner data
+        for (const auto &p : detected_corners_xyz_i)
+        {
+            estimated_cv_corners.emplace_back(p.x, p.y, p.z);
+            // Store detected 3D corners as Eigen::Vector3d
+            chessboard_corners_3d_.emplace_back(p.x, p.y, p.z);
+        }
+        RCLCPP_INFO(this->get_logger(), "Received %zu corners from external function and stored for reprojection error calculation.", estimated_cv_corners.size());
+
+        // Publish detected corners to RViz
         point3fVectorToPointCloud2(estimated_cv_corners, service_corners_msg_, "map", this->now());
         pub_service_corners_->publish(service_corners_msg_);
-        RCLCPP_INFO(this->get_logger(), "Published service raw corners to /service_raw_corners topic.");
+        RCLCPP_INFO(this->get_logger(), "Published detected corners to /detected_lidar_corners topic.");
 
-        // Python에서 보낸 값과 비교하기 위해 수신된 코너 좌표 출력 (이 부분이 전체 결과값을 터미널에 출력합니다)
-        RCLCPP_INFO(this->get_logger(), "--- Received Lidar Corners from Python Service ---");
-        for (size_t i = 0; i < response->corners_x.size(); ++i) {
+        // Print received corner coordinates
+        RCLCPP_INFO(this->get_logger(), "--- Detected Lidar Corners from External Function ---");
+        for (size_t i = 0; i < detected_corners_xyz_i.size(); ++i)
+        {
             RCLCPP_INFO(this->get_logger(), "  Corner %zu: X=%.4f, Y=%.4f, Z=%.4f",
-                                i, response->corners_x[i], response->corners_y[i], response->corners_z[i]);
+                        i, detected_corners_xyz_i[i].x, detected_corners_xyz_i[i].y, detected_corners_xyz_i[i].z);
         }
         RCLCPP_INFO(this->get_logger(), "--------------------------------------------------");
 
-
-        // 검출 결과를 result로 다시 cpp파일로 보내서 calibrateLidarCameraFinal함수에 있는 svd를 진행할 수 있도록 구성
+        // Proceed with final calibration using the detected corners
         calibrateLidarCameraFinal(last_cloud_, estimated_cv_corners);
-    }
-
-
-    void publishBinarizedIntensity(const pcl::PointCloud<pcl::PointXYZI>::Ptr &input_cloud)
-    {
-        if (input_cloud->empty())
-        {
-            RCLCPP_WARN(this->get_logger(), "Input cloud for binarized intensity is empty. Not publishing.");
-            binarized_intensity_msg_.data.clear(); // Clear previous data
-            return;
-        }
-
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr binarized_rgb_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        binarized_rgb_cloud->width = input_cloud->width;
-        binarized_rgb_cloud->height = input_cloud->height;
-        binarized_rgb_cloud->is_dense = input_cloud->is_dense;
-        binarized_rgb_cloud->points.resize(input_cloud->points.size());
-
-        for (size_t i = 0; i < input_cloud->points.size(); ++i)
-        {
-            const auto &pt_i = input_cloud->points[i];
-            pcl::PointXYZRGB &pt_rgb = binarized_rgb_cloud->points[i];
-
-            pt_rgb.x = pt_i.x;
-            pt_rgb.y = pt_i.y;
-            pt_rgb.z = pt_i.z;
-
-            PatternColor color = classifyIntensity(pt_i.intensity);
-            if (color == BLACK)
-            {
-                pt_rgb.r = 0;
-                pt_rgb.g = 0;
-                pt_rgb.b = 0;
-            }
-            else
-            { // WHITE
-                pt_rgb.r = 255;
-                pt_rgb.g = 255;
-                pt_rgb.b = 255;
-            }
-        }
-
-        pcl::toROSMsg(*binarized_rgb_cloud, binarized_intensity_msg_);
-        binarized_intensity_msg_.header.frame_id = "map";
-        binarized_intensity_msg_.header.stamp = this->now();
-        // The message will be published by pcdTimerCallback
-    }
-
-    // Renamed calibrateLidarCamera function and modified parameters
-    void calibrateLidarCameraFinal(const pcl::PointCloud<pcl::PointXYZI>::Ptr &cloud_all,
-                                   const std::vector<cv::Point3f> &estimated_chessboard_corners_lidar)
-    {
-        // lidar_points now uses estimated_chessboard_corners_lidar
-        std::vector<cv::Point3f> lidar_points = estimated_chessboard_corners_lidar;
-
-        std::vector<cv::Point3f> cb_object_points;
-        // The object points represent the 3D coordinates of the chessboard corners in its own coordinate system (origin at one corner, Z=0)
-        // This should also use internal corner counts.
-        for (int i = 0; i < board_size_.height; i++) // rows of internal corners
-        {
-            for (int j = 0; j < board_size_.width; j++) // columns of internal corners
-            {
-                cb_object_points.emplace_back(j * square_size_, i * square_size_, 0.0);
-            }
-        }
-
-        cv::Mat R_cb2cam; // Renamed to avoid clash with member variable lidar2cam_R_
-        cv::Rodrigues(cb2cam_rvec_, R_cb2cam);
-        std::vector<cv::Point3f> cb2cam_points;
-        cv::transform(cb_object_points, cb2cam_points, R_cb2cam);
-        for (auto &pt : cb2cam_points)
-        {
-            pt.x += cb2cam_tvec_.at<double>(0);
-            pt.y += cb2cam_tvec_.at<double>(1);
-            pt.z += cb2cam_tvec_.at<double>(2);
-        }
-
-        // 3. Match point counts for SVD
-        // The number of estimated LiDAR corners should match the number of camera-detected corners.
-        // If they don't match, it indicates a problem in corner detection for either sensor.
-        // For SVD, the input point sets must have the same number of points.
-        size_t num_lidar_corners = lidar_points.size();
-        size_t num_cam_corners = cb2cam_points.size();
-
-        if (num_lidar_corners == 0 || num_cam_corners == 0)
-        {
-            RCLCPP_ERROR(this->get_logger(), "No corners detected from one or both sensors for SVD computation. LiDAR corners: %zu, Camera corners: %zu", num_lidar_corners, num_cam_corners);
-            // TODO 2: Robust Error Handling & Logging - Consider more graceful recovery or specific error codes.
-            return;
-        }
-
-        if (num_lidar_corners != num_cam_corners)
-        {
-            RCLCPP_WARN(this->get_logger(), "Mismatch in corner counts! LiDAR: %zu, Camera: %zu. SVD might be inaccurate.", num_lidar_corners, num_cam_corners);
-            // If counts differ, SVD will only use the minimum number of points, which might be incorrect.
-            // A more robust approach would be to try to match corresponding corners.
-            // For now, we'll resize to the smaller set.
-            size_t n_points_svd = std::min(num_lidar_corners, num_cam_corners);
-            if (lidar_points.size() > n_points_svd)
-            {
-                lidar_points.resize(n_points_svd);
-            }
-            if (cb2cam_points.size() > n_points_svd)
-            {
-                cb2cam_points.resize(n_points_svd);
-            }
-            RCLCPP_WARN(this->get_logger(), "Resized point sets for SVD to %zu points.", n_points_svd);
-        }
-
-        point3fVectorToPointCloud2(lidar_points, checker_msg_, "map", this->now()); // Publish estimated corners from LiDAR
-
-        // 4. Calculate R, t based on SVD
-        computeRigidTransformSVD(lidar_points, cb2cam_points, lidar2cam_R_, lidar2cam_t_);
-
-        std::cout << "[Lidar → Camera] R:\n"
-                  << lidar2cam_R_ << std::endl;
-        std::cout << "[Lidar → Camera] t:\n"
-                  << lidar2cam_t_ << std::endl;
-
-        // Save
-        saveMultipleToFile("txt", "cam_lidar_calib_result",
-                           "[Lidar → Camera] R:\n", lidar2cam_R_,
-                           "[Lidar → Camera] t:\n", lidar2cam_t_);
-
-        // TODO 8: Output and Reporting - Save to YAML
-        saveCalibrationResultToYaml(lidar2cam_R_, lidar2cam_t_);
-
-        point3fVectorToPointCloud2(cb2cam_points, cb_points_msg_, "map", this->now()); // Publish corners seen from camera
-
-        std::vector<cv::Point3f> lidar_points_all;
-        for (const auto &p : cloud_all->points)
-        {
-            lidar_points_all.emplace_back(
-                p.x,
-                p.y,
-                p.z);
-        }
-
-        std::vector<cv::Point3f> lidar2cam_points_all;
-        for (const auto &pt : lidar_points_all)
-        {
-            cv::Mat pt_mat = (cv::Mat_<double>(3, 1) << pt.x, pt.y, pt.z);
-            cv::Mat pt_transformed = lidar2cam_R_ * pt_mat + lidar2cam_t_;
-
-            lidar2cam_points_all.emplace_back(
-                pt_transformed.at<double>(0),
-                pt_transformed.at<double>(1),
-                pt_transformed.at<double>(2));
-        }
-
-        point3fVectorToPointCloud2(lidar2cam_points_all, lidar2cam_points_, "map", this->now()); // Publish all LiDAR points after transformation
-
-        // Image projection (주석 해제됨)
-        pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_in_cam(new pcl::PointCloud<pcl::PointXYZI>);
-        for (const auto &pt : lidar2cam_points_all)
-        {
-            cloud_in_cam->emplace_back(pt.x, pt.y, pt.z);
-        }
-
-        std::string filename = img_path_ + img_file_;
-        cv::Mat img_color = cv::imread(filename, cv::IMREAD_COLOR);
-        if (img_color.empty())
-        {
-            RCLCPP_ERROR(this->get_logger(), "SHUTDOWN_CAUSE: Failed to load image. Shutting down node.");
-            rclcpp::shutdown();
-        }
-
-        projectLidarToImage(cloud_in_cam, img_color, last_image_);
-
-        cv::namedWindow("Lidar Overlaid (All points)", cv::WINDOW_NORMAL);
-        cv::resizeWindow("Lidar Overlaid (All points)", 640, 480);
-        cv::imshow("Lidar Overlaid (All points)", last_image_);
-
-        // 재투영 에러 계산 함수 호출
-        calculateReprojectionError();
     }
 
     void computeRigidTransformSVD(
@@ -1035,8 +707,6 @@ private:
         const cv::Mat &image,
         cv::Mat &image_out)
     {
-        // This function is no longer actively used for display as per user request.
-        // Keeping it for potential future use or if a specific projection calculation is needed.
         image_out = image.clone();
 
         double fx = intrinsic_matrix_.at<double>(0, 0);
@@ -1044,9 +714,30 @@ private:
         double cx = intrinsic_matrix_.at<double>(0, 2);
         double cy = intrinsic_matrix_.at<double>(1, 2);
 
+        float min_horizontal_dist = std::numeric_limits<float>::max();
+        float max_horizontal_dist = std::numeric_limits<float>::min();
+
+        // 1. 거리 범위 계산 (수평 거리: sqrt(x^2 + y^2))
         for (const auto &pt : cloud_in_cam->points)
         {
-            if (pt.z <= 0.0)
+            if (pt.z <= 0.0 || pt.z > 30.0f)
+                continue;
+
+            float current_horizontal_dist = std::sqrt(pt.x * pt.x + pt.y * pt.y);
+            min_horizontal_dist = std::min(min_horizontal_dist, current_horizontal_dist);
+            max_horizontal_dist = std::max(max_horizontal_dist, current_horizontal_dist);
+        }
+
+        if (max_horizontal_dist - min_horizontal_dist < 1e-6f)
+        {
+            min_horizontal_dist = 0.0f;
+            max_horizontal_dist = 30.0f;
+        }
+
+        // 2. HSV 색상으로 표현
+        for (const auto &pt : cloud_in_cam->points)
+        {
+            if (pt.z <= 0.0 || pt.z > 5.0f)
                 continue;
 
             double x = pt.x;
@@ -1058,14 +749,54 @@ private:
 
             if (u >= 0 && u < image_out.cols && v >= 0 && v < image_out.rows)
             {
-                float depth = static_cast<float>(z);
-                cv::Scalar color = cv::Scalar(0, 255, 0); // Green
-                if (depth < 1.0)
-                    color = cv::Scalar(0, 0, 255); // Red
-                else if (depth < 2.0)
-                    color = cv::Scalar(0, 255, 255); // Yellow
+                float horizontal_dist = std::sqrt(x * x + z * z);
+                float t = (horizontal_dist - min_horizontal_dist) / (max_horizontal_dist - min_horizontal_dist);
+                t = std::clamp(t, 0.0f, 1.0f);
 
-                cv::circle(image_out, cv::Point(u, v), 2, color, -1);
+                // HSV -> RGB 수동 변환 (Hue: 0~360 → 무지개, S=1, V=1)
+                float h = t * 240.0f; // Blue(240) → Red(0)
+                float s = 1.0f, v_val = 1.0f;
+                float c = v_val * s;
+                float x_hsv = c * (1 - std::fabs(fmod(h / 60.0f, 2) - 1)); // Renamed to avoid clash with pt.x
+
+                float m = v_val - c;
+
+                float r = 0, g = 0, b = 0;
+                if (h < 60)
+                {
+                    r = c;
+                    g = x_hsv;
+                    b = 0;
+                }
+                else if (h < 120)
+                {
+                    r = x_hsv;
+                    g = c;
+                    b = 0;
+                }
+                else if (h < 180)
+                {
+                    r = 0;
+                    g = c;
+                    b = x_hsv;
+                }
+                else if (h < 240)
+                {
+                    r = 0;
+                    g = x_hsv;
+                    b = c;
+                }
+                else
+                {
+                    r = 0, g = 0, b = 0;
+                }
+
+                uint8_t R = static_cast<uint8_t>((r + m) * 255);
+                uint8_t G = static_cast<uint8_t>((g + m) * 255);
+                uint8_t B = static_cast<uint8_t>((b + m) * 255);
+
+                cv::Scalar color = cv::Scalar(B, G, R); // OpenCV는 BGR
+                cv::circle(image_out, cv::Point(u, v), 5, color, -1);
             }
         }
     }
@@ -1141,17 +872,81 @@ private:
         const rclcpp::Time &stamp)
     {
         // Create a PCL PointCloud from cv::Point3f vector
-        pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
         pcl_cloud->width = static_cast<uint32_t>(points.size());
         pcl_cloud->height = 1;
         pcl_cloud->is_dense = false;
         pcl_cloud->points.resize(points.size());
 
+        float min_d = std::numeric_limits<float>::max();
+        float max_d = std::numeric_limits<float>::lowest();
+
+        std::vector<float> distances;
+        distances.reserve(points.size());
+
+        for (const auto &pt : points)
+        {
+            float d = std::sqrt(pt.x * pt.x + pt.z * pt.z); // 수평 거리
+            distances.push_back(d);
+            if (d < min_d)
+                min_d = d;
+            if (d > max_d)
+                max_d = d;
+        }
+
+        // 2. 그라데이션 컬러 함수 (Jet 스타일)
+        auto hsvRainbowColormap = [](float t) -> uint32_t
+        {
+            t = std::clamp(t, 0.0f, 1.0f);
+
+            float h = t * 240.0f; // Hue: 0 = red, 240 = blue (OpenCV는 0~180 but RGB는 0~360)
+            float s = 1.0f;
+            float v = 1.0f;
+
+            float c = v * s;
+            float x_hsv = c * (1 - std::fabs(fmod(h / 60.0f, 2) - 1)); // Renamed to avoid clash with pt.x
+            float m = v - c;
+
+            float r = 0, g = 0, b = 0;
+            if (h < 60)
+            {
+                r = c, g = x_hsv, b = 0;
+            }
+            else if (h < 120)
+            {
+                r = x_hsv, g = c, b = 0;
+            }
+            else if (h < 180)
+            {
+                r = 0, g = c, b = x_hsv;
+            }
+            else if (h < 240)
+            {
+                r = 0, g = x_hsv, b = c;
+            }
+            else
+            {
+                r = 0, g = 0, b = 0;
+            }
+
+            uint8_t R = static_cast<uint8_t>((r + m) * 255);
+            uint8_t G = static_cast<uint8_t>((g + m) * 255);
+            uint8_t B = static_cast<uint8_t>((b + m) * 255);
+
+            return (R << 16) | (G << 8) | B;
+        };
+
+        // 3. 포인트별로 컬러 지정
         for (size_t i = 0; i < points.size(); ++i)
         {
+            float d = distances[i];
+            float normalized_d = (d - min_d) / (max_d - min_d); // 0~1 정규화
+
             pcl_cloud->points[i].x = points[i].x;
             pcl_cloud->points[i].y = points[i].y;
             pcl_cloud->points[i].z = points[i].z;
+            pcl_cloud->points[i].rgb = hsvRainbowColormap(normalized_d);
         }
 
         // Convert PCL PointCloud to sensor_msgs::msg::PointCloud2
@@ -1179,121 +974,394 @@ private:
         }
     }
 
-
-template <typename T>
-void saveToFile(const std::string &extension,
-                const std::string &filename,
-                const T &data)
-{
-    std::string fullpath = absolute_path_ + filename + "." + extension;
-    std::ofstream ofs(fullpath);
-
-    if (!ofs.is_open())
+    template <typename T>
+    void saveToFile(const std::string &extension,
+                    const std::string &filename,
+                    const T &data)
     {
-        RCLCPP_ERROR(this->get_logger(), "Failed to open file: %s", fullpath.c_str());
-        rclcpp::shutdown();
-    }
+        std::string fullpath = cam_lidar_path_ + filename + "." + extension;
+        std::ofstream ofs(fullpath);
 
-    ofs << data << std::endl;
-    ofs.close();
-
-    RCLCPP_INFO(this->get_logger(), "File saved: %s", fullpath.c_str());
-}
-
-void saveToFile(const std::string &extension,
-                const std::string &filename,
-                const cv::Mat &mat)
-{
-    std::string fullpath = absolute_path_ + filename + "." + extension;
-    std::ofstream ofs(fullpath);
-
-    if (!ofs.is_open())
-    {
-        RCLCPP_ERROR(this->get_logger(), "Failed to open file: %s", fullpath.c_str());
-        rclcpp::shutdown();
-    }
-
-    for (int i = 0; i < mat.rows; ++i)
-    {
-        for (int j = 0; j < mat.cols; ++j)
+        if (!ofs.is_open())
         {
-            ofs << mat.at<double>(i, j) << " ";
+            RCLCPP_ERROR(this->get_logger(), "Failed to open file: %s", fullpath.c_str());
+            rclcpp::shutdown();
         }
-        ofs << "\n";
+
+        ofs << data << std::endl;
+        ofs.close();
+
+        RCLCPP_INFO(this->get_logger(), "File saved: %s", fullpath.c_str());
     }
 
-    ofs.close();
-
-    RCLCPP_INFO(this->get_logger(), "cv::Mat saved: %s", fullpath.c_str());
-}
-
-template <typename... Args>
-void saveMultipleToFile(const std::string &extension,
-                        const std::string &filename,
-                        const Args &...args)
-{
-    std::string fullpath = absolute_path_ + filename + "." + extension;
-    std::ofstream ofs(fullpath);
-
-    if (!ofs.is_open())
+    void saveToFile(const std::string &extension,
+                    const std::string &filename,
+                    const cv::Mat &mat)
     {
-        RCLCPP_ERROR(this->get_logger(), "Failed to open file: %s", fullpath.c_str());
-        rclcpp::shutdown();
-    }
+        std::string fullpath = cam_lidar_path_ + filename + "." + extension;
+        std::ofstream ofs(fullpath);
 
-    (writeData(ofs, args), ...);
-
-    ofs.close();
-
-    RCLCPP_INFO(this->get_logger(), "File saved: %s", fullpath.c_str());
-}
-
-template <typename T>
-void writeData(std::ofstream &ofs, const T &data)
-{
-    ofs << data << "\n";
-}
-
-void writeData(std::ofstream &ofs, const cv::Mat &mat)
-{
-    for (int i = 0; i < mat.rows; ++i)
-    {
-        for (int j = 0; j < mat.cols; ++j)
+        if (!ofs.is_open())
         {
-            ofs << mat.at<double>(i, j) << " ";
+            RCLCPP_ERROR(this->get_logger(), "Failed to open file: %s", fullpath.c_str());
+            rclcpp::shutdown();
         }
-        ofs << "\n";
+
+        for (int i = 0; i < mat.rows; ++i)
+        {
+            for (int j = 0; j < mat.cols; ++j)
+            {
+                ofs << mat.at<double>(i, j) << " ";
+            }
+            ofs << "\n";
+        }
+
+        ofs.close();
+
+        RCLCPP_INFO(this->get_logger(), "cv::Mat saved: %s", fullpath.c_str());
     }
-}
 
-// Output and Reporting - Save to YAML
-void saveCalibrationResultToYaml(const cv::Mat &R, const cv::Mat &t)
-{
-    std::string filepath = absolute_path_ + "lidar_camera_extrinsic.yaml";
-    cv::FileStorage fs(filepath, cv::FileStorage::WRITE);
-
-    if (!fs.isOpened())
+    template <typename... Args>
+    void saveMultipleToFile(const std::string &extension,
+                            const std::string &filename,
+                            const Args &...args)
     {
-        RCLCPP_ERROR(this->get_logger(), "Failed to open YAML file for saving extrinsic calibration: %s", filepath.c_str());
-        return;
+        std::string fullpath = cam_lidar_path_ + filename + "." + extension;
+        std::ofstream ofs(fullpath);
+
+        if (!ofs.is_open())
+        {
+            RCLCPP_ERROR(this->get_logger(), "Failed to open file: %s", fullpath.c_str());
+            rclcpp::shutdown();
+        }
+
+        (writeData(ofs, args), ...);
+
+        ofs.close();
+
+        RCLCPP_INFO(this->get_logger(), "File saved: %s", fullpath.c_str());
     }
 
-    fs << "lidar_to_camera_rotation" << R;
-    fs << "lidar_to_camera_translation" << t;
-    fs.release();
-    RCLCPP_INFO(this->get_logger(), "Extrinsic calibration results saved to %s", filepath.c_str());
-}
+    template <typename T>
+    void writeData(std::ofstream &ofs, const T &data)
+    {
+        ofs << data << "\n";
+    }
+
+    void writeData(std::ofstream &ofs, const cv::Mat &mat)
+    {
+        for (int i = 0; i < mat.rows; ++i)
+        {
+            for (int j = 0; j < mat.cols; ++j)
+            {
+                ofs << mat.at<double>(i, j) << " ";
+            }
+            ofs << "\n";
+        }
+    }
+
+    // Output and Reporting - Save to YAML
+    void saveCalibrationResultToYaml(const cv::Mat &R, const cv::Mat &t)
+    {
+        std::string filepath = cam_lidar_path_ + "lidar_camera_extrinsic.yaml";
+        cv::FileStorage fs(filepath, cv::FileStorage::WRITE);
+
+        if (!fs.isOpened())
+        {
+            RCLCPP_ERROR(this->get_logger(), "Failed to open YAML file for saving extrinsic calibration: %s", filepath.c_str());
+            return;
+        }
+
+        fs << "lidar_to_camera_rotation" << R;
+        fs << "lidar_to_camera_translation" << t;
+        fs.release();
+        RCLCPP_INFO(this->get_logger(), "Extrinsic calibration results saved to %s", filepath.c_str());
+    }
+    // Added member variable for flip_normal_direction
+    bool flip_normal_direction_;
+    // 랜덤으로 선택된 점 관련 멤버 변수
+    cv::Point2f random_selected_image_point_;
+    cv::Point3f random_selected_lidar_point_in_cam_frame_; // 카메라 좌표계로 변환된 라이다 점
+
+    // --- Definition of calibrateLidarCameraFinal function ---
+    void calibrateLidarCameraFinal(const pcl::PointCloud<pcl::PointXYZI>::Ptr &cloud_all,
+                                   const std::vector<cv::Point3f> &estimated_chessboard_corners_lidar)
+    {
+        // 1. Generate 3D chessboard points in the camera frame
+        // These are the object points (chessboard corners in its own frame)
+        std::vector<cv::Point3f> object_points_chessboard_frame;
+        for (int i = 0; i < board_size_.height; i++)
+        {
+            for (int j = 0; j < board_size_.width; j++)
+            {
+                object_points_chessboard_frame.emplace_back(j * square_size_, i * square_size_, 0.0);
+            }
+        }
+
+        // Transform object points from chessboard frame to camera frame
+        std::vector<cv::Point3f> chessboard_3d_in_cam_frame;
+        cv::Mat R_cb2cam;
+        cv::Rodrigues(cb2cam_rvec_, R_cb2cam); // Convert rotation vector to rotation matrix
+
+        for (const auto &pt_obj : object_points_chessboard_frame)
+        {
+            cv::Mat pt_mat = (cv::Mat_<double>(3, 1) << pt_obj.x, pt_obj.y, pt_obj.z);
+            cv::Mat pt_transformed = R_cb2cam * pt_mat + cb2cam_tvec_;
+            chessboard_3d_in_cam_frame.emplace_back(
+                pt_transformed.at<double>(0),
+                pt_transformed.at<double>(1),
+                pt_transformed.at<double>(2));
+        }
+
+        // Ensure we have enough corresponding points
+        if (estimated_chessboard_corners_lidar.size() != chessboard_3d_in_cam_frame.size() ||
+            estimated_chessboard_corners_lidar.empty())
+        {
+            RCLCPP_ERROR(this->get_logger(), "Mismatch in number of 3D corners for extrinsic calibration or no corners found!");
+            return;
+        }
+
+        // 2. Compute rigid transformation from LiDAR frame to Camera frame using SVD
+        // src: estimated_chessboard_corners_lidar (3D points in LiDAR frame)
+        // dst: chessboard_3d_in_cam_frame (3D points in Camera frame)
+        computeRigidTransformSVD(estimated_chessboard_corners_lidar, chessboard_3d_in_cam_frame, lidar2cam_R_, lidar2cam_t_);
+
+        RCLCPP_INFO(this->get_logger(), "Lidar to Camera Rotation Matrix (R):\n%f %f %f\n%f %f %f\n%f %f %f",
+                    lidar2cam_R_.at<double>(0, 0), lidar2cam_R_.at<double>(0, 1), lidar2cam_R_.at<double>(0, 2),
+                    lidar2cam_R_.at<double>(1, 0), lidar2cam_R_.at<double>(1, 1), lidar2cam_R_.at<double>(1, 2),
+                    lidar2cam_R_.at<double>(2, 0), lidar2cam_R_.at<double>(2, 1), lidar2cam_R_.at<double>(2, 2));
+        RCLCPP_INFO(this->get_logger(), "Lidar to Camera Translation Vector (t):\n%f\n%f\n%f",
+                    lidar2cam_t_.at<double>(0), lidar2cam_t_.at<double>(1), lidar2cam_t_.at<double>(2));
+
+        // 3. Project all LiDAR points to the image plane using the newly found transformation
+        pcl::PointCloud<pcl::PointXYZI>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZI>);
+        transformed_cloud->points.reserve(cloud_all->points.size());
+
+        std::vector<cv::Point2f> projected_lidar_points_2d;                        // Store all projected 2D points
+        std::vector<cv::Point3f> transformed_lidar_points_3d_for_random_selection; // Store corresponding 3D points
+
+        double fx = intrinsic_matrix_.at<double>(0, 0);
+        double fy = intrinsic_matrix_.at<double>(1, 1);
+        double cx = intrinsic_matrix_.at<double>(0, 2);
+        double cy = intrinsic_matrix_.at<double>(1, 2);
+
+        for (const auto &pt_lidar : cloud_all->points)
+        {
+            cv::Mat pt_mat = (cv::Mat_<double>(3, 1) << pt_lidar.x, pt_lidar.y, pt_lidar.z);
+            cv::Mat pt_transformed = lidar2cam_R_ * pt_mat + lidar2cam_t_;
+
+            pcl::PointXYZI p_transformed;
+            p_transformed.x = pt_transformed.at<double>(0);
+            p_transformed.y = pt_transformed.at<double>(1);
+            p_transformed.z = pt_transformed.at<double>(2);
+            p_transformed.intensity = pt_lidar.intensity; // Preserve intensity
+            transformed_cloud->points.push_back(p_transformed);
+
+            // Project to 2D image plane for random selection
+            if (p_transformed.z > 0) // Only project points in front of the camera
+            {
+                int u = static_cast<int>((fx * p_transformed.x / p_transformed.z) + cx);
+                int v = static_cast<int>((fy * p_transformed.y / p_transformed.z) + cy);
+
+                if (u >= 0 && u < last_image_.cols && v >= 0 && v < last_image_.rows)
+                {
+                    projected_lidar_points_2d.emplace_back(u, v);
+                    transformed_lidar_points_3d_for_random_selection.emplace_back(p_transformed.x, p_transformed.y, p_transformed.z);
+                }
+            }
+        }
+
+        // Convert transformed PCL cloud to ROS2 message for visualization
+        pcl::toROSMsg(*transformed_cloud, lidar2cam_points_);
+        lidar2cam_points_.header.frame_id = "camera_frame"; // Or "map", depending on your RViz setup
+        RCLCPP_INFO(this->get_logger(), "Transformed full LiDAR cloud to camera frame and published to /lidar2cam_points.");
+
+        // 4. Calculate and report reprojection error
+        calculateReprojectionError();
+
+        // 5. Save calibration results to YAML
+        saveCalibrationResultToYaml(lidar2cam_R_, lidar2cam_t_);
+
+        // 6. Project LiDAR points onto the camera image for visual verification
+        cv::Mat image_with_lidar_projection;
+        projectLidarToImage(transformed_cloud, last_image_, image_with_lidar_projection);
+
+        // 7. 랜덤 점 선택 및 방향 비교
+        if (!projected_lidar_points_2d.empty())
+        {
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_int_distribution<> distrib(0, projected_lidar_points_2d.size() - 1);
+            int random_idx = distrib(gen);
+
+            random_selected_image_point_ = projected_lidar_points_2d[random_idx];
+            random_selected_lidar_point_in_cam_frame_ = transformed_lidar_points_3d_for_random_selection[random_idx];
+
+            RCLCPP_INFO(this->get_logger(), "Randomly selected image point: (%f, %f)", random_selected_image_point_.x, random_selected_image_point_.y);
+            RCLCPP_INFO(this->get_logger(), "Corresponding LiDAR point (in camera frame): (%f, %f, %f)",
+                        random_selected_lidar_point_in_cam_frame_.x, random_selected_lidar_point_in_cam_frame_.y, random_selected_lidar_point_in_cam_frame_.z);
+
+            bool flip_changed_in_this_call = false;
+            compareDirectionsAndFlip(flip_changed_in_this_call); // 방향 비교 및 필요시 flip_normal_direction 변경
+        }
+        else
+        {
+            RCLCPP_WARN(this->get_logger(), "No valid projected LiDAR points to select a random point from.");
+        }
+
+        cv::namedWindow("Lidar Projected on Image", cv::WINDOW_NORMAL); // Uncommented for display
+        cv::resizeWindow("Lidar Projected on Image", 640, 480);
+        cv::imshow("Lidar Projected on Image", image_with_lidar_projection);
+        cv::waitKey(1); // Keep window open briefly
+    }
+    // --- End of calibrateLidarCameraFinal function definition ---
+
+    // --- Definition of compareDirectionsAndFlip function ---
+    void compareDirectionsAndFlip(bool &flip_changed_in_this_call)
+    {
+        flip_changed_in_this_call = false; // 플립 변경 여부를 초기화
+
+        // 랜덤으로 선택된 이미지 점과 라이다 점(카메라 좌표계)이 유효한지 확인
+        if (random_selected_image_point_.x == 0 && random_selected_image_point_.y == 0 &&
+            random_selected_lidar_point_in_cam_frame_.x == 0 && random_selected_lidar_point_in_cam_frame_.y == 0 && random_selected_lidar_point_in_cam_frame_.z == 0)
+        {
+            RCLCPP_WARN(this->get_logger(), "Randomly selected points are not valid for direction comparison. Skipping comparison.");
+            return;
+        }
+
+        // 1. 카메라 이미지 점에 해당하는 3D 방향 벡터 (카메라 원점에서 이미지 픽셀을 통과하는 광선)
+        // 픽셀 좌표 (u, v)를 카메라 내부 파라미터(fx, fy, cx, cy)를 사용하여 정규화된 이미지 평면 (Z=1) 상의 3D 점으로 변환합니다.
+        // 이 벡터 (x_norm, y_norm, 1.0)는 이미 카메라 좌표계 내의 방향 벡터입니다.
+        double x_norm = (random_selected_image_point_.x - intrinsic_matrix_.at<double>(0, 2)) / intrinsic_matrix_.at<double>(0, 0);
+        double y_norm = (random_selected_image_point_.y - intrinsic_matrix_.at<double>(1, 2)) / intrinsic_matrix_.at<double>(1, 1);
+
+        cv::Point3f image_ray_vector(x_norm, y_norm, 1.0);
+
+        // 방향 비교의 정확성을 위해 이미지 광선 벡터를 정규화합니다.
+        double mag_image_ray_orig = std::sqrt(image_ray_vector.x * image_ray_vector.x +
+                                              image_ray_vector.y * image_ray_vector.y +
+                                              image_ray_vector.z * image_ray_vector.z);
+        if (mag_image_ray_orig > 1e-6)
+        {
+            image_ray_vector.x /= mag_image_ray_orig;
+            image_ray_vector.y /= mag_image_ray_orig;
+            image_ray_vector.z /= mag_image_ray_orig;
+        }
+        else
+        {
+            RCLCPP_WARN(this->get_logger(), "Image ray vector has zero magnitude. Cannot compare directions.");
+            return;
+        }
+
+        // 2. 라이다 점(카메라 좌표계)의 3D 벡터 (카메라 원점에서 라이다 점까지의 벡터)
+        // 이 벡터는 이미 카메라 좌표계에 있으며, 카메라 원점으로부터 라이다 점까지의 방향을 나타냅니다.
+        cv::Point3f lidar_vector = random_selected_lidar_point_in_cam_frame_;
+        // 방향 비교의 정확성을 위해 라이다 벡터를 정규화합니다.
+        double mag_lidar_orig = std::sqrt(lidar_vector.x * lidar_vector.x +
+                                          lidar_vector.y * lidar_vector.y +
+                                          lidar_vector.z * lidar_vector.z);
+        if (mag_lidar_orig > 1e-6)
+        {
+            lidar_vector.x /= mag_lidar_orig;
+            lidar_vector.y /= mag_lidar_orig;
+            lidar_vector.z /= mag_lidar_orig;
+        }
+        else
+        {
+            RCLCPP_WARN(this->get_logger(), "LiDAR vector has zero magnitude. Cannot compare directions.");
+            return;
+        }
+
+        // --- 디버깅 로그 ---
+        RCLCPP_INFO(this->get_logger(), "--- 방향 비교 디버그 ---");
+        RCLCPP_INFO(this->get_logger(), "정규화된 이미지 광선 벡터 (카메라 좌표계 내 방향): (%.4f, %.4f, %.4f)", image_ray_vector.x, image_ray_vector.y, image_ray_vector.z);
+        RCLCPP_INFO(this->get_logger(), "정규화된 라이다 벡터 (카메라 좌표계 내 방향): (%.4f, %.4f, %.4f)", lidar_vector.x, lidar_vector.y, lidar_vector.z);
+        // --- 디버깅 로그 끝 ---
+
+        // 3. 두 정규화된 벡터의 내적 계산 (내적은 두 벡터 사이의 각도 코사인 값과 같음)
+        double dot_product = image_ray_vector.x * lidar_vector.x +
+                             image_ray_vector.y * lidar_vector.y +
+                             image_ray_vector.z * lidar_vector.z;
+
+        // 4. 코사인 각도 계산 (이미 정규화되었으므로 크기는 1)
+        double cos_angle = dot_product; // 정규화된 벡터이므로 크기는 1
+
+        // 부동 소수점 오차로 인해 cos_angle이 [-1, 1] 범위를 벗어날 수 있으므로 클램프
+        cos_angle = std::clamp(cos_angle, -1.0, 1.0);
+
+        // 5. 각도 계산 (라디안)
+        double angle_rad = std::acos(cos_angle);
+        double angle_deg = angle_rad * 180.0 / M_PI;
+
+        RCLCPP_INFO(this->get_logger(), "내적 (정규화된 벡터): %.4f", dot_product);
+        RCLCPP_INFO(this->get_logger(), "코사인 각도: %.4f, 각도 (도): %.2f", cos_angle, angle_deg);
+        RCLCPP_INFO(this->get_logger(), "현재 flip_normal_direction_: %s", flip_normal_direction_ ? "TRUE" : "FALSE");
+
+        // --- 새로운 앞/뒤 판별 로직: 카메라 좌표계 내 Z축 값 확인 ---
+        // 카메라 앞에 있는 물체는 Z축 값이 양수여야 합니다.
+        // random_selected_lidar_point_in_cam_frame_는 이미 카메라 좌표계로 변환된 점입니다.
+        bool z_positive_consistent = (random_selected_lidar_point_in_cam_frame_.z > 0);
+        RCLCPP_INFO(this->get_logger(), "LiDAR 점의 카메라 Z축 값: %.4f (양수 일치: %s)",
+                    random_selected_lidar_point_in_cam_frame_.z, z_positive_consistent ? "TRUE" : "FALSE");
+
+        bool should_flip_based_on_z = false;
+        if (random_selected_lidar_point_in_cam_frame_.z < 0)
+        { // Z축이 음수이면 뒤집어야 함
+            should_flip_based_on_z = true;
+        }
+
+        // 6. 최종 방향 결정 및 flip_normal_direction_ 변경
+        // Z축 검사와 각도 검사를 종합하여 최종 결정을 내립니다.
+        // Z축이 음수인데 현재 flip_normal_direction_이 false이면 뒤집어야 함
+        // Z축이 양수인데 현재 flip_normal_direction_이 true이면 뒤집힌 것을 되돌려야 함
+        if (should_flip_based_on_z != flip_normal_direction_)
+        {
+            flip_normal_direction_ = should_flip_based_on_z;
+            flip_changed_in_this_call = true;
+            RCLCPP_WARN(this->get_logger(), "Z축 일관성 검사로 'flip_normal_direction'이 %s로 변경되었습니다.", flip_normal_direction_ ? "TRUE" : "FALSE");
+            RCLCPP_WARN(this->get_logger(), "자동 재보정을 시작합니다.");
+            return; // Z축 검사로 결정되었으므로 각도 검사는 스킵
+        }
+
+        // Z축 검사로 결정되지 않았다면 (예: Z축이 0에 가깝거나 이미 일치하는 경우), 기존 각도 검사를 사용합니다.
+        // 90도 이상 차이가 나면 방향이 반대라고 판단
+        if (angle_deg > 90.0)
+        {
+            if (!flip_normal_direction_)
+            { // 이미 true가 아니라면 변경
+                flip_normal_direction_ = true;
+                flip_changed_in_this_call = true; // 플립이 발생했음을 알림
+                RCLCPP_WARN(this->get_logger(), "각도 불일치 감지! 'flip_normal_direction'을 TRUE로 설정합니다.");
+                RCLCPP_WARN(this->get_logger(), "뒤집힌 법선으로 자동 재보정을 시작합니다.");
+            }
+            else
+            {
+                RCLCPP_INFO(this->get_logger(), "각도 불일치 감지되었으나, 'flip_normal_direction'이 이미 TRUE입니다. 변경 없음.");
+            }
+        }
+        else
+        {
+            if (flip_normal_direction_)
+            { // 이미 true인데 방향이 맞다면 false로 변경
+                flip_normal_direction_ = false;
+                flip_changed_in_this_call = true; // 플립이 발생했음을 알림
+                RCLCPP_INFO(this->get_logger(), "각도 일치. 'flip_normal_direction'을 FALSE로 설정합니다.");
+            }
+            else
+            {
+                RCLCPP_INFO(this->get_logger(), "각도 일치. 'flip_normal_direction'은 FALSE를 유지합니다. 변경 없음.");
+            }
+        }
+    }
 }; // End of CamLidarCalibNode class
 
 int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
     auto node = std::make_shared<CamLidarCalibNode>();
-    
-    // MultiThreadedExecutor를 사용하여 노드를 실행
-    rclcpp::executors::MultiThreadedExecutor executor;
-    executor.add_node(node);
-    executor.spin(); // Executor를 스핀하여 노드의 콜백 및 서비스 요청/응답 처리
+
+    // 서비스 클라이언트가 없으므로 MultiThreadedExecutor 대신 rclcpp::spin() 사용
+    rclcpp::spin(node);
 
     rclcpp::shutdown();
     return 0;

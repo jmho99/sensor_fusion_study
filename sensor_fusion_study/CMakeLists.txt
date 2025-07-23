@@ -17,9 +17,12 @@ find_package(PCL REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(sensor_fusion_study_interfaces REQUIRED)
+find_package(Eigen3 REQUIRED NO_MODULE)
 
 find_package(ament_cmake_python REQUIRED)
 find_package(rclpy REQUIRED)
+
+add_subdirectory(../sensor_fusion_study_utils ${CMAKE_CURRENT_BINARY_DIR}/sensor_fusion_study_util_build)
 
 add_executable(one_cam_calib src/one_cam_calib.cpp)
 ament_target_dependencies(
@@ -93,6 +96,10 @@ ament_target_dependencies(
   "visualization_msgs"
   "pcl_conversions"
   "sensor_fusion_study_interfaces"
+  "Eigen3"
+)
+target_link_libraries(cam_lidar_calib
+  sensor_fusion_study_utils
 )
 target_include_directories(cam_lidar_calib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -117,6 +124,27 @@ target_include_directories(cam_lidar_calib_2 PUBLIC
   $<INSTALL_INTERFACE:include>)
 target_compile_features(cam_lidar_calib_2 PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
 
+
+add_executable(intensity src/intensity.cpp)
+ament_target_dependencies(
+  intensity
+  "rclcpp"
+  "std_msgs"
+  "OpenCV"
+  "cv_bridge"
+  "sensor_msgs"
+  "image_transport"
+  "PCL"
+  "visualization_msgs"
+  "pcl_conversions"
+  "sensor_fusion_study_interfaces"
+  "Eigen3"
+)
+target_include_directories(intensity PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(intensity PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
+
 install(TARGETS
   one_cam_calib
   stereo_cam_calib
@@ -124,7 +152,13 @@ install(TARGETS
   pcd_publisher
   cam_lidar_calib
   cam_lidar_calib_2
+  intensity
   DESTINATION lib/${PROJECT_NAME})
+
+install(DIRECTORY include/
+    DESTINATION include/${PROJECT_NAME}
+    FILES_MATCHING PATTERN "*.hpp"
+)
 
   #python module
 ament_python_install_package(${PROJECT_NAME})

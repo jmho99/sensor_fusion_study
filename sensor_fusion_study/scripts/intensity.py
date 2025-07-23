@@ -483,7 +483,8 @@ def save_corner_points_to_file(corners_array, filename="detected_corner_points.t
 # 6. 논문 방식의 코너 검출 메인 함수
 # =============================================================================
 def estimate_chessboard_corners_paper_method(lidar_points_full,
-                                             internal_corners_x, internal_corners_y, checker_size_m):
+                                             internal_corners_x, internal_corners_y, checker_size_m,
+                                             flip_normal_direction=False): # 새로운 파라미터 추가
     """
     Estimates chessboard corners from LiDAR points using a simplified version of the paper's method.
     Args:
@@ -491,6 +492,7 @@ def estimate_chessboard_corners_paper_method(lidar_points_full,
         internal_corners_x (int): Number of horizontal internal corners (e.g., 6 for 7x8 board).
         internal_corners_y (int): Number of vertical internal corners (e.g., 7 for 7x8 board).
         checker_size_m (float): Size of each checker square in meters.
+        flip_normal_direction (bool): If True, flips the direction of the PCA Z-axis (normal vector).
 
     Returns:
         numpy.ndarray: (Num_corners, 3) array of estimated 3D corner coordinates in the original LiDAR frame.
@@ -535,7 +537,12 @@ def estimate_chessboard_corners_paper_method(lidar_points_full,
     # 이 부분은 체커보드 평면의 법선이 항상 센서 방향을 향하도록 보장합니다.
     if np.dot(v_z_pca, -centroid) < 0:
         v_z_pca = -v_z_pca
-    v_z_pca = v_z_pca / np.linalg.norm(v_z_pca)
+    
+    # 사용자 요청에 따라 Z축 방향을 반전 (수직 및 오른손 법칙 유지)
+    if flip_normal_direction:
+        v_z_pca = -v_z_pca
+
+    v_z_pca = v_z_pca / np.linalg.norm(v_z_pca) # Normalize after potential flip
 
     # v_x_pca_initial: 가장 큰 고유값에 해당하는 고유 벡터 (첫 번째 주성분)
     v_x_pca_initial = principal_components[:, 0]
@@ -869,6 +876,8 @@ def estimate_chessboard_corners_paper_method(lidar_points_full,
 class LidarCornerDetectionService(Node):
     def __init__(self):
         super().__init__('lidar_corner_detection_service')
+        # flip_normal_direction 파라미터 선언 (기본값 False)
+        self.declare_parameter('flip_normal_direction', False)
         # 서비스 타입도 Intensity로 변경
         self.srv = self.create_service(Intensity, 'detect_lidar_corners', self.detect_corners_callback)
         self.get_logger().info('Lidar Corner Detection Service Ready.')
@@ -881,6 +890,9 @@ class LidarCornerDetectionService(Node):
         internal_corners_y = int(request.grid_size_y)
         checker_size_m = float(request.checker_size_m)
         
+        # flip_normal_direction 파라미터 값 가져오기
+        flip_normal_direction = self.get_parameter('flip_normal_direction').get_parameter_value().bool_value
+
         try:
             lidar_points_full = parse_pcd_string(pcd_data_ascii)
 
@@ -895,7 +907,8 @@ class LidarCornerDetectionService(Node):
                 lidar_points_full,
                 internal_corners_x=internal_corners_x,
                 internal_corners_y=internal_corners_y,
-                checker_size_m=checker_size_m
+                checker_size_m=checker_size_m,
+                flip_normal_direction=flip_normal_direction # 파라미터 전달
             )
 
             if final_3d_corners_lidar_frame.size > 0:
