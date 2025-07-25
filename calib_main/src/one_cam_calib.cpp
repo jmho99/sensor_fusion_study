@@ -66,7 +66,7 @@ private:
   void readWritePath(std::string where)
   {
     std::string home_dir = std::getenv("HOME");
-    std::string calibration_path = home_dir + "/sensor_fusion_study_ws/src/sensor_fusion_study/calibration";
+    std::string calibration_path = home_dir + "/sensor_fusion_study_ws/src/sensor_fusion_study/calib_data";
 
     one_cam_path_ = calibration_path + "/one_cam_calib/";
     origin_path_ = one_cam_path_ + "origin_images/";

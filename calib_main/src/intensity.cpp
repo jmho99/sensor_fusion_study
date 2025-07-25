@@ -1,5 +1,5 @@
 #include "rclcpp/rclcpp.hpp"
-#include "sensor_fusion_study_interfaces/srv/intensity.hpp" // Custom service message (Intensity로 변경)
+#include "calib_interfaces/srv/intensity.hpp" // Custom service message (Intensity로 변경)
 #include <Eigen/Dense> // For PCA and matrix operations
 #include <vector>
 #include <string>
@@ -604,7 +604,7 @@ public:
         this->declare_parameter("flip_normal_direction", false);
         
         // Create the ROS2 service server
-        srv_ = this->create_service<sensor_fusion_study_interfaces::srv::Intensity>(
+        srv_ = this->create_service<calib_interfaces::srv::Intensity>(
             "detect_lidar_corners", // Service name
             std::bind(&LidarCornerDetectionService::detect_corners_callback, this,
                       std::placeholders::_1, std::placeholders::_2)); // Callback function
@@ -614,8 +614,8 @@ public:
 private:
     // Service callback function
     void detect_corners_callback(
-        const std::shared_ptr<sensor_fusion_study_interfaces::srv::Intensity::Request> request,
-        std::shared_ptr<sensor_fusion_study_interfaces::srv::Intensity::Response> response) {
+        const std::shared_ptr<calib_interfaces::srv::Intensity::Request> request,
+        std::shared_ptr<calib_interfaces::srv::Intensity::Response> response) {
         RCLCPP_INFO(this->get_logger(), "Received request for corner detection.");
 
         // Extract parameters from the service request
@@ -674,7 +674,7 @@ private:
         }
     }
 
-    rclcpp::Service<sensor_fusion_study_interfaces::srv::Intensity>::SharedPtr srv_;
+    rclcpp::Service<calib_interfaces::srv::Intensity>::SharedPtr srv_;
 };
 
 int main(int argc, char** argv) {

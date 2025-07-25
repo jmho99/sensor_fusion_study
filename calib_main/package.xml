@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>sensor_fusion_study</name>
+  <name>calib_main</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
   <maintainer email="antlab@todo.todo">antlab</maintainer>
@@ -21,7 +21,7 @@
   <depend>pcl_conversions</depend>
   <depend>eigen</depend>
 
-  <depend>sensor_fusion_study_interfaces</depend>
+  <depend>calib_interfaces</depend>
 
   <depend>rclpy</depend>
 
