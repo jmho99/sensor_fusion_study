@@ -6,189 +6,140 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/segmentation/sac_segmentation.h>
-
 #include <pcl/filters/crop_box.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/common/common.h>
+#include <pcl/common/centroid.h>
 
-#include <pcl/segmentation/extract_clusters.h>
-#include <pcl/kdtree/kdtree.h>
-
-#include <pcl/features/normal_3d.h>
-#include <pcl/segmentation/region_growing.h>
+#include <Eigen/Dense>
 
 class PcdPublisher : public rclcpp::Node
 {
 public:
-    PcdPublisher()
-        : Node("pcd_publisher")
+    PcdPublisher() : Node("pcd_publisher")
     {
-        // 퍼블리셔 생성
         publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("pcd_cloud", 10);
         pub_plane_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("plane_points", 10);
 
         std::string where = "company";
         read_write_path(where);
 
-        // PCD 파일 로드
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-
-        std::string filename = pcd_path_ + "/pcd_6.pcd";
+        std::string filename = pcd_path_ + "/lidar0_8.pcd";
 
         if (pcl::io::loadPCDFile<pcl::PointXYZ>(filename, *cloud) == -1)
         {
-            RCLCPP_ERROR(this->get_logger(), "Couldn't read PCD file: %s", filename.c_str());
+            RCLCPP_ERROR(this->get_logger(), "Couldn't read file: %s", filename.c_str());
             return;
         }
-        RCLCPP_INFO(this->get_logger(), "Loaded %zu points from %s", filename.c_str());
+        RCLCPP_INFO(this->get_logger(), "Loaded %zu points from %s", cloud->size(), filename.c_str());
 
         pcl::CropBox<pcl::PointXYZ> crop;
         crop.setInputCloud(cloud);
-        crop.setMin(Eigen::Vector4f(-3.0, -0.8, -0.63, 1.0)); // ROI 최소 x,y,z
-        crop.setMax(Eigen::Vector4f(0.0, 0.5, 3.0, 1.0));   // ROI 최대 x,y,z
-
+        crop.setMin(Eigen::Vector4f(-4.0, -2.0, -0.7, 1.0));
+        crop.setMax(Eigen::Vector4f(-2.0, 1.0, 2.0, 1.0));
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_roi(new pcl::PointCloud<pcl::PointXYZ>);
         crop.filter(*cloud_roi);
 
-        // 평면 분할
         pcl::SACSegmentation<pcl::PointXYZ> seg;
+        pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+        pcl::PointIndices::Ptr inliners(new pcl::PointIndices);
         seg.setOptimizeCoefficients(true);
         seg.setModelType(pcl::SACMODEL_PLANE);
         seg.setMethodType(pcl::SAC_RANSAC);
-        seg.setDistanceThreshold(0.02);
-
-        pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
-        pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-
+        seg.setDistanceThreshold(0.001);
         seg.setInputCloud(cloud_roi);
-        seg.segment(*inliers, *coefficients);
+        seg.segment(*inliners, *coefficients);
 
-        if (inliers->indices.empty())
-        {
-            RCLCPP_WARN(this->get_logger(), "No planar model found.");
-            return;
-        }
-
-        RCLCPP_INFO(this->get_logger(), "Plane coefficients: %f %f %f %f",
-                    coefficients->values[0],
-                    coefficients->values[1],
-                    coefficients->values[2],
-                    coefficients->values[3]);
-
-        // 평면 점 추출
-        pcl::ExtractIndices<pcl::PointXYZ> extract;
-        extract.setInputCloud(cloud_roi);
-        extract.setIndices(inliers);
-        extract.setNegative(false);
-        extract.filter(*cloud_roi);
-
-        RCLCPP_INFO(this->get_logger(), "Plane inliers: %zu", inliers->indices.size());
-#if 0
-        float distance_threshold = 0.005; // 5 mm
-
-pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-for (const auto& pt : cloud_roi->points) {
-    float dist = std::abs(
-        coefficients->values[0] * pt.x +
-        coefficients->values[1] * pt.y +
-        coefficients->values[2] * pt.z +
-        coefficients->values[3]
-    ) / std::sqrt(
-        coefficients->values[0]*coefficients->values[0] +
-        coefficients->values[1]*coefficients->values[1] +
-        coefficients->values[2]*coefficients->values[2]
-    );
-
-    if (dist < distance_threshold) {
-        cloud_plane_filtered->points.push_back(pt);
-    }
-}
-
-cloud_plane_filtered->width = cloud_plane_filtered->points.size();
-cloud_plane_filtered->height = 1;
-cloud_plane_filtered->is_dense = true;
-
-RCLCPP_INFO(this->get_logger(), "Points after distance filtering: %zu", cloud_plane_filtered->points.size());
-
-pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
-pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-
-ne.setSearchMethod(tree);
-ne.setInputCloud(cloud_plane_filtered);
-ne.setKSearch(30);
-ne.compute(*normals);
-
-pcl::RegionGrowing<pcl::PointXYZ, pcl::Normal> reg;
-reg.setMinClusterSize(30);
-reg.setMaxClusterSize(10000);
-reg.setSearchMethod(tree);
-reg.setNumberOfNeighbours(30);
-reg.setInputCloud(cloud_plane_filtered);
-reg.setInputNormals(normals);
-reg.setSmoothnessThreshold(5.0 / 180.0 * M_PI); // 약 5도
-reg.setCurvatureThreshold(0.05);
-
-std::vector<pcl::PointIndices> clusters;
-reg.extract(clusters);
-
-// Region Growing 결과 중 가장 큰 cluster만 사용
-pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane_cluster(new pcl::PointCloud<pcl::PointXYZ>);
-if (!clusters.empty())
-{
-    size_t max_size = 0;
-    int max_index = -1;
-    for (size_t i = 0; i < clusters.size(); ++i)
-    {
-        if (clusters[i].indices.size() > max_size)
-        {
-            max_size = clusters[i].indices.size();
-            max_index = i;
-        }
-    }
-
-    for (auto idx : clusters[max_index].indices)
-    {
-        cloud_plane_cluster->points.push_back(cloud_roi->points[idx]);
-    }
-
-    cloud_plane_cluster->width = cloud_plane_cluster->points.size();
-    cloud_plane_cluster->height = 1;
-    cloud_plane_cluster->is_dense = true;
-
-    RCLCPP_INFO(this->get_logger(), "Region Growing cluster points: %zu", cloud_plane_cluster->points.size());
-}
-else
-{
-    RCLCPP_WARN(this->get_logger(), "No Region Growing clusters found!");
-}
-
-#endif
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr plane_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        auto filtered_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+        RCLCPP_INFO(this->get_logger(), "2-3. Post-processing...");
         for (const auto &pt : cloud_roi->points)
         {
-            pcl::PointXYZRGB pt_rgb;
-            pt_rgb.x = pt.x;
-            pt_rgb.y = pt.y;
-            pt_rgb.z = pt.z;
+            float distance = coefficients->values[0] * pt.x +
+                             coefficients->values[1] * pt.y +
+                             coefficients->values[2] * pt.z +
+                             coefficients->values[3];
 
-            pt_rgb.r = 0;
-            pt_rgb.g = 0;
-            pt_rgb.b = 255;
-
-            plane_cloud->points.push_back(pt_rgb);
+            if (std::abs(distance) < 0.05)
+            {
+                filtered_cloud->points.push_back(pt);
+            }
         }
 
-        plane_cloud->width = plane_cloud->points.size();
-        plane_cloud->height = 1;
-        plane_cloud->is_dense = true;
+        filtered_cloud->width = filtered_cloud->points.size();
+        filtered_cloud->height = 1;
+        filtered_cloud->is_dense = true;
 
-        // PCL → ROS2 메시지 변환
+        
+        // KD-Tree for neighbor search
+        pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
+        kdtree.setInputCloud(cloud_roi);
+
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr filtered(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+        const float flatness_threshold = 0.15f;
+        const float search_radius = 0.1f;
+        const int min_neighbors = 10;
+
+        for (const auto &pt : filtered_cloud->points)
+        {
+            std::vector<int> indices;
+            std::vector<float> dists;
+            if (kdtree.radiusSearch(pt, search_radius, indices, dists) >= min_neighbors)
+            {
+                // neighbors 점들만 따로 추출
+                pcl::PointCloud<pcl::PointXYZ> neighbors;
+                for (int idx : indices)
+                {
+                    neighbors.points.push_back(filtered_cloud->points[idx]);
+                }
+                neighbors.width = neighbors.points.size();
+                neighbors.height = 1;
+                neighbors.is_dense = true;
+
+                // 공분산, 중심 계산은 neighbors로
+                Eigen::Vector4f centroid;
+                Eigen::Matrix3f covariance;
+                pcl::computeMeanAndCovarianceMatrix(neighbors, covariance, centroid);
+
+                // 고유값 계산
+                Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver(covariance);
+                Eigen::Vector3f eigenvalues = solver.eigenvalues();
+
+                float flatness = eigenvalues[0] / eigenvalues.sum();
+
+                if (flatness < flatness_threshold) // threshold는 0.01~0.05 정도가 적당함
+                {
+                    pcl::PointXYZRGB pt_rgb;
+                    pt_rgb.x = pt.x;
+                    pt_rgb.y = pt.y;
+                    pt_rgb.z = pt.z;
+                    pt_rgb.r = 0;
+                    pt_rgb.g = 255;
+                    pt_rgb.b = 0;
+                    filtered->points.push_back(pt_rgb);
+                }
+            }
+        }
+
+        filtered->width = filtered->size();
+        filtered->height = 1;
+        filtered->is_dense = true;
+
+        RCLCPP_INFO(this->get_logger(), "2-4. Extract plane points...");
+        pcl::ExtractIndices<pcl::PointXYZRGB> extract;
+        extract.setInputCloud(filtered);
+        extract.setIndices(inliners);
+        extract.setNegative(true);
+        extract.filter(*filtered);
+
+
         pcl::toROSMsg(*cloud, cloud_msg_);
-        cloud_msg_.header.frame_id = "map"; // RViz에서 사용하는 좌표계 설정
+        cloud_msg_.header.frame_id = "map";
 
-        pcl::toROSMsg(*plane_cloud, plane_msg_);
-        plane_msg_.header.frame_id = "map"; // RViz에서 사용하는 좌표계 설정
+        pcl::toROSMsg(*filtered, plane_msg_);
+        plane_msg_.header.frame_id = "map";
 
-        // 타이머로 주기적 퍼블리시
         timer_ = this->create_wall_timer(
             std::chrono::milliseconds(500),
             std::bind(&PcdPublisher::timerCallback, this));
@@ -205,18 +156,10 @@ private:
 
     void read_write_path(std::string where)
     {
-        std::string change_path;
-        if (where == "company")
-        {
-            change_path = "/antlab/sensor_fusion_study_ws";
-        }
-        else if (where == "home")
-        {
-            change_path = "/icrs/sensor_fusion_study_ws";
-        }
-
-        std::string absolute_path = "/home" + change_path + "/src/sensor_fusion_study/cam_lidar_calib";
-        pcd_path_ = absolute_path + "/pointclouds";
+        std::string change_path = (where == "company") ? "/antlab/sensor_fusion_study_ws"
+                                                       : "/icrs/sensor_fusion_study_ws";
+        std::string absolute_path = "/home" + change_path + "/src/sensor_fusion_study/calib_data/multi_lidar_calib";
+        pcd_path_ = absolute_path + "/origin_pointclouds";
     }
 
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher_;
