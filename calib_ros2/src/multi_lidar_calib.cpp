@@ -17,6 +17,12 @@
 #include <pcl/common/centroid.h>
 #include <pcl/common/common.h>
 #include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/search/kdtree.h>
+#include <pcl/segmentation/extract_clusters.h>
+#include <pcl/features/moment_of_inertia_estimation.h>
+#include <pcl/surface/convex_hull.h>
+#include <pcl/common/transforms.h>
 
 namespace fs = std::filesystem;
 
@@ -152,10 +158,12 @@ private:
         RCLCPP_INFO(this->get_logger(), "Loaded %lu frames of multi-lidar point clouds", loaded_clouds.size());
 
         std::vector<std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr>> detected_plane_clouds;
+        std::vector<std::vector<std::vector<Eigen::Vector3f>>> all_corners;
         // 2. Detect Plane
         for (int frame_index = 0; frame_index < frame_count; frame_index++)
         {
             std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> frame_plane_clouds;
+            std::vector<std::vector<Eigen::Vector3f>> current_frame_corners;
             for (int lidar_index = 0; lidar_index < number; lidar_index++)
             {
                 RCLCPP_INFO(this->get_logger(), "Processing data from LIDAR %d (%d frame)", lidar_index, frame_index);
@@ -164,193 +172,204 @@ private:
                 RCLCPP_INFO(this->get_logger(), "2-1. Set cloud ROI...");
                 pcl::CropBox<pcl::PointXYZ> crop;
                 crop.setInputCloud(frame_cloud);
-                crop.setMin(Eigen::Vector4f(-4.0, -2.0, -0.7, 1.0)); // X, Y, Z, 1.0
-                crop.setMax(Eigen::Vector4f(-2.0, 1.0, 2.0, 1.0));
+                crop.setMin(Eigen::Vector4f(-4.0, -2.0, -0.85, 1.0)); // X, Y, Z, 1.0
+                crop.setMax(Eigen::Vector4f(-2.0, 0.8, 2.0, 1.0));
                 crop.filter(*frame_cloud);
 
-                RCLCPP_INFO(this->get_logger(), "2-2. Set segmentation model...");
-                pcl::SACSegmentation<pcl::PointXYZ> seg;
-                pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
-                pcl::PointIndices::Ptr inliners(new pcl::PointIndices);
-                seg.setOptimizeCoefficients(true);
-                seg.setModelType(pcl::SACMODEL_PLANE);
-                seg.setMethodType(pcl::SAC_RANSAC);
-                seg.setDistanceThreshold(0.001);
-                seg.setInputCloud(frame_cloud);
-                seg.segment(*inliners, *coefficients);
+                RCLCPP_INFO(this->get_logger(), "2-2. Delete floor...");
+                pcl::SACSegmentation<pcl::PointXYZ> ransac_seg;
+                pcl::ModelCoefficients::Ptr ransac_coeff(new pcl::ModelCoefficients);
+                pcl::PointIndices::Ptr ransac_inliers(new pcl::PointIndices);
+                ransac_seg.setOptimizeCoefficients(true);
+                ransac_seg.setModelType(pcl::SACMODEL_PLANE);
+                ransac_seg.setMethodType(pcl::SAC_RANSAC);
+                ransac_seg.setDistanceThreshold(0.001);
+                ransac_seg.setInputCloud(frame_cloud);
+                ransac_seg.segment(*ransac_inliers, *ransac_coeff);
+
+                float A = ransac_coeff->values[0];
+                float B = ransac_coeff->values[1];
+                float C = ransac_coeff->values[2];
+                float D = ransac_coeff->values[3];
+                float norm = std::sqrt(A * A + B * B + C * C);
+
+                pcl::PointIndices::Ptr plane_remove(new pcl::PointIndices);
+
+                for (size_t i = 0; i < frame_cloud->points.size(); ++i)
+                {
+                    const auto &pt = frame_cloud->points[i];
+
+                    // 1. 수직 거리 (z 포함한 평면 거리)
+                    float dist_to_plane = std::fabs(A * pt.x + B * pt.y + C * pt.z + D) / norm;
+
+                    // 2. 바닥 평면 평균 z (또는 inlier 평균 z)
+                    float ground_z = 0.0;
+                    for (const auto &idx : ransac_inliers->indices)
+                        ground_z += frame_cloud->points[idx].z;
+                    ground_z /= static_cast<float>(ransac_inliers->indices.size());
+
+                    // 3. 수평 거리 (xy 기준)
+                    float dx = pt.x - frame_cloud->points[ransac_inliers->indices[0]].x;
+                    float dy = pt.y - frame_cloud->points[ransac_inliers->indices[0]].y;
+                    float dist_xy = std::sqrt(dx * dx + dy * dy);
+
+                    // 조건: 평면 거리 작고, 수평 거리도 작으면 제거 대상
+                    if (dist_to_plane < 0.05)
+                    {
+                        plane_remove->indices.push_back(i);
+                    }
+                }
+
+                pcl::ExtractIndices<pcl::PointXYZ> plane_extract;
+                pcl::PointCloud<pcl::PointXYZ>::Ptr cleaned(new pcl::PointCloud<pcl::PointXYZ>);
+                plane_extract.setInputCloud(frame_cloud);
+                plane_extract.setIndices(plane_remove);
+                plane_extract.setNegative(true);
+                plane_extract.filter(*frame_cloud);
+
+                RCLCPP_INFO(this->get_logger(), "2-3. Find plane using voxel...");
+                const float TARGET_BOARD_WIDTH_MIN = 0.40;
+                const float TARGET_BOARD_WIDTH_MAX = 0.70;
+                const float TARGET_BOARD_HEIGHT_MIN = 0.70;
+                const float TARGET_BOARD_HEIGHT_MAX = 1.00;
+                const float ASPECT_RATIO_TOLERANCE = 1.0;
+                const float MIN_PLANE_POINTS = 100;
+                const float MAX_BOARD_THICKNESS = 0.2;
 
                 auto filtered_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-                RCLCPP_INFO(this->get_logger(), "2-3. Post-processing...");
-                for (const auto &pt : frame_cloud->points)
-                {
-                    float distance = coefficients->values[0] * pt.x +
-                                     coefficients->values[1] * pt.y +
-                                     coefficients->values[2] * pt.z +
-                                     coefficients->values[3];
 
-                    if (std::abs(distance) < 0.05)
+                if (ransac_inliers->indices.size() >= MIN_PLANE_POINTS)
+                {
+                    pcl::VoxelGrid<pcl::PointXYZ> voxel;
+                    voxel.setInputCloud(frame_cloud);
+                    voxel.setLeafSize(0.05f, 0.05f, 0.05f);
+                    voxel.filter(*filtered_cloud);
+
+                    // [2] Euclidean Cluster Extraction
+                    std::vector<pcl::PointIndices> cluster_indices;
+                    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+                    tree->setInputCloud(filtered_cloud);
+
+                    pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
+                    ec.setClusterTolerance(0.06); // 3cm 이내
+                    ec.setMinClusterSize(10);     // 클러스터 최소 크기
+                    ec.setMaxClusterSize(10000);  // 최대 크기 제한
+                    ec.setSearchMethod(tree);
+                    ec.setInputCloud(filtered_cloud);
+                    ec.extract(cluster_indices);
+
+                    if (!cluster_indices.empty())
                     {
-                        filtered_cloud->points.push_back(pt);
+                        // [3] 가장 큰 클러스터 선택
+                        auto largest_cluster = std::max_element(cluster_indices.begin(), cluster_indices.end(),
+                                                                [](const pcl::PointIndices &a, const pcl::PointIndices &b)
+                                                                {
+                                                                    return a.indices.size() < b.indices.size();
+                                                                });
+
+                        pcl::PointCloud<pcl::PointXYZ>::Ptr board_candidate(new pcl::PointCloud<pcl::PointXYZ>);
+                        for (int idx : largest_cluster->indices)
+                        {
+                            board_candidate->points.push_back(filtered_cloud->points[idx]);
+                        }
+
+                        // [4] OBB 계산
+                        pcl::MomentOfInertiaEstimation<pcl::PointXYZ> feature_extractor;
+                        feature_extractor.setInputCloud(board_candidate);
+                        feature_extractor.compute();
+
+                        pcl::PointXYZ min_point_OBB, max_point_OBB, position_OBB;
+                        Eigen::Matrix3f rotational_matrix_OBB;
+                        feature_extractor.getOBB(min_point_OBB, max_point_OBB, position_OBB, rotational_matrix_OBB);
+
+                        float obb_len_x = max_point_OBB.x - min_point_OBB.x;
+                        float obb_len_y = max_point_OBB.y - min_point_OBB.y;
+                        float obb_len_z = max_point_OBB.z - min_point_OBB.z;
+
+                        float board_dim1 = std::max(obb_len_x, obb_len_y);
+                        float board_dim2 = std::min(obb_len_x, obb_len_y);
+                        float board_thickness = obb_len_z;
+
+                        bool is_correct_size = (board_dim1 >= TARGET_BOARD_WIDTH_MIN && board_dim1 <= TARGET_BOARD_WIDTH_MAX &&
+                                                board_dim2 >= TARGET_BOARD_HEIGHT_MIN && board_dim2 <= TARGET_BOARD_HEIGHT_MAX) ||
+                                               (board_dim2 >= TARGET_BOARD_WIDTH_MIN && board_dim2 <= TARGET_BOARD_WIDTH_MAX &&
+                                                board_dim1 >= TARGET_BOARD_HEIGHT_MIN && board_dim1 <= TARGET_BOARD_HEIGHT_MAX);
+
+                        float aspect_ratio = board_dim1 / board_dim2;
+                        bool is_correct_aspect_ratio = (aspect_ratio >= (1.0 - ASPECT_RATIO_TOLERANCE) &&
+                                                        aspect_ratio <= (1.0 + ASPECT_RATIO_TOLERANCE));
+
+                        bool is_thin_enough = (board_thickness < MAX_BOARD_THICKNESS);
+                        RCLCPP_INFO(this->get_logger(), "Filtered Cluster OBB Dims: %.3f x %.3f x %.3f (L, W, T)",
+                                    board_dim1, board_dim2, board_thickness);
+                        RCLCPP_INFO(this->get_logger(), "Cluster Filter Check: Size=%d, Aspect=%d, Thin=%d",
+                                    is_correct_size, is_correct_aspect_ratio, is_thin_enough);
+
+                        if (is_correct_size && is_correct_aspect_ratio && is_thin_enough)
+                        {
+                            for (const auto &p : board_candidate->points)
+                            {
+                                pcl::PointXYZ pt_rgb;
+                                pt_rgb.x = p.x;
+                                pt_rgb.y = p.y;
+                                pt_rgb.z = p.z;
+                                filtered_cloud->points.push_back(pt_rgb);
+                            }
+                            std::vector<Eigen::Vector3f> local_board_corners;
+                            local_board_corners.push_back(Eigen::Vector3f(min_point_OBB.x, min_point_OBB.y, min_point_OBB.z));
+                            local_board_corners.push_back(Eigen::Vector3f(max_point_OBB.x, min_point_OBB.y, min_point_OBB.z));
+                            local_board_corners.push_back(Eigen::Vector3f(min_point_OBB.x, max_point_OBB.y, min_point_OBB.z));
+                            local_board_corners.push_back(Eigen::Vector3f(max_point_OBB.x, max_point_OBB.y, min_point_OBB.z));
+
+                            std::vector<Eigen::Vector3f> global_corners;
+                            for (const auto &local_corner : local_board_corners)
+                            {
+                                Eigen::Vector3f global_corner = rotational_matrix_OBB * local_corner + Eigen::Vector3f(position_OBB.x, position_OBB.y, position_OBB.z);
+                                global_corners.push_back(global_corner);
+                            }
+                            current_frame_corners.push_back(global_corners);
+                        }
                     }
                 }
-
-                filtered_cloud->width = filtered_cloud->points.size();
-                filtered_cloud->height = 1;
-                filtered_cloud->is_dense = true;
-
-                pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
-                kdtree.setInputCloud(frame_cloud);
-
-                pcl::PointCloud<pcl::PointXYZ>::Ptr filtered(new pcl::PointCloud<pcl::PointXYZ>);
-
-                const float flatness_threshold = 0.15f;
-                const float search_radius = 0.1f;
-                const int min_neighbors = 10;
-
-                for (const auto &pt : filtered_cloud->points)
-                {
-                    std::vector<int> indices;
-                    std::vector<float> dists;
-                    if (kdtree.radiusSearch(pt, search_radius, indices, dists) >= min_neighbors)
-                    {
-                        // neighbors 점들만 따로 추출
-                        pcl::PointCloud<pcl::PointXYZ> neighbors;
-                        for (int idx : indices)
-                        {
-                            neighbors.points.push_back(filtered_cloud->points[idx]);
-                        }
-                        neighbors.width = neighbors.points.size();
-                        neighbors.height = 1;
-                        neighbors.is_dense = true;
-
-                        // 공분산, 중심 계산은 neighbors로
-                        Eigen::Vector4f centroid;
-                        Eigen::Matrix3f covariance;
-                        pcl::computeMeanAndCovarianceMatrix(neighbors, covariance, centroid);
-
-                        // 고유값 계산
-                        Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver(covariance);
-                        Eigen::Vector3f eigenvalues = solver.eigenvalues();
-
-                        float flatness = eigenvalues[0] / eigenvalues.sum();
-
-                        if (flatness < flatness_threshold) // threshold는 0.01~0.05 정도가 적당함
-                        {
-                            pcl::PointXYZ pt_rgb;
-                            pt_rgb.x = pt.x;
-                            pt_rgb.y = pt.y;
-                            pt_rgb.z = pt.z;
-
-                            filtered->points.push_back(pt_rgb);
-                        }
-                    }
-                }
-
-                filtered->width = filtered->size();
-                filtered->height = 1;
-                filtered->is_dense = true;
-
-                RCLCPP_INFO(this->get_logger(), "2-4. Extract plane points...");
-                pcl::ExtractIndices<pcl::PointXYZ> extract;
-                extract.setInputCloud(filtered);
-                extract.setIndices(inliners);
-                extract.setNegative(true);
-                extract.filter(*filtered);
-
-                frame_plane_clouds.push_back(filtered);
+                frame_plane_clouds.push_back(filtered_cloud);
             }
             detected_plane_clouds.push_back(frame_plane_clouds);
+            all_corners.push_back(current_frame_corners);
         }
+        RCLCPP_INFO(this->get_logger(), "--- All Corners Data ---");
+        for (size_t frame_i = 0; frame_i < all_corners.size(); ++frame_i)
+        {
+            RCLCPP_INFO(this->get_logger(), "Frame %lu:", frame_i);
+            for (size_t lidar_i = 0; lidar_i < all_corners[frame_i].size(); ++lidar_i)
+            {
+                RCLCPP_INFO(this->get_logger(), "  Lidar %lu:", lidar_i);
+                if (all_corners[frame_i][lidar_i].empty())
+                {
+                    RCLCPP_INFO(this->get_logger(), "    No corners detected for this lidar.");
+                }
+                else
+                {
+                    for (size_t corner_idx = 0; corner_idx < all_corners[frame_i][lidar_i].size(); ++corner_idx)
+                    {
+                        const auto &corner = all_corners[frame_i][lidar_i][corner_idx];
+                        RCLCPP_INFO(this->get_logger(), "    Corner %lu: (%.3f, %.3f, %.3f)",
+                                    corner_idx, corner.x(), corner.y(), corner.z());
+                    }
+                }
+            }
+        }
+        RCLCPP_INFO(this->get_logger(), "--- End All Corners Data ---");
 
         RCLCPP_INFO(this->get_logger(), "3-1. Run calibrate...");
+
         for (int frame_i = 0; frame_i < frame_count; frame_i++)
         {
-            std::vector<std::vector<Eigen::Vector3f>> find_corners;
-            for (int lidar_i = 0; lidar_i < number; lidar_i++)
+            // [2] SVD 정합 (기준: lidar0)
+            // all_corners 벡터에서 코너 데이터를 가져와 사용
+            if (all_corners[frame_i].size() >= 2 && !all_corners[frame_i][0].empty() && !all_corners[frame_i][1].empty())
             {
-                auto plane_cloud = detected_plane_clouds[frame_i][lidar_i];
-
-                Eigen::Vector4f centroid4f;
-                pcl::compute3DCentroid(*plane_cloud, centroid4f);
-                Eigen::Vector3f centroid = centroid4f.head<3>();
-
-                Eigen::Matrix3f covariance;
-                pcl::computeCovarianceMatrixNormalized(*plane_cloud, centroid4f, covariance);
-
-                Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> eig_solver(covariance);
-                Eigen::Matrix3f eig_vecs = eig_solver.eigenvectors();
-
-                if (eig_vecs.col(0).dot(Eigen::Vector3f::UnitX()) < 0)
-                {
-                    eig_vecs.col(0) = -eig_vecs.col(0);
-                }
-
-                eig_vecs.col(1) = eig_vecs.col(2).cross(eig_vecs.col(0)).normalized();
-                Eigen::Matrix3f R_pca = eig_vecs;
-
-                std::vector<Eigen::Vector3f> projected_pca;
-                for (const auto &pts : plane_cloud->points)
-                {
-                    Eigen::Vector3f p(pts.x, pts.y, pts.z);
-                    projected_pca.push_back(R_pca.transpose() * (p - centroid));
-                }
-
-                std::vector<cv::Point2f> points_2d;
-                for (const auto &pt : projected_pca)
-                {
-                    points_2d.emplace_back(pt.y(), pt.z());
-                }
-
-                cv::RotatedRect rectangle = cv::minAreaRect(points_2d);
-                cv::Point2f rect_pts[4];
-                rectangle.points(rect_pts);
-
-                std::vector<Eigen::Vector3f> rect_corner;
-                for (int i = 0; i < 4; i++)
-                {
-                    Eigen::Vector3f point_local(0.0f, rect_pts[i].x, rect_pts[i].y);
-                    Eigen::Vector3f point_global = R_pca * point_local + centroid;
-                    rect_corner.push_back(point_global);
-                }
-
-                find_corners.push_back(rect_corner);
-
-                // 2D 점과 꼭짓점 그리기 위한 이미지 준비
-                int img_size = 500;
-                cv::Mat img = cv::Mat::zeros(img_size, img_size, CV_8UC3);
-
-                // pca 투영 점을 이미지 좌표로 변환 함수
-                auto toImgCoord = [&](const Eigen::Vector3f &pt) -> cv::Point
-                {
-                    float scale = 100.0; // 임의 scale 조절
-                    int y = static_cast<int>(pt.y() * scale + img_size / 2);
-                    int z = static_cast<int>(pt.z() * scale + img_size / 2);
-                    return cv::Point(y, img_size - z); // OpenCV는 좌상단이 (0,0)
-                };
-
-                // 점들 그리기
-                for (const auto &pt : projected_pca)
-                {
-                    cv::circle(img, toImgCoord(pt), 2, cv::Scalar(255, 255, 255), -1);
-                }
-
-                // 사각형 꼭짓점 그리기
-                for (int i = 0; i < 4; i++)
-                {
-                    cv::line(img, toImgCoord(Eigen::Vector3f(0, rect_pts[i].x, rect_pts[i].y)), toImgCoord(Eigen::Vector3f(0, rect_pts[(i + 1) % 4].x, rect_pts[(i + 1) % 4].y)), cv::Scalar(0, 255, 0), 2);
-                }
-
-                // 이미지 윈도우 표시
-                cv::imshow("PCA Plane Points", img);
-                std::string img_filename = origin_path_ + "img_" + std::to_string(lidar_i) + "_" + std::to_string(frame_i) + ".png";
-                cv::imwrite(img_filename, img);
-                cv::waitKey(1); // 짧게 대기해서 계속 띄움
-            }
-
-            if (find_corners.size() >= 2)
-            {
-                const std::vector<Eigen::Vector3f> &ref_corner = find_corners[0];
-                const std::vector<Eigen::Vector3f> &src_corner = find_corners[1];
+                const std::vector<Eigen::Vector3f> &ref_corner = all_corners[frame_i][0];
+                const std::vector<Eigen::Vector3f> &src_corner = all_corners[frame_i][1];
 
                 Eigen::Vector3f src_mean = Eigen::Vector3f::Zero();
                 Eigen::Vector3f ref_mean = Eigen::Vector3f::Zero();
@@ -381,6 +400,108 @@ private:
                 RCLCPP_INFO(this->get_logger(), "%s", ss_r.str().c_str());
                 RCLCPP_INFO(this->get_logger(), "%s", ss_t.str().c_str());
             }
+            else
+            {
+                RCLCPP_WARN(this->get_logger(), "[Frame %d] Not enough valid corners detected for SVD calibration.", frame_i);
+            }
+
+            // [3] 꼭짓점 이미지 저장 (시각화 부분)
+            int img_size = 500;
+            int margin = 50;
+            cv::Mat image(img_size + 2 * margin, img_size + 2 * margin, CV_8UC3, cv::Scalar(255, 255, 255));
+
+            // 기준 lidar0 기준으로 시각화
+            std::vector<Eigen::Vector3f> all_points_for_vis;
+            for (int i = 0; i < number; ++i)
+            {
+                if (!detected_plane_clouds[frame_i][i]->points.empty())
+                {
+                    for (const auto &pt : detected_plane_clouds[frame_i][i]->points)
+                    {
+                        all_points_for_vis.emplace_back(Eigen::Vector3f(pt.x, pt.y, pt.z));
+                    }
+                }
+            }
+            float min_x = std::numeric_limits<float>::max();
+            float min_y = std::numeric_limits<float>::max();
+            float max_x = std::numeric_limits<float>::lowest();
+            float max_y = std::numeric_limits<float>::lowest();
+
+            if (!all_points_for_vis.empty())
+            {
+                for (const auto &pt : all_points_for_vis)
+                {
+                    min_x = std::min(min_x, pt.x());
+                    max_x = std::max(max_x, pt.x());
+                    min_y = std::min(min_y, pt.y());
+                    max_y = std::max(max_y, pt.y());
+                }
+            }
+            else
+            {
+                min_x = -1.0;
+                max_x = 1.0;
+                min_y = -1.0;
+                max_y = 1.0; // Fallback for empty clouds
+            }
+
+            float range_x = max_x - min_x;
+            float range_y = max_y - min_y;
+            float scale = img_size / std::max(range_x, range_y);
+            if (scale == 0 || std::isinf(scale))
+                scale = img_size; // Prevent division by zero or inf
+
+            // 라이다별 평면 포인트 시각화
+            for (int lidar_i = 0; lidar_i < number; ++lidar_i)
+            {
+                const auto &plane = detected_plane_clouds[frame_i][lidar_i];
+                cv::Scalar color = (lidar_i == 0) ? cv::Scalar(255, 0, 0) : cv::Scalar(0, 255, 0); // blue or green
+
+                for (const auto &pt : plane->points)
+                {
+                    int x = static_cast<int>((pt.x - min_x) * scale + margin);
+                    int y = image.rows - static_cast<int>((pt.y - min_y) * scale + margin);
+                    if (x >= 0 && x < image.cols && y >= 0 && y < image.rows)
+                    {
+                        image.at<cv::Vec3b>(y, x) = cv::Vec3b(color[0], color[1], color[2]);
+                    }
+                }
+
+                // 코너점 시각화
+                if (lidar_i < all_corners[frame_i].size() && !all_corners[frame_i][lidar_i].empty())
+                {
+                    const auto &corners = all_corners[frame_i][lidar_i];
+                    cv::Scalar corner_color;
+                    switch (lidar_i)
+                    {
+                    case 0:
+                        corner_color = cv::Scalar(0, 0, 255); // Lidar 0 코너: 빨간색
+                        break;
+                    case 1:
+                        corner_color = cv::Scalar(255, 0, 255); // Lidar 1 코너: 마젠타색
+                        break;
+                    case 2:
+                        corner_color = cv::Scalar(255, 255, 0); // Lidar 2 코너: 노란색
+                        break;
+                    default:
+                        corner_color = cv::Scalar(0, 255, 255); // 그 외 코너: 시안색
+                        break;
+                    }
+
+                    const auto &pt = corners[0];
+                    int x = static_cast<int>((pt.x() - min_x) * scale + margin);
+                    int y = image.rows - static_cast<int>((pt.y() - min_y) * scale + margin);
+                    cv::circle(image, cv::Point(x, y), 5, corner_color, -1);
+                    const auto &next_pt = corners[1];
+                    int nx = static_cast<int>((next_pt.x() - min_x) * scale + margin);
+                    int ny = image.rows - static_cast<int>((next_pt.y() - min_y) * scale + margin);
+                    cv::line(image, cv::Point(x, y), cv::Point(nx, ny), corner_color, 2);
+                }
+            }
+
+            std::string save_all_path = origin_path_ + "visual_frame_" + std::to_string(frame_i) + ".png";
+            cv::imwrite(save_all_path, image);
+            RCLCPP_INFO(this->get_logger(), "Saved visualization image to: %s", save_all_path.c_str());
         }
     }
 };

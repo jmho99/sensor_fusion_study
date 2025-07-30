@@ -77,6 +77,7 @@ ament_target_dependencies(
   "sensor_msgs"
   "PCL"
   "pcl_conversions"
+  "visualization_msgs"
 )
 target_include_directories(pcd_publisher PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
