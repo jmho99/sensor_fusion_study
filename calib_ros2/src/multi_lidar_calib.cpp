@@ -315,19 +315,86 @@ private:
                                 pt_rgb.z = p.z;
                                 filtered_cloud->points.push_back(pt_rgb);
                             }
-                            std::vector<Eigen::Vector3f> local_board_corners;
-                            local_board_corners.push_back(Eigen::Vector3f(min_point_OBB.x, min_point_OBB.y, min_point_OBB.z));
-                            local_board_corners.push_back(Eigen::Vector3f(max_point_OBB.x, min_point_OBB.y, min_point_OBB.z));
-                            local_board_corners.push_back(Eigen::Vector3f(min_point_OBB.x, max_point_OBB.y, min_point_OBB.z));
-                            local_board_corners.push_back(Eigen::Vector3f(max_point_OBB.x, max_point_OBB.y, min_point_OBB.z));
+                            const double GEOMETRY_EPSILON = 1e-4;                         // 거리 및 좌표 유사성 판단 임계값
+                            const Eigen::Vector3f lidar_origin = Eigen::Vector3f::Zero(); // 라이다 원점
 
-                            std::vector<Eigen::Vector3f> global_corners;
-                            for (const auto &local_corner : local_board_corners)
+                            // OBB 로컬 축 재구성 및 정렬
+                            Eigen::Vector3f original_obb_x_axis = rotational_matrix_OBB.col(0);
+                            Eigen::Vector3f original_obb_y_axis = rotational_matrix_OBB.col(1);
+                            Eigen::Vector3f original_obb_z_axis = rotational_matrix_OBB.col(2);
+
+                            Eigen::Vector3f vec_center_to_lidar = lidar_origin - Eigen::Vector3f(position_OBB.x, position_OBB.y, position_OBB.z);
+
+                            Eigen::Vector3f new_z_axis = original_obb_z_axis;
+                            if (new_z_axis.dot(vec_center_to_lidar) < 0)
                             {
-                                Eigen::Vector3f global_corner = rotational_matrix_OBB * local_corner + Eigen::Vector3f(position_OBB.x, position_OBB.y, position_OBB.z);
-                                global_corners.push_back(global_corner);
+                                new_z_axis *= -1.0f; // Z축을 라이다 방향으로 뒤집음
                             }
-                            current_frame_corners.push_back(global_corners);
+                            new_z_axis.normalize();
+
+                            // 새로운 X축 (보드의 긴 변에 해당)
+                            Eigen::Vector3f candidate_short_axis;
+                            // obb_len_x와 obb_len_y 중 더 긴 변에 해당하는 원래 OBB 축을 선택
+                            if (obb_len_x < obb_len_y)
+                            {
+                                candidate_short_axis = original_obb_x_axis;
+                            }
+                            else
+                            {
+                                candidate_short_axis = original_obb_y_axis;
+                            }
+
+                            // 새로운 X축을 new_z_axis에 수직인 평면에 투영
+                            Eigen::Vector3f new_y_axis = candidate_short_axis - candidate_short_axis.dot(new_z_axis) * new_z_axis;
+                            if (new_y_axis.norm() < GEOMETRY_EPSILON)
+                            { // 퇴화된 경우 (거의 평행)
+                                // fallback: new_z_axis에 수직인 임의의 축 생성
+                                new_y_axis = new_z_axis.cross(Eigen::Vector3f::UnitY());
+                                if (new_y_axis.norm() < GEOMETRY_EPSILON)
+                                {
+                                    new_y_axis = new_z_axis.cross(Eigen::Vector3f::UnitX());
+                                }
+                            }
+                            new_y_axis.normalize();
+
+                            // X축 방향 일관성 강제 (전역 X축과 양의 내적을 갖도록)
+                            // 이것은 보드의 "오른쪽"을 일관되게 정의하는 데 도움이 됩니다.
+                            if (new_y_axis.dot(Eigen::Vector3f::UnitX()) < 0)
+                            {
+                                new_y_axis *= -1.0f;
+                            }
+                            new_y_axis.normalize();
+
+                            // 새로운 Y축 (오른손 좌표계 유지)
+                            Eigen::Vector3f new_x_axis = new_y_axis.cross(new_z_axis);
+                            new_x_axis.normalize();
+
+                            // 최종 회전 행렬 구성
+                            Eigen::Matrix3f final_rotational_matrix_OBB;
+                            final_rotational_matrix_OBB.col(0) = new_x_axis;
+                            final_rotational_matrix_OBB.col(1) = new_y_axis;
+                            final_rotational_matrix_OBB.col(2) = new_z_axis;
+
+                            // OBB 축 정렬이 일관적이라면, 이 코너점들도 일관된 순서로 나올 것입니다.
+                            float actual_half_len_long = std::max(obb_len_x, obb_len_y) / 2.0f;
+                            float actual_half_len_short = std::min(obb_len_x, obb_len_y) / 2.0f;
+                            float chosen_z_local = (new_z_axis.dot(Eigen::Vector3f(position_OBB.x, position_OBB.y, position_OBB.z) - lidar_origin) > 0) ? max_point_OBB.z : min_point_OBB.z;
+                            // chosen_z_local은 OBB 로컬 z축의 min/max 값 중 라이다를 향하는 면의 z값
+
+                            std::vector<Eigen::Vector3f> local_face_corners;
+                            local_face_corners.push_back(Eigen::Vector3f(actual_half_len_long, actual_half_len_short, chosen_z_local));  // Bottom-Left
+                            local_face_corners.push_back(Eigen::Vector3f(actual_half_len_long, -actual_half_len_short, chosen_z_local)); // Bottom-Right
+                            local_face_corners.push_back(Eigen::Vector3f(-actual_half_len_long, actual_half_len_short, chosen_z_local)); // Top-Left
+
+                            // 이제 로컬 코너점들을 전역 좌표계로 변환
+                            std::vector<Eigen::Vector3f> final_ordered_corners_global;
+                            for (const auto &local_corner : local_face_corners)
+                            {
+                                Eigen::Vector3f global_corner = final_rotational_matrix_OBB * local_corner + Eigen::Vector3f(position_OBB.x, position_OBB.y, position_OBB.z);
+                                final_ordered_corners_global.push_back(global_corner);
+                            }
+
+                            current_frame_corners.push_back(final_ordered_corners_global);
                         }
                     }
                 }
@@ -362,6 +429,9 @@ private:
 
         RCLCPP_INFO(this->get_logger(), "3-1. Run calibrate...");
 
+        std::vector<Eigen::Matrix3f> rotations_frame;
+        std::vector<Eigen::Vector3f> translations_frame;
+
         for (int frame_i = 0; frame_i < frame_count; frame_i++)
         {
             // [2] SVD 정합 (기준: lidar0)
@@ -391,6 +461,9 @@ private:
                 Eigen::JacobiSVD<Eigen::Matrix3f> svd_corner(Homogeneous, Eigen::ComputeFullU | Eigen::ComputeFullV);
                 Eigen::Matrix3f R = svd_corner.matrixV() * svd_corner.matrixU().transpose();
                 Eigen::Vector3f t = ref_mean - R * src_mean;
+
+                rotations_frame.push_back(R);
+                translations_frame.push_back(t);
 
                 std::stringstream ss_r, ss_t;
                 ss_r << "\n[Frame" << frame_i << "] Rotation matrix : \n"
@@ -488,10 +561,13 @@ private:
                         break;
                     }
 
+                    // Visualize only 3 corners
+
                     const auto &pt = corners[0];
                     int x = static_cast<int>((pt.x() - min_x) * scale + margin);
                     int y = image.rows - static_cast<int>((pt.y() - min_y) * scale + margin);
                     cv::circle(image, cv::Point(x, y), 5, corner_color, -1);
+
                     const auto &next_pt = corners[1];
                     int nx = static_cast<int>((next_pt.x() - min_x) * scale + margin);
                     int ny = image.rows - static_cast<int>((next_pt.y() - min_y) * scale + margin);
@@ -502,6 +578,208 @@ private:
             std::string save_all_path = origin_path_ + "visual_frame_" + std::to_string(frame_i) + ".png";
             cv::imwrite(save_all_path, image);
             RCLCPP_INFO(this->get_logger(), "Saved visualization image to: %s", save_all_path.c_str());
+        }
+
+        // 여기부터 작성, 위에는 기존 코드 유지
+        RCLCPP_INFO(this->get_logger(), "4. Global Calibration Optimization (Levenberg-Marquardt)");
+
+        Eigen::Matrix3d R_optimized = Eigen::Matrix3d::Identity(); // Changed to double
+        Eigen::Vector3d t_optimized = Eigen::Vector3d::Zero();     // Changed to double
+
+        if (rotations_frame.empty())
+        {
+            RCLCPP_WARN(this->get_logger(), "No valid frames found for global calibration. Optimization skipped.");
+        }
+        else
+        {
+            // Initialize R and t with the average of SVD results
+            // Average translation
+            for (const auto &t_val : translations_frame)
+            {
+                t_optimized += t_val.cast<double>(); // Cast to double
+            }
+            t_optimized /= static_cast<double>(translations_frame.size()); // Cast size to double
+
+            // Average rotation using quaternions
+            Eigen::Quaterniond q_init(0, 0, 0, 0); // Changed to double
+            for (const auto &R_val : rotations_frame)
+            {
+                Eigen::Quaterniond q(R_val.cast<double>()); // Cast to double
+                if (q.dot(q_init) < 0)
+                {
+                    q.coeffs() *= -1.0;
+                }
+                q_init.coeffs() += q.coeffs();
+            }
+            q_init.normalize();
+            R_optimized = q_init.toRotationMatrix();
+
+            std::stringstream ss_initial_r, ss_initial_t;
+            ss_initial_r << R_optimized.format(Eigen::IOFormat(Eigen::StreamPrecision, 0, ", ", "\n", "", "", "", ""));
+            ss_initial_t << t_optimized.transpose().format(Eigen::IOFormat(Eigen::StreamPrecision, 0, ", ", "\n", "", "", "", ""));
+
+            RCLCPP_INFO(this->get_logger(), "Initial R (from averaging SVD): \n%s", ss_initial_r.str().c_str());
+            RCLCPP_INFO(this->get_logger(), "Initial t (from averaging SVD): \n%s", ss_initial_t.str().c_str());
+
+            // Nonlinear Optimization (Levenberg-Marquardt)
+            const int max_iterations = 100;
+            const double convergence_threshold = 1e-6; // Threshold for parameter change
+            double lambda = 1e-3;                      // Initial damping parameter
+            double nu = 2.0;                           // Factor for increasing lambda
+
+            Eigen::Matrix3d best_R = R_optimized; // Changed to double
+            Eigen::Vector3d best_t = t_optimized; // Changed to double
+            double best_error = std::numeric_limits<double>::max();
+
+            for (int iter = 0; iter < max_iterations; ++iter)
+            {
+                Eigen::MatrixXd J(0, 6); // Jacobian matrix
+                Eigen::VectorXd r(0);    // Residual vector
+
+                // Calculate total number of residuals for dynamic resizing
+                int total_residuals = 0;
+                for (int frame_i = 0; frame_i < frame_count; ++frame_i)
+                {
+                    if (all_corners[frame_i].size() >= 2 && all_corners[frame_i][0].size() == 3 && all_corners[frame_i][1].size() == 3)
+                    {
+                        total_residuals += 3 * 3; // 3 corners * 3 dimensions
+                    }
+                }
+                J.resize(total_residuals, 6);
+                r.resize(total_residuals);
+
+                int row_idx = 0;
+                for (int frame_i = 0; frame_i < frame_count; ++frame_i)
+                {
+                    if (all_corners[frame_i].size() >= 2 && all_corners[frame_i][0].size() == 3 && all_corners[frame_i][1].size() == 3)
+                    {
+                        const std::vector<Eigen::Vector3f> &ref_corners_frame = all_corners[frame_i][0]; // Lidar 0 corners
+                        const std::vector<Eigen::Vector3f> &src_corners_frame = all_corners[frame_i][1]; // Lidar 1 corners
+
+                        for (int i = 0; i < 3; ++i)
+                        {                                                                      // Iterate over 3 corners
+                            const Eigen::Vector3d P_ref = ref_corners_frame[i].cast<double>(); // Cast to double
+                            const Eigen::Vector3d P_src = src_corners_frame[i].cast<double>(); // Cast to double
+
+                            // Current transformed point
+                            Eigen::Vector3d P_transformed = R_optimized * P_src + t_optimized;
+
+                            // Residual vector for this point
+                            Eigen::Vector3d residual_pt = P_ref - P_transformed;
+                            r.segment<3>(row_idx) = residual_pt;
+
+                            // Jacobian for this point (3x6 matrix)
+                            Eigen::Matrix3d skew_P_transformed_src = Eigen::Matrix3d::Zero();
+                            skew_P_transformed_src << 0, -P_transformed.z(), P_transformed.y(),
+                                P_transformed.z(), 0, -P_transformed.x(),
+                                -P_transformed.y(), P_transformed.x(), 0;
+
+                            // Jacobian block for rotation (3x3)
+                            J.block<3, 3>(row_idx, 0) = -skew_P_transformed_src;
+                            // Jacobian block for translation (3x3)
+                            J.block<3, 3>(row_idx, 3) = -Eigen::Matrix3d::Identity();
+
+                            row_idx += 3;
+                        }
+                    }
+                }
+
+                // Calculate current error before update
+                double current_total_error = r.norm();
+                if (iter == 0)
+                {
+                    best_error = current_total_error;
+                }
+
+                // Solve the normal equations: (J^T * J + lambda * I) * delta_params = J^T * r
+                Eigen::Matrix<double, 6, 6> Hessian = J.transpose() * J;
+                Eigen::Matrix<double, 6, 1> gradient = J.transpose() * r;
+
+                Eigen::Matrix<double, 6, 1> delta_params;
+                Eigen::Matrix<double, 6, 6> damped_Hessian = Hessian + lambda * Eigen::Matrix<double, 6, 6>::Identity();
+                delta_params = damped_Hessian.ldlt().solve(gradient); // Solve using LDLT decomposition
+
+                Eigen::Vector3d delta_rotation_vec = delta_params.head<3>();    // Already double
+                Eigen::Vector3d delta_translation_vec = delta_params.tail<3>(); // Already double
+
+                // Evaluate the new parameters
+                Eigen::Matrix3d R_new = Eigen::AngleAxisd(delta_rotation_vec.norm(), delta_rotation_vec.normalized()).toRotationMatrix() * R_optimized;
+                Eigen::Vector3d t_new = t_optimized + delta_translation_vec;
+
+                // Calculate error with new parameters
+                Eigen::VectorXd r_new(total_residuals);
+                int new_row_idx = 0;
+                for (int frame_i = 0; frame_i < frame_count; ++frame_i)
+                {
+                    if (all_corners[frame_i].size() >= 2 && all_corners[frame_i][0].size() == 3 && all_corners[frame_i][1].size() == 3)
+                    {
+                        const std::vector<Eigen::Vector3f> &ref_corners_frame = all_corners[frame_i][0];
+                        const std::vector<Eigen::Vector3f> &src_corners_frame = all_corners[frame_i][1];
+                        for (int i = 0; i < 3; ++i)
+                        {
+                            const Eigen::Vector3d P_ref = ref_corners_frame[i].cast<double>();
+                            const Eigen::Vector3d P_src = src_corners_frame[i].cast<double>();
+                            Eigen::Vector3d P_transformed_new = R_new * P_src + t_new;
+                            r_new.segment<3>(new_row_idx) = P_ref - P_transformed_new;
+                            new_row_idx += 3;
+                        }
+                    }
+                }
+                double new_total_error = r_new.norm();
+
+                // Levenberg-Marquardt damping update
+                // Calculate actual reduction vs. expected reduction
+                double actual_reduction = current_total_error * current_total_error - new_total_error * new_total_error;
+                double expected_reduction = (gradient.transpose() * delta_params)(0, 0) - 0.5 * (delta_params.transpose() * Hessian * delta_params)(0, 0);
+
+                double gain_ratio = 0.0;
+                if (expected_reduction > 1e-9)
+                { // Avoid division by zero or very small expected reduction
+                    gain_ratio = actual_reduction / expected_reduction;
+                }
+                else
+                {
+                    gain_ratio = (actual_reduction > 0) ? 1.0 : -1.0; // If expected is zero, check if actual improved
+                }
+
+                RCLCPP_INFO(this->get_logger(), "Iteration %d: Current Error = %.6f, New Error = %.6f, Gain Ratio = %.6f, Lambda = %.6f",
+                            iter, current_total_error, new_total_error, gain_ratio, lambda);
+
+                if (gain_ratio > 0)
+                { // Actual reduction is positive, step is good
+                    R_optimized = R_new;
+                    t_optimized = t_new;
+                    lambda = std::max(lambda * 0.1, 1e-7); // Decrease lambda
+                    nu = 2.0;
+                    if (new_total_error < best_error)
+                    {
+                        best_error = new_total_error;
+                        best_R = R_optimized;
+                        best_t = t_optimized;
+                    }
+                }
+                else
+                {                 // Actual reduction is zero or negative, step is bad
+                    lambda *= nu; // Increase lambda
+                    nu *= 2.0;
+                    RCLCPP_INFO(this->get_logger(), "Step rejected. Increasing lambda to %.6f", lambda);
+                }
+
+                if (delta_params.norm() < convergence_threshold || lambda > 1e10)
+                { // Also add a max lambda to prevent explosion
+                    RCLCPP_INFO(this->get_logger(), "Optimization converged or lambda exploded.");
+                    break;
+                }
+            }
+            R_optimized = best_R; // Use the best parameters found
+            t_optimized = best_t;
+
+            std::stringstream ss_final_r, ss_final_t;
+            ss_final_r << R_optimized.format(Eigen::IOFormat(Eigen::StreamPrecision, 0, ", ", "\n", "", "", "", ""));
+            ss_final_t << t_optimized.transpose().format(Eigen::IOFormat(Eigen::StreamPrecision, 0, ", ", "\n", "", "", "", ""));
+            RCLCPP_INFO(this->get_logger(), "\n-----------\nGlobal Calibrated Rotation Matrix (Lidar1 to Lidar0) - Optimized:\n%s", ss_final_r.str().c_str());
+            RCLCPP_INFO(this->get_logger(), "Global Calibrated Translation Vector (Lidar1 to Lidar0) - Optimized:\n%s", ss_final_t.str().c_str());
+            RCLCPP_INFO(this->get_logger(), "-----------\n");
         }
     }
 };
