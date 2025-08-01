@@ -232,7 +232,7 @@ private:
         this->declare_parameter<double>("roi_max_z", 3.0);
         this->declare_parameter<double>("ransac_distance_threshold", 0.02);
         this->declare_parameter<int>("ransac_max_iterations", 1000);
-        this->declare_parameter<bool>("flip_normal_direction", false); // Declare flip_normal_direction parameter
+        this->declare_parameter<bool>("flip_normal_direction", true); // Declare flip_normal_direction parameter
 
         this->get_parameter("intensity_min_threshold", intensity_min_threshold_);
         this->get_parameter("intensity_max_threshold", intensity_max_threshold_);
