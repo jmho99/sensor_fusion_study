@@ -18,6 +18,7 @@ find_package(visualization_msgs REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(calib_interfaces REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
+find_package(message_filters REQUIRED)
 
 find_package(ament_cmake_python REQUIRED)
 find_package(rclpy REQUIRED)
@@ -145,6 +146,19 @@ target_include_directories(z_pcd_publisher PUBLIC
   $<INSTALL_INTERFACE:include>)
 target_compile_features(z_pcd_publisher PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
 
+add_executable(z_time_synchronizer src/z_time_synchronizer.cpp)
+ament_target_dependencies(
+  z_time_synchronizer
+  "rclcpp"
+  "std_msgs"
+  "sensor_msgs"
+  "message_filters"
+)
+target_include_directories(z_time_synchronizer PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(z_time_synchronizer PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
+
 install(TARGETS
   a_one_cam_calib
   b_stereo_cam_calib
@@ -153,6 +167,7 @@ install(TARGETS
   z_cv_random
   z_intensity
   z_pcd_publisher
+  z_time_synchronizer
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY include/
