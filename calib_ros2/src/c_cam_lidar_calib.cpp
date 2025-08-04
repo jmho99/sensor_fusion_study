@@ -40,7 +40,7 @@ class CamLidarCalibNode : public rclcpp::Node
 {
 public:
     CamLidarCalibNode()
-        : Node("cam_lidar_calib")
+        : Node("c_cam_lidar_calib")
     {
         initializedParameters();
 
@@ -194,10 +194,10 @@ private:
         std::string where = "company";
         readWritePath(where);
 
-        cv::FileStorage fs(one_cam_result_path_ + "one_cam_calib_result.yaml", cv::FileStorage::READ);
+        cv::FileStorage fs(one_cam_result_path_ + "a_one_cam_calib_result.yaml", cv::FileStorage::READ);
         if (!fs.isOpened())
         {
-            RCLCPP_WARN(rclcpp::get_logger("initializedParameters"), "Failed open one_cam_calib_result.yaml file! Shutting down node.");
+            RCLCPP_WARN(rclcpp::get_logger("initializedParameters"), "Failed open a_one_cam_calib_result.yaml file! Shutting down node.");
             rclcpp::shutdown();
         }
         else
@@ -258,10 +258,10 @@ private:
         std::string home_dir = std::getenv("HOME");
         std::string calibration_path = home_dir + "/sensor_fusion_study_ws/src/sensor_fusion_study/calib_data";
 
-        cam_lidar_path_ = calibration_path + "/cam_lidar_calib/";
+        cam_lidar_path_ = calibration_path + "/c_cam_lidar_calib/";
         img_path_ = cam_lidar_path_ + "images/";
         pcd_path_ = cam_lidar_path_ + "pointclouds/";
-        one_cam_result_path_ = calibration_path + "/one_cam_calib/";
+        one_cam_result_path_ = calibration_path + "/a_one_cam_calib/";
 
         fs::create_directories(img_path_);
         fs::create_directories(pcd_path_);

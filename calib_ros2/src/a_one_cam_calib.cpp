@@ -13,7 +13,7 @@ namespace fs = std::filesystem;
 class OneCamCalibNode : public rclcpp::Node
 {
 public:
-  OneCamCalibNode() : Node("one_cam_calib"), frame_counter_(0)
+  OneCamCalibNode() : Node("a_one_cam_calib"), frame_counter_(0)
   {
     declare_parameter("select_connect", "none");
     declare_parameter("device_path", "/dev/video1");
@@ -68,7 +68,7 @@ private:
     std::string home_dir = std::getenv("HOME");
     std::string calibration_path = home_dir + "/sensor_fusion_study_ws/src/sensor_fusion_study/calib_data";
 
-    one_cam_path_ = calibration_path + "/one_cam_calib/";
+    one_cam_path_ = calibration_path + "/a_one_cam_calib/";
     origin_path_ = one_cam_path_ + "origin_images/";
     calib_path_ = one_cam_path_ + "calib_images/";
     fs::create_directories(origin_path_);
@@ -227,7 +227,7 @@ private:
                                    intrinsic_matrix_, dist_coeffs_, rvecs_, tvecs_);
 
         RCLCPP_INFO(this->get_logger(), "RMS error: %.4f", rms_);
-        cv::FileStorage fs(one_cam_path_ + "one_cam_calib_result.yaml", cv::FileStorage::WRITE);
+        cv::FileStorage fs(one_cam_path_ + "a_one_cam_calib_result.yaml", cv::FileStorage::WRITE);
         fs << "checkerboard_cols" << cols_;
         fs << "checkerboard_rows" << rows_;
         fs << "square_size" << square_size_;

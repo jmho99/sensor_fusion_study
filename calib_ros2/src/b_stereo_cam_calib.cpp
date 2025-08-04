@@ -15,7 +15,7 @@ namespace fs = std::filesystem;
 class StereoCamCalibNode : public rclcpp::Node
 {
 public:
-    StereoCamCalibNode() : Node("stereo_cam_calib")
+    StereoCamCalibNode() : Node("b_stereo_cam_calib")
     {
         left_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
             "/left/image_raw", 10, std::bind(&StereoCamCalibNode::leftCallback, this, _1));
@@ -84,10 +84,10 @@ private:
         std::string where = "company";
         readWritePath(where);
 
-        cv::FileStorage fs(one_cam_result_path_ + "one_cam_calib_result.yaml", cv::FileStorage::READ);
+        cv::FileStorage fs(one_cam_result_path_ + "a_one_cam_calib_result.yaml", cv::FileStorage::READ);
         if (!fs.isOpened())
         {
-            RCLCPP_WARN(this->get_logger(), "Failed open one_cam_calib_result.yaml file!");
+            RCLCPP_WARN(this->get_logger(), "Failed open a_one_cam_calib_result.yaml file!");
             return;
         }
         else
@@ -115,10 +115,10 @@ private:
         std::string home_dir = std::getenv("HOME");
         std::string calibration_path = home_dir + "/sensor_fusion_study_ws/src/sensor_fusion_study/calib_data";
 
-        setero_cam_path_ = calibration_path + "/stereo_cam_calib/";
+        setero_cam_path_ = calibration_path + "/b_stereo_cam_calib/";
         origin_path_ = setero_cam_path_ + "origin_images/";
         calib_path_ = setero_cam_path_ + "calib_images/";
-        one_cam_result_path_ = calibration_path + "/one_cam_calib/";
+        one_cam_result_path_ = calibration_path + "/a_one_cam_calib/";
         fs::create_directories(origin_path_);
         fs::create_directories(calib_path_);
     }
@@ -251,7 +251,7 @@ private:
         RCLCPP_INFO(this->get_logger(), "✅ 스테레오 캘리브레이션 완료");
 
         // 파일 저장도 가능
-        cv::FileStorage fs(setero_cam_path_ + "stereo_cam_calib_result.yaml", cv::FileStorage::WRITE);
+        cv::FileStorage fs(setero_cam_path_ + "b_stereo_cam_calib_result.yaml", cv::FileStorage::WRITE);
         fs << "checkerboard_cols" << cols_;
         fs << "checkerboard_rows" << rows_;
         fs << "square_size" << square_size_;

@@ -10,7 +10,7 @@ using namespace std::chrono_literals;
  
 class MinimalImagePublisher : public rclcpp::Node {
 public:
-  MinimalImagePublisher() : Node("cv_random"), count_(0) {
+  MinimalImagePublisher() : Node("z_cv_random"), count_(0) {
     publisher_ =
         this->create_publisher<sensor_msgs::msg::Image>("random_image", 10);
     timer_ = this->create_wall_timer(

@@ -24,9 +24,9 @@ find_package(rclpy REQUIRED)
 
 add_subdirectory(../calib_utils ${CMAKE_CURRENT_BINARY_DIR}/calib_utils_build)
 
-add_executable(one_cam_calib src/one_cam_calib.cpp)
+add_executable(a_one_cam_calib src/a_one_cam_calib.cpp)
 ament_target_dependencies(
-  one_cam_calib
+  a_one_cam_calib
   "rclcpp"
   "std_msgs"
   "OpenCV"
@@ -34,14 +34,14 @@ ament_target_dependencies(
   "sensor_msgs"
   "image_transport"
 )
-target_include_directories(one_cam_calib PUBLIC
+target_include_directories(a_one_cam_calib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_features(one_cam_calib PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
+target_compile_features(a_one_cam_calib PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
 
-add_executable(cv_random src/cv_random.cpp)
+add_executable(b_stereo_cam_calib src/b_stereo_cam_calib.cpp)
 ament_target_dependencies(
-  cv_random
+  b_stereo_cam_calib
   "rclcpp"
   "std_msgs"
   "OpenCV"
@@ -49,44 +49,14 @@ ament_target_dependencies(
   "sensor_msgs"
   "image_transport"
 )
-target_include_directories(cv_random PUBLIC
+target_include_directories(b_stereo_cam_calib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_features(cv_random PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
+target_compile_features(b_stereo_cam_calib PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
 
-add_executable(stereo_cam_calib src/stereo_cam_calib.cpp)
+add_executable(c_cam_lidar_calib src/c_cam_lidar_calib.cpp)
 ament_target_dependencies(
-  stereo_cam_calib
-  "rclcpp"
-  "std_msgs"
-  "OpenCV"
-  "cv_bridge"
-  "sensor_msgs"
-  "image_transport"
-)
-target_include_directories(stereo_cam_calib PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_compile_features(stereo_cam_calib PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
-
-add_executable(pcd_publisher src/pcd_publisher.cpp)
-ament_target_dependencies(
-  pcd_publisher
-  "rclcpp"
-  "std_msgs"
-  "sensor_msgs"
-  "PCL"
-  "pcl_conversions"
-  "visualization_msgs"
-)
-target_include_directories(pcd_publisher PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_compile_features(pcd_publisher PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
-
-add_executable(cam_lidar_calib src/cam_lidar_calib.cpp)
-ament_target_dependencies(
-  cam_lidar_calib
+  c_cam_lidar_calib
   "rclcpp"
   "std_msgs"
   "OpenCV"
@@ -99,17 +69,17 @@ ament_target_dependencies(
   "calib_interfaces"
   "Eigen3"
 )
-target_link_libraries(cam_lidar_calib
+target_link_libraries(c_cam_lidar_calib
   calib_utils
 )
-target_include_directories(cam_lidar_calib PUBLIC
+target_include_directories(c_cam_lidar_calib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_features(cam_lidar_calib PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
+target_compile_features(c_cam_lidar_calib PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
 
-add_executable(multi_lidar_calib src/multi_lidar_calib.cpp)
+add_executable(d_multi_lidar_calib src/d_multi_lidar_calib.cpp)
 ament_target_dependencies(
-  multi_lidar_calib
+  d_multi_lidar_calib
   "rclcpp"
   "std_msgs"
   "OpenCV"
@@ -120,15 +90,29 @@ ament_target_dependencies(
   "visualization_msgs"
   "pcl_conversions"
 )
-target_include_directories(multi_lidar_calib PUBLIC
+target_include_directories(d_multi_lidar_calib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_features(multi_lidar_calib PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
+target_compile_features(d_multi_lidar_calib PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
 
-
-add_executable(intensity src/intensity.cpp)
+add_executable(z_cv_random src/z_cv_random.cpp)
 ament_target_dependencies(
-  intensity
+  z_cv_random
+  "rclcpp"
+  "std_msgs"
+  "OpenCV"
+  "cv_bridge"
+  "sensor_msgs"
+  "image_transport"
+)
+target_include_directories(z_cv_random PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(z_cv_random PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
+
+add_executable(z_intensity src/z_intensity.cpp)
+ament_target_dependencies(
+  z_intensity
   "rclcpp"
   "std_msgs"
   "OpenCV"
@@ -141,19 +125,34 @@ ament_target_dependencies(
   "calib_interfaces"
   "Eigen3"
 )
-target_include_directories(intensity PUBLIC
+target_include_directories(z_intensity PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_features(intensity PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
+target_compile_features(z_intensity PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
+
+add_executable(z_pcd_publisher src/z_pcd_publisher.cpp)
+ament_target_dependencies(
+  z_pcd_publisher
+  "rclcpp"
+  "std_msgs"
+  "sensor_msgs"
+  "PCL"
+  "pcl_conversions"
+  "visualization_msgs"
+)
+target_include_directories(z_pcd_publisher PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(z_pcd_publisher PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
 
 install(TARGETS
-  one_cam_calib
-  stereo_cam_calib
-  cv_random
-  pcd_publisher
-  cam_lidar_calib
-  multi_lidar_calib
-  intensity
+  a_one_cam_calib
+  b_stereo_cam_calib
+  c_cam_lidar_calib
+  d_multi_lidar_calib
+  z_cv_random
+  z_intensity
+  z_pcd_publisher
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY include/

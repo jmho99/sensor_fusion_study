@@ -31,7 +31,7 @@ class MultiLidarCalibNode : public rclcpp::Node
 {
 public:
     MultiLidarCalibNode()
-        : Node("multi_lidar_calib")
+        : Node("d_multi_lidar_calib")
     {
         RCLCPP_INFO(this->get_logger(), "-----------\nStart multi lidar calib node\n----------");
         filePath();
@@ -99,7 +99,7 @@ private:
     {
         std::string home_dir = std::getenv("HOME");
         RCLCPP_INFO(this->get_logger(), "Home directory : %s", home_dir.c_str());
-        std::string data_dir = home_dir + "/sensor_fusion_study_ws/src/sensor_fusion_study/calib_data/multi_lidar_calib";
+        std::string data_dir = home_dir + "/sensor_fusion_study_ws/src/sensor_fusion_study/calib_data/d_multi_lidar_calib";
         origin_path_ = data_dir + "/origin_pointclouds/";
         if (!fs::exists(origin_path_))
         {
