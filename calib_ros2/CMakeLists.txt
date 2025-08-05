@@ -19,6 +19,7 @@ find_package(pcl_conversions REQUIRED)
 find_package(calib_interfaces REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(message_filters REQUIRED)
+find_package(nav_msgs REQUIRED)
 
 find_package(ament_cmake_python REQUIRED)
 find_package(rclpy REQUIRED)
@@ -159,6 +160,21 @@ target_include_directories(z_time_synchronizer PUBLIC
   $<INSTALL_INTERFACE:include>)
 target_compile_features(z_time_synchronizer PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
 
+add_executable(z_ndt_scan_matching src/z_ndt_scan_matching.cpp)
+ament_target_dependencies(
+  z_ndt_scan_matching
+  "rclcpp"
+  "std_msgs"
+  "sensor_msgs"
+  "pcl_conversions"
+  "PCL"
+  "nav_msgs"
+)
+target_include_directories(z_ndt_scan_matching PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(z_ndt_scan_matching PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
+
 install(TARGETS
   a_one_cam_calib
   b_stereo_cam_calib
@@ -168,6 +184,7 @@ install(TARGETS
   z_intensity
   z_pcd_publisher
   z_time_synchronizer
+  z_ndt_scan_matching
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY include/
