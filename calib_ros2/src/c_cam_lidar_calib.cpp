@@ -216,7 +216,7 @@ private:
 
         // Parameterization - Declare and get parameters for filters and RANSAC
         this->declare_parameter<double>("intensity_min_threshold", 1.0);
-        this->declare_parameter<double>("intensity_max_threshold", 5747.0);
+        this->declare_parameter<double>("intensity_max_threshold", 100000);
         this->declare_parameter<double>("roi_min_x", -3.0);
         this->declare_parameter<double>("roi_max_x", 0.0);
         this->declare_parameter<double>("roi_min_y", -0.8);
@@ -242,7 +242,6 @@ private:
         RCLCPP_INFO(this->get_logger(), "Loaded intensity filter: [%.1f, %.1f]", intensity_min_threshold_, intensity_max_threshold_);
         RCLCPP_INFO(this->get_logger(), "Loaded ROI X: [%.1f, %.1f], Y: [%.1f, %.1f], Z: [%.1f, %.1f]",
                     roi_min_x_, roi_max_x_, roi_min_y_, roi_max_y_, roi_min_z_, roi_max_z_);
-        RCLCPP_INFO(this->get_logger(), "Loaded RANSAC: dist_thresh=%.3f, max_iter=%d", ransac_distance_threshold_, ransac_max_iterations_);
         RCLCPP_INFO(this->get_logger(), "Loaded flip_normal_direction: %s", flip_normal_direction_ ? "true" : "false"); // Log the parameter
     }
 
@@ -284,9 +283,7 @@ bool keyboardAvailable()
                 std::string lidar_topic = "/ouster/points";
                 auto sub_lidar = this->create_subscription<sensor_msgs::msg::PointCloud2>(lidar_topic, rclcpp::SensorDataQoS(),
                                                                                   [this, lidar_topic](const sensor_msgs::msg::PointCloud2::SharedPtr msg)
-                                                                                  {
-                                                                                      pcdCallback(msg);
-                                                                                  });
+                                                                                  { pcdCallback(msg); });
                 
                 sub_cam_.push_back(sub_cam);
                 sub_lidar_.push_back(sub_lidar);
