@@ -22,7 +22,6 @@ public:
     declare_parameter("square_size", 0.095);
     declare_parameter("frame_width", 2448);
     declare_parameter("frame_height", 2048);
-    declare_parameter("where", "company");
 
     get_parameter("select_connect", select_connect_);
     get_parameter("device_path", device_path_);
@@ -31,7 +30,6 @@ public:
     get_parameter("square_size", square_size_);
     get_parameter("frame_width", frame_width_);
     get_parameter("frame_height", frame_height_);
-    get_parameter("where", where_);
 
     RCLCPP_INFO(this->get_logger(), "Open camera using %s", select_connect_.c_str());
     RCLCPP_INFO(this->get_logger(), "checkerboard %d x %d", cols_, rows_);
@@ -56,14 +54,37 @@ public:
           std::bind(&OneCamCalibNode::timerCallback, this));
     }
 
-    readWritePath(where_);
+    readWritePath();
   }
 
 private:
+  rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;
+  std::string origin_path_;
+  std::string calib_path_;
+  std::string one_cam_path_;
+  cv::Mat current_frame_;
+  int frame_counter_;
+
+  std::string select_connect_;
+  std::string device_path_;
+  int cols_;
+  int rows_;
+  float square_size_;
+  int frame_width_;
+  int frame_height_;
+  double rms_;
+
+  std::vector<std::vector<cv::Point2f>> img_points_;
+  std::vector<std::vector<cv::Point3f>> obj_points_;
+  std::vector<cv::Mat> rvecs_, tvecs_;
+  cv::Mat intrinsic_matrix_, dist_coeffs_;
+  std::vector<cv::String> image_files_;
+
+  std::vector<int> successful_indices_;
   rclcpp::TimerBase::SharedPtr timer_;
   cv::Mat last_image_;
 
-  void readWritePath(std::string where)
+  void readWritePath()
   {
     std::string home_dir = std::getenv("HOME");
     std::string calibration_path = home_dir + "/sensor_fusion_study_ws/src/sensor_fusion_study/calib_data";
@@ -181,7 +202,7 @@ private:
     RCLCPP_INFO(this->get_logger(), "Start calibration...");
 
     cv::glob(origin_path_ + "*.png", image_files_);
-    if (image_files_.size() < 5)
+    if (image_files_.size() < 10)
     {
       RCLCPP_WARN(this->get_logger(), "Not enough image (%lu)", image_files_.size());
       return;
@@ -327,31 +348,6 @@ private:
       cv::Point2f c = img_points_[i][69];
     }
   }
-
-  rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;
-  std::string origin_path_;
-  std::string calib_path_;
-  std::string one_cam_path_;
-  std::string where_;
-  cv::Mat current_frame_;
-  int frame_counter_;
-
-  std::string select_connect_;
-  std::string device_path_;
-  int cols_;
-  int rows_;
-  float square_size_;
-  int frame_width_;
-  int frame_height_;
-  double rms_;
-
-  std::vector<std::vector<cv::Point2f>> img_points_;
-  std::vector<std::vector<cv::Point3f>> obj_points_;
-  std::vector<cv::Mat> rvecs_, tvecs_;
-  cv::Mat intrinsic_matrix_, dist_coeffs_;
-  std::vector<cv::String> image_files_;
-
-  std::vector<int> successful_indices_;
 };
 
 int main(int argc, char **argv)

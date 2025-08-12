@@ -58,7 +58,7 @@ public:
             // 키보드 입력을 처리하는 타이머
             timer__ = this->create_wall_timer(
                 std::chrono::milliseconds(500),
-                std::bind(&CamLidarCalibNode::timerCallback, this));
+                std::bind(&CamLidarCalibNode::keyboardCallback, this));
         }
 
         pub_plane_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("plane_points", 10);
@@ -164,7 +164,6 @@ private:
             cv::namedWindow("FLIR View", cv::WINDOW_NORMAL); // Uncommented for display
             cv::resizeWindow("FLIR View", 640, 480);         // Uncommented for display
             cv::imshow("FLIR View", current_frame_);         // Uncommented for display
-            inputKeyboard(current_frame_);
         }
         catch (cv_bridge::Exception &e)
         {
@@ -191,8 +190,7 @@ private:
 
     void initializedParameters()
     {
-        std::string where = "company";
-        readWritePath(where);
+        readWritePath();
 
         cv::FileStorage fs(one_cam_result_path_ + "a_one_cam_calib_result.yaml", cv::FileStorage::READ);
         if (!fs.isOpened())
@@ -253,7 +251,7 @@ private:
         RCLCPP_INFO(this->get_logger(), "Loaded flip_normal_direction: %s", flip_normal_direction_ ? "true" : "false"); // Log the parameter
     }
 
-    void readWritePath(std::string where)
+    void readWritePath()
     {
         std::string home_dir = std::getenv("HOME");
         std::string calibration_path = home_dir + "/sensor_fusion_study_ws/src/sensor_fusion_study/calib_data";
@@ -267,61 +265,63 @@ private:
         fs::create_directories(pcd_path_);
     }
 
-    void timerCallback()
+    void keyboardCallback()
     {
-        if (last_image_.empty())
+        if (keyboardAvailable())
         {
-            cv::Mat dummy = cv::Mat::zeros(480, 640, CV_8UC3);
-            cv::putText(dummy, "No camera image", cv::Point(50, 240),
-                        cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 255), 2);
-            cv::imshow("Camera Image", dummy); // Uncommented for display
-        }
-        inputKeyboard(last_image_);
-    }
+            std::string input;
+            std::getline(std::cin, input);
 
-    void inputKeyboard(const cv::Mat &frame)
-    {
-        int key = cv::waitKey(1); // Non-blocking waitKey
-        if (key == 's')
-        {
-            saveFrame(frame.clone());
-        }
-        else if (key == 'c')
-        {
-            RCLCPP_INFO(this->get_logger(), "C key pressed. Starting calibration process.");
-            try
+            if (input == "s")
             {
-                findData();
-                solveCameraPlane();
-                detectLidarPlane(); // This function will call corner estimation.
-                RCLCPP_INFO(this->get_logger(), "Calibration process finished successfully.");
+                saveFrame();
             }
-            catch (const std::exception &e)
+            else if (input == "c")
             {
-                RCLCPP_ERROR(this->get_logger(), "Caught C++ exception during calibration: %s", e.what());
+                RCLCPP_INFO(this->get_logger(), "C key pressed. Starting calibration process.");
+                try
+                {
+                    findData();
+                    solveCameraPlane();
+                    detectLidarPlane(); // This function will call corner estimation.
+                    RCLCPP_INFO(this->get_logger(), "Calibration process finished successfully.");
+                }
+                catch (const std::exception &e)
+                {
+                    RCLCPP_ERROR(this->get_logger(), "Caught C++ exception during calibration: %s", e.what());
+                }
+                catch (...)
+                {
+                    RCLCPP_ERROR(this->get_logger(), "Caught unknown exception during calibration.");
+                }
             }
-            catch (...)
+            else if (input == "e")
             {
-                RCLCPP_ERROR(this->get_logger(), "Caught unknown exception during calibration.");
+                RCLCPP_INFO(this->get_logger(), "E key pressed. Shutting down node.");
+                rclcpp::shutdown();
             }
-        }
-        else if (key == 'e')
-        {
-            RCLCPP_INFO(this->get_logger(), "E key pressed. Shutting down node.");
-            rclcpp::shutdown();
         }
     }
 
-    void saveFrame(const cv::Mat &frame)
+    bool keyboardAvailable()
     {
-        if (frame.empty())
+        struct timeval tv{0L, 0L};
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(STDIN_FILENO, &fds);
+        return select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv) > 0;
+    }
+
+    void saveFrame()
+    {
+        if (current_frame_.empty())
         {
             RCLCPP_WARN(rclcpp::get_logger("saveFrame"), "No current camera frame captured yet! Cannot save image.");
             return;
         }
 
         std::string img_filename = img_path_ + "img_" + std::to_string(frame_counter_) + ".png";
-        cv::imwrite(img_filename, frame);
+        cv::imwrite(img_filename, current_frame_);
 
         if (last_cloud_->empty())
         {
@@ -1212,7 +1212,7 @@ private:
         cv::namedWindow("Lidar Projected on Image", cv::WINDOW_NORMAL); // Uncommented for display
         cv::resizeWindow("Lidar Projected on Image", 640, 480);
         cv::imshow("Lidar Projected on Image", image_with_lidar_projection);
-        cv::waitKey(1); // Keep window open briefly
+        cv::waitKey(0); // Keep window open briefly
     }
     // --- End of calibrateLidarCameraFinal function definition ---
 
