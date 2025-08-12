@@ -37,6 +37,8 @@ public:
 
         publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("pcd_cloud", 10);
         pub_plane_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("plane_points", 10);
+        roi_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("roi", 10);
+        clean_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("clean", 10);
         corner_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("corner_markers", 10);
         plane_normal_marker_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("plane_normal_marker", 10);
 
@@ -91,6 +93,8 @@ private:
         plane_msg_.header.stamp = this->now();
         publisher_->publish(cloud_msg_);
         pub_plane_->publish(plane_msg_);
+        roi_->publish(roi_msg_);
+        clean_->publish(clean_msg_);
         corner_pub_->publish(corner_markers_); // OBB, 코너 스피어, 라인 마커 발행
         // 평면 법선 마커는 detectPlane에서 바로 publish 합니다.
     }
@@ -99,8 +103,8 @@ private:
     {
         std::string home_dir = std::getenv("HOME");
         RCLCPP_INFO(this->get_logger(), "Home directory : %s", home_dir.c_str());
-        std::string data_dir = home_dir + "/sensor_fusion_study_ws/src/sensor_fusion_study/calib_data/d_multi_lidar_calib";
-        pcd_path_ = data_dir + "/origin_pointclouds";
+        std::string data_dir = home_dir + "/sensor_fusion_study_ws/src/sensor_fusion_study/calib_data/c_cam_lidar_calib";
+        pcd_path_ = data_dir + "/pointclouds";
     }
 
     void publishPlaneNormalMarker(const pcl::PointXYZ &obb_position,
@@ -167,7 +171,8 @@ private:
     void detectPlane(int num, int frame)
     {
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-        std::string filename = pcd_path_ + "/lidar" + std::to_string(num) + "_" + std::to_string(frame) + ".pcd";
+        //std::string filename = pcd_path_ + "/lidar" + std::to_string(num) + "_" + std::to_string(frame) + ".pcd";
+        std::string filename = pcd_path_ + "/pcd" + "_" + std::to_string(frame) + ".pcd";
 
         if (pcl::io::loadPCDFile<pcl::PointXYZ>(filename, *cloud) == -1)
         {
@@ -177,10 +182,15 @@ private:
 
         pcl::CropBox<pcl::PointXYZ> crop;
         crop.setInputCloud(cloud);
-        crop.setMin(Eigen::Vector4f(-4.0, -2.0, -0.85, 1.0));
-        crop.setMax(Eigen::Vector4f(-2.0, 0.8, 2.0, 1.0));
+        crop.setMin(Eigen::Vector4f(-3.0, -1.0, -1.0, 1.0));
+        crop.setMax(Eigen::Vector4f(0.0, 0.6, 3.0, 1.0));
+        // crop.setMin(Eigen::Vector4f(-4.0, -2.0, -0.85, 1.0));
+        // crop.setMax(Eigen::Vector4f(-2.0, 0.8, 2.0, 1.0));
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_roi(new pcl::PointCloud<pcl::PointXYZ>);
         crop.filter(*cloud_roi);
+
+        pcl::toROSMsg(*cloud_roi, roi_msg_);
+        roi_msg_.header.frame_id = "map";
 
         pcl::SACSegmentation<pcl::PointXYZ> seg;
         pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
@@ -233,14 +243,19 @@ private:
         pcl::PointCloud<pcl::PointXYZ>::Ptr cleaned(new pcl::PointCloud<pcl::PointXYZ>);
         extract.setInputCloud(cloud_roi);
         extract.setIndices(to_remove);
-        extract.setNegative(true);
+        extract.setNegative(false);
         extract.filter(*cleaned);
+
+        pcl::toROSMsg(*cleaned, clean_msg_);
+        clean_msg_.header.frame_id = "map";
 
         // 보드 크기 및 조건 변수
         const float TARGET_BOARD_WIDTH_MIN = 0.40;
-        const float TARGET_BOARD_WIDTH_MAX = 0.70;
+        const float TARGET_BOARD_WIDTH_MAX = 0.90;
+        //const float TARGET_BOARD_WIDTH_MAX = 0.70;
         const float TARGET_BOARD_HEIGHT_MIN = 0.70;
         const float TARGET_BOARD_HEIGHT_MAX = 1.00;
+        //const float TARGET_BOARD_HEIGHT_MAX = 1.00;
         const float ASPECT_RATIO_TOLERANCE = 1.0;
         const float MIN_PLANE_POINTS = 100;
         const float MAX_BOARD_THICKNESS = 0.2;
@@ -249,22 +264,25 @@ private:
 
         if (inliers->indices.size() >= MIN_PLANE_POINTS)
         {
-            pcl::VoxelGrid<pcl::PointXYZ> voxel;
-            pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_plane(new pcl::PointCloud<pcl::PointXYZ>);
-            voxel.setInputCloud(cleaned);
-            voxel.setLeafSize(0.05f, 0.05f, 0.05f);
-            voxel.filter(*filtered_plane);
+
+            //pcl::VoxelGrid<pcl::PointXYZ> voxel;
+            //pcl::PointCloud<pcl::PointXYZ>::Ptr filtered_plane(new pcl::PointCloud<pcl::PointXYZ>);
+            //voxel.setInputCloud(cleaned);
+            //voxel.setLeafSize(0.05f, 0.05f, 0.05f);
+            //voxel.filter(*filtered_plane);
 
             std::vector<pcl::PointIndices> cluster_indices;
             pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-            tree->setInputCloud(filtered_plane);
+            //tree->setInputCloud(filtered_plane);
+            tree->setInputCloud(cleaned);
 
             pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
             ec.setClusterTolerance(0.06);
             ec.setMinClusterSize(10);
             ec.setMaxClusterSize(10000);
             ec.setSearchMethod(tree);
-            ec.setInputCloud(filtered_plane);
+            //ec.setInputCloud(filtered_plane);
+            ec.setInputCloud(cleaned);
             ec.extract(cluster_indices);
 
             if (!cluster_indices.empty())
@@ -278,7 +296,8 @@ private:
                 pcl::PointCloud<pcl::PointXYZ>::Ptr board_candidate(new pcl::PointCloud<pcl::PointXYZ>);
                 for (int idx : largest_cluster->indices)
                 {
-                    board_candidate->points.push_back(filtered_plane->points[idx]);
+                    //board_candidate->points.push_back(filtered_plane->points[idx]);
+                    board_candidate->points.push_back(cleaned->points[idx]);
                 }
 
                 pcl::MomentOfInertiaEstimation<pcl::PointXYZ> feature_extractor;
@@ -524,11 +543,15 @@ private:
 
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher_;
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_plane_;
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr roi_;
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr clean_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr corner_pub_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr plane_normal_marker_pub_;
 
     sensor_msgs::msg::PointCloud2 cloud_msg_;
     sensor_msgs::msg::PointCloud2 plane_msg_;
+    sensor_msgs::msg::PointCloud2 roi_msg_;
+    sensor_msgs::msg::PointCloud2 clean_msg_;
     visualization_msgs::msg::MarkerArray corner_markers_; // OBB, 코너 스피어, 라인 마커를 모두 담을 MarkerArray
 
     rclcpp::TimerBase::SharedPtr timer_;

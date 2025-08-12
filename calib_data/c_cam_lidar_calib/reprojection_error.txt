@@ -1,1 +1,1 @@
-Mean Reprojection Error: 0.682859 pixels
+Mean Reprojection Error: 0.767826 pixels

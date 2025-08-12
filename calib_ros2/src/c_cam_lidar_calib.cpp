@@ -48,10 +48,10 @@ public:
         if (connect == "flir")
         {
             sub_cam__ = this->create_subscription<sensor_msgs::msg::Image>("/flir_camera/image_raw", rclcpp::SensorDataQoS(),
-                                                                          std::bind(&CamLidarCalibNode::imageCallback, this, std::placeholders::_1));
+                                                                           std::bind(&CamLidarCalibNode::imageCallback, this, std::placeholders::_1));
 
             sub_lidar__ = this->create_subscription<sensor_msgs::msg::PointCloud2>("/ouster/points", rclcpp::SensorDataQoS(),
-                                                                                  std::bind(&CamLidarCalibNode::pcdCallback, this, std::placeholders::_1));
+                                                                                   std::bind(&CamLidarCalibNode::pcdCallback, this, std::placeholders::_1));
         }
         else
         {
@@ -109,8 +109,8 @@ private:
     // 서비스에서 받은 코너 포인트를 담을 새로운 메시지 (이제 직접 검출된 코너)
     sensor_msgs::msg::PointCloud2 service_corners_msg_;
 
-    rclcpp::TimerBase::SharedPtr pcd_timer_;           // pcdTimerCallback을 위한 타이머
-    rclcpp::TimerBase::SharedPtr keboard_timer_;          // timerCallback을 위한 타이머
+    rclcpp::TimerBase::SharedPtr pcd_timer_;       // pcdTimerCallback을 위한 타이머
+    rclcpp::TimerBase::SharedPtr keboard_timer_;   // timerCallback을 위한 타이머
     cv::Size board_size_;                          // Chessboard parameters (internal corners)
     double square_size_;                           // Chessboard parameters
     cv::Mat intrinsic_matrix_, distortion_coeffs_; // Camera intrinsics
@@ -123,8 +123,8 @@ private:
     std::vector<cv::Mat> rvecs_, tvecs_;
     double rms_;
 
-    std::string img_file_ = "img_10.png";
-    std::string pcd_file_ = "pcd_10.pcd";
+    std::string img_file_;
+    std::string pcd_file_;
 
     // 이미지에서 찾은 2D 코너
     std::vector<cv::Point2f> image_corners_latest_;
@@ -259,7 +259,7 @@ private:
         fs::create_directories(pcd_path_);
     }
 
-bool keyboardAvailable()
+    bool keyboardAvailable()
     {
         struct timeval tv{0L, 0L};
         fd_set fds;
@@ -274,17 +274,23 @@ bool keyboardAvailable()
         {
             std::string input;
             std::getline(std::cin, input);
-            
-            if(input == "connect")
+
+            if (!input.empty() && std::all_of(input.begin(), input.end(), ::isdigit))
+            {
+                int number  = std::stoi(input);
+                img_file_ = "img_" + std::to_string(number) + ".png";
+                pcd_file_ = "pcd_" + std::to_string(number) + ".pcd";
+            }
+            if (input == "connect")
             {
                 auto sub_cam = this->create_subscription<sensor_msgs::msg::Image>("/flir_camera/image_raw", rclcpp::SensorDataQoS(),
-                                                                          std::bind(&CamLidarCalibNode::imageCallback, this, std::placeholders::_1));
-                                                                          
+                                                                                  std::bind(&CamLidarCalibNode::imageCallback, this, std::placeholders::_1));
+
                 std::string lidar_topic = "/ouster/points";
                 auto sub_lidar = this->create_subscription<sensor_msgs::msg::PointCloud2>(lidar_topic, rclcpp::SensorDataQoS(),
-                                                                                  [this, lidar_topic](const sensor_msgs::msg::PointCloud2::SharedPtr msg)
-                                                                                  { pcdCallback(msg); });
-                
+                                                                                          [this, lidar_topic](const sensor_msgs::msg::PointCloud2::SharedPtr msg)
+                                                                                          { pcdCallback(msg); });
+
                 sub_cam_.push_back(sub_cam);
                 sub_lidar_.push_back(sub_lidar);
             }
@@ -320,7 +326,6 @@ bool keyboardAvailable()
         }
     }
 
-    
     void saveFrame()
     {
         if (current_frame_.empty())
@@ -338,7 +343,7 @@ bool keyboardAvailable()
             return;
         }
         std::string pcd_filename = pcd_path_ + "pcd_" + std::to_string(frame_counter_) + ".pcd";
-        pcl::io::savePCDFileBinary(pcd_filename, *last_cloud_);
+        pcl::io::savePCDFile(pcd_filename, *last_cloud_);
         RCLCPP_INFO(this->get_logger(), "Saved image and pointcloud.");
         frame_counter_++;
     }
@@ -570,15 +575,6 @@ bool keyboardAvailable()
         point3fVectorToPointCloud2(estimated_cv_corners, service_corners_msg_, "map", this->now());
         pub_service_corners_->publish(service_corners_msg_);
         RCLCPP_INFO(this->get_logger(), "Published detected corners to /detected_lidar_corners topic.");
-
-        // Print received corner coordinates
-        RCLCPP_INFO(this->get_logger(), "--- Detected Lidar Corners from External Function ---");
-        for (size_t i = 0; i < detected_corners_xyz_i.size(); ++i)
-        {
-            RCLCPP_INFO(this->get_logger(), "  Corner %zu: X=%.4f, Y=%.4f, Z=%.4f",
-                        i, detected_corners_xyz_i[i].x, detected_corners_xyz_i[i].y, detected_corners_xyz_i[i].z);
-        }
-        RCLCPP_INFO(this->get_logger(), "--------------------------------------------------");
 
         // Proceed with final calibration using the detected corners
         calibrateLidarCameraFinal(last_cloud_, estimated_cv_corners);
@@ -887,23 +883,6 @@ bool keyboardAvailable()
         msg.header.frame_id = frame_id;
     }
 
-    void savePlanePointCloud(const pcl::PointCloud<pcl::PointXYZI>::Ptr &cloud, const std::string &filename)
-    {
-        if (cloud->empty())
-        {
-            RCLCPP_WARN(this->get_logger(), "Plane pointcloud is empty. Not saving.");
-            return;
-        }
-        if (pcl::io::savePCDFileASCII(filename, *cloud) == -1)
-        {
-            RCLCPP_ERROR(this->get_logger(), "Failed to save plane pointcloud to %s", filename.c_str());
-        }
-        else
-        {
-            RCLCPP_INFO(this->get_logger(), "Saved plane pointcloud (ASCII) to %s", filename.c_str());
-        }
-    }
-
     template <typename T>
     void saveToFile(const std::string &extension,
                     const std::string &filename,
@@ -949,45 +928,6 @@ bool keyboardAvailable()
         ofs.close();
 
         RCLCPP_INFO(this->get_logger(), "cv::Mat saved: %s", fullpath.c_str());
-    }
-
-    template <typename... Args>
-    void saveMultipleToFile(const std::string &extension,
-                            const std::string &filename,
-                            const Args &...args)
-    {
-        std::string fullpath = cam_lidar_path_ + filename + "." + extension;
-        std::ofstream ofs(fullpath);
-
-        if (!ofs.is_open())
-        {
-            RCLCPP_ERROR(this->get_logger(), "Failed to open file: %s", fullpath.c_str());
-            rclcpp::shutdown();
-        }
-
-        (writeData(ofs, args), ...);
-
-        ofs.close();
-
-        RCLCPP_INFO(this->get_logger(), "File saved: %s", fullpath.c_str());
-    }
-
-    template <typename T>
-    void writeData(std::ofstream &ofs, const T &data)
-    {
-        ofs << data << "\n";
-    }
-
-    void writeData(std::ofstream &ofs, const cv::Mat &mat)
-    {
-        for (int i = 0; i < mat.rows; ++i)
-        {
-            for (int j = 0; j < mat.cols; ++j)
-            {
-                ofs << mat.at<double>(i, j) << " ";
-            }
-            ofs << "\n";
-        }
     }
 
     // Output and Reporting - Save to YAML
@@ -1103,7 +1043,7 @@ bool keyboardAvailable()
 
         // Convert transformed PCL cloud to ROS2 message for visualization
         pcl::toROSMsg(*transformed_cloud, lidar2cam_points_);
-        lidar2cam_points_.header.frame_id = "camera_frame"; // Or "map", depending on your RViz setup
+        lidar2cam_points_.header.frame_id = "map"; // Or "map", depending on your RViz setup
         RCLCPP_INFO(this->get_logger(), "Transformed full LiDAR cloud to camera frame and published to /lidar2cam_points.");
 
         // 4. Calculate and report reprojection error
