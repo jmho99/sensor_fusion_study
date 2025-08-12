@@ -47,10 +47,10 @@ public:
         std::string connect = "aa"; // "flir" 대신 "aa"로 설정되어 있어 파일 로드 모드
         if (connect == "flir")
         {
-            sub_cam_ = this->create_subscription<sensor_msgs::msg::Image>("/flir_camera/image_raw", rclcpp::SensorDataQoS(),
+            sub_cam__ = this->create_subscription<sensor_msgs::msg::Image>("/flir_camera/image_raw", rclcpp::SensorDataQoS(),
                                                                           std::bind(&CamLidarCalibNode::imageCallback, this, std::placeholders::_1));
 
-            sub_lidar_ = this->create_subscription<sensor_msgs::msg::PointCloud2>("/ouster/points", rclcpp::SensorDataQoS(),
+            sub_lidar__ = this->create_subscription<sensor_msgs::msg::PointCloud2>("/ouster/points", rclcpp::SensorDataQoS(),
                                                                                   std::bind(&CamLidarCalibNode::pcdCallback, this, std::placeholders::_1));
         }
         else
@@ -79,8 +79,10 @@ public:
     }
 
 private:
-    rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr sub_cam_;
-    rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_lidar_;
+    std::vector<rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr> sub_cam_;
+    std::vector<rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr> sub_lidar_;
+    rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr sub_cam__;
+    rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_lidar__;
     cv::Mat current_frame_;
     cv::Mat last_image_;                                                                   // Latest image data
     pcl::PointCloud<pcl::PointXYZI>::Ptr last_cloud_{new pcl::PointCloud<pcl::PointXYZI>}; // Latest point cloud data
@@ -258,12 +260,37 @@ private:
         fs::create_directories(pcd_path_);
     }
 
+bool keyboardAvailable()
+    {
+        struct timeval tv{0L, 0L};
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(STDIN_FILENO, &fds);
+        return select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv) > 0;
+    }
+
     void keyboardCallback()
     {
         if (keyboardAvailable())
         {
             std::string input;
             std::getline(std::cin, input);
+            
+            if(input == "connect")
+            {
+                auto sub_cam = this->create_subscription<sensor_msgs::msg::Image>("/flir_camera/image_raw", rclcpp::SensorDataQoS(),
+                                                                          std::bind(&CamLidarCalibNode::imageCallback, this, std::placeholders::_1));
+                                                                          
+                std::string lidar_topic = "/ouster/points";
+                auto sub_lidar = this->create_subscription<sensor_msgs::msg::PointCloud2>(lidar_topic, rclcpp::SensorDataQoS(),
+                                                                                  [this, lidar_topic](const sensor_msgs::msg::PointCloud2::SharedPtr msg)
+                                                                                  {
+                                                                                      pcdCallback(msg);
+                                                                                  });
+                
+                sub_cam_.push_back(sub_cam);
+                sub_lidar_.push_back(sub_lidar);
+            }
 
             if (input == "s")
             {
@@ -296,15 +323,7 @@ private:
         }
     }
 
-    bool keyboardAvailable()
-    {
-        struct timeval tv{0L, 0L};
-        fd_set fds;
-        FD_ZERO(&fds);
-        FD_SET(STDIN_FILENO, &fds);
-        return select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv) > 0;
-    }
-
+    
     void saveFrame()
     {
         if (current_frame_.empty())
