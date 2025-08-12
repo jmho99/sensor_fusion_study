@@ -56,7 +56,7 @@ public:
         else
         {
             // 키보드 입력을 처리하는 타이머
-            timer__ = this->create_wall_timer(
+            keboard_timer_ = this->create_wall_timer(
                 std::chrono::milliseconds(500),
                 std::bind(&CamLidarCalibNode::keyboardCallback, this));
         }
@@ -71,7 +71,7 @@ public:
         pub_service_corners_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("detected_lidar_corners", 10);
 
         // PointCloud2 메시지를 주기적으로 퍼블리시하는 타이머 (주석 해제됨)
-        timer_ = this->create_wall_timer(
+        pcd_timer_ = this->create_wall_timer(
             std::chrono::milliseconds(30), // 30ms 주기로 퍼블리시
             std::bind(&CamLidarCalibNode::pcdTimerCallback, this));
 
@@ -107,8 +107,8 @@ private:
     // 서비스에서 받은 코너 포인트를 담을 새로운 메시지 (이제 직접 검출된 코너)
     sensor_msgs::msg::PointCloud2 service_corners_msg_;
 
-    rclcpp::TimerBase::SharedPtr timer_;           // pcdTimerCallback을 위한 타이머
-    rclcpp::TimerBase::SharedPtr timer__;          // timerCallback을 위한 타이머
+    rclcpp::TimerBase::SharedPtr pcd_timer_;           // pcdTimerCallback을 위한 타이머
+    rclcpp::TimerBase::SharedPtr keboard_timer_;          // timerCallback을 위한 타이머
     cv::Size board_size_;                          // Chessboard parameters (internal corners)
     double square_size_;                           // Chessboard parameters
     cv::Mat intrinsic_matrix_, distortion_coeffs_; // Camera intrinsics
@@ -158,17 +158,10 @@ private:
 
     void imageCallback(const sensor_msgs::msg::Image::SharedPtr msg)
     {
-        try
-        {
-            current_frame_ = cv_bridge::toCvCopy(msg, "bgr8")->image;
-            cv::namedWindow("FLIR View", cv::WINDOW_NORMAL); // Uncommented for display
-            cv::resizeWindow("FLIR View", 640, 480);         // Uncommented for display
-            cv::imshow("FLIR View", current_frame_);         // Uncommented for display
-        }
-        catch (cv_bridge::Exception &e)
-        {
-            RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
-        }
+        current_frame_ = cv_bridge::toCvCopy(msg, "bgr8")->image;
+        cv::namedWindow("FLIR View", cv::WINDOW_NORMAL); // Uncommented for display
+        cv::resizeWindow("FLIR View", 640, 480);         // Uncommented for display
+        cv::imshow("FLIR View", current_frame_);         // Uncommented for display
     }
 
     void pcdCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
@@ -379,85 +372,6 @@ private:
         RCLCPP_INFO(this->get_logger(), "Loaded first pointcloud: %s", first_pcd_path.c_str());
 
         RCLCPP_INFO(this->get_logger(), "Successfully loaded calibration data (image and pointcloud).");
-    }
-
-    int extractNumber(const std::string &filename)
-    {
-        std::string number;
-        for (char c : filename)
-        {
-            if (std::isdigit(c))
-            {
-                number += c;
-            }
-        }
-        return number.empty() ? -1 : std::stoi(number);
-    }
-
-    void runCalibrateFromFolder()
-    {
-        RCLCPP_INFO(this->get_logger(), "Start calibration...");
-
-        cv::glob(img_path_ + "*.png", image_files_);
-        if (image_files_.size() < 5)
-        {
-            RCLCPP_WARN(this->get_logger(), "Not enough image (%lu)", image_files_.size());
-            return;
-        }
-        std::sort(image_files_.begin(), image_files_.end(),
-                  [this](const std::string &a, const std::string &b)
-                  {
-                      return extractNumber(a) < extractNumber(b);
-                  });
-
-        std::vector<cv::Point3f> objp;
-
-        // objp for camera calibration should also use internal corner counts (board_size_)
-        for (int i = 0; i < board_size_.height; ++i)
-            for (int j = 0; j < board_size_.width; ++j)
-                objp.emplace_back(j * square_size_, i * square_size_, 0.0f);
-
-        successful_indices_.clear();
-
-        for (size_t idx = 0; idx < image_files_.size(); ++idx)
-        {
-            const auto &file = image_files_[idx];
-            cv::Mat img = cv::imread(file);
-            if (img.empty())
-                continue;
-
-            std::vector<cv::Point2f> corners;
-            bool found = cv::findChessboardCorners(img, board_size_, corners, // board_size_ is now (cols-1, rows-1)
-                                                   cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE);
-
-            if (found)
-            {
-                cv::Mat gray;
-                cv::cvtColor(img, gray, cv::COLOR_BGR2GRAY);
-                cv::cornerSubPix(gray, corners, cv::Size(5, 5), cv::Size(-1, -1),
-                                 cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 30, 0.001));
-
-                img_points_.push_back(corners);
-                obj_points_.push_back(objp);
-
-                rms_ = cv::calibrateCamera(obj_points_, img_points_, board_size_,
-                                           intrinsic_matrix_, distortion_coeffs_, rvecs_, tvecs_);
-
-                RCLCPP_INFO(this->get_logger(), "RMS error: %.4f", rms_);
-                successful_indices_.push_back(idx);
-            }
-
-            if (img_points_.empty())
-            {
-                RCLCPP_ERROR(this->get_logger(), "SHUTDOWN_CAUSE: Failed calibration. No image points found. Shutting down node.");
-                rclcpp::shutdown();
-                return;
-            }
-        }
-        std::cout << "[Camera calib] intrinsic_matrix:\n"
-                  << intrinsic_matrix_ << std::endl;
-        std::cout << "[Camera calib] distortion_coeffs:\n"
-                  << distortion_coeffs_ << std::endl;
     }
 
     void solveCameraPlane()
