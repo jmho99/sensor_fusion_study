@@ -217,11 +217,11 @@ private:
         // Parameterization - Declare and get parameters for filters and RANSAC
         this->declare_parameter<double>("intensity_min_threshold", 1.0);
         this->declare_parameter<double>("intensity_max_threshold", 100000);
-        this->declare_parameter<double>("roi_min_x", -3.0);
+        this->declare_parameter<double>("roi_min_x", -5.0);
         this->declare_parameter<double>("roi_max_x", 0.0);
-        this->declare_parameter<double>("roi_min_y", -0.8);
-        this->declare_parameter<double>("roi_max_y", 0.5);
-        this->declare_parameter<double>("roi_min_z", -0.63);
+        this->declare_parameter<double>("roi_min_y", -1.1);
+        this->declare_parameter<double>("roi_max_y", 0.6);
+        this->declare_parameter<double>("roi_min_z", -0.6);
         this->declare_parameter<double>("roi_max_z", 3.0);
         this->declare_parameter<double>("ransac_distance_threshold", 0.02);
         this->declare_parameter<int>("ransac_max_iterations", 1000);
@@ -1174,10 +1174,10 @@ private:
         RCLCPP_INFO(this->get_logger(), "LiDAR 점의 카메라 Z축 값: %.4f (양수 일치: %s)",
                     random_selected_lidar_point_in_cam_frame_.z, z_positive_consistent ? "TRUE" : "FALSE");
 
-        bool should_flip_based_on_z = false;
+        bool should_flip_based_on_z = true;
         if (random_selected_lidar_point_in_cam_frame_.z < 0)
         { // Z축이 음수이면 뒤집어야 함
-            should_flip_based_on_z = true;
+            should_flip_based_on_z = false;
         }
 
         // 6. 최종 방향 결정 및 flip_normal_direction_ 변경
@@ -1190,6 +1190,7 @@ private:
             flip_changed_in_this_call = true;
             RCLCPP_WARN(this->get_logger(), "Z축 일관성 검사로 'flip_normal_direction'이 %s로 변경되었습니다.", flip_normal_direction_ ? "TRUE" : "FALSE");
             RCLCPP_WARN(this->get_logger(), "자동 재보정을 시작합니다.");
+            detectLidarPlane();
             return; // Z축 검사로 결정되었으므로 각도 검사는 스킵
         }
 
@@ -1203,6 +1204,7 @@ private:
                 flip_changed_in_this_call = true; // 플립이 발생했음을 알림
                 RCLCPP_WARN(this->get_logger(), "각도 불일치 감지! 'flip_normal_direction'을 TRUE로 설정합니다.");
                 RCLCPP_WARN(this->get_logger(), "뒤집힌 법선으로 자동 재보정을 시작합니다.");
+                detectLidarPlane();
             }
             else
             {
