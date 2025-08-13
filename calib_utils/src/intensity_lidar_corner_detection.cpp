@@ -334,7 +334,6 @@ Eigen::Vector3d refineOrientationAndCenter(
 
 // -------------------------------
 // 6) Main: 논문 방식의 코너 추정 함수 (외부에서 호출되는 함수)
-// 시그니처는 원본 헤더와 같아야 함
 std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
     const std::vector<PointXYZI>& lidar_points_full_vec,
     int internal_corners_x, int internal_corners_y, double checker_size_m,
@@ -400,7 +399,7 @@ std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
     v_x.normalize();
 
     // ====================================================================================================
-    // 수정된 부분 시작: PCA 축과 체커보드 모델 크기 비교를 통한 방향 정렬
+    // PCA 축의 길이를 계산하여 모델의 길이와 비교, 축의 방향을 보정
     double model_len_x = (internal_corners_x) * checker_size_m;
     double model_len_y = (internal_corners_y) * checker_size_m;
 
@@ -409,7 +408,6 @@ std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
     double pca_y_min = std::numeric_limits<double>::max();
     double pca_y_max = std::numeric_limits<double>::lowest();
     
-    // PCA 축에 투영된 점들의 범위를 계산
     for (const auto& p : lidar_points_full_vec) {
         Eigen::Vector3d p_centered = Eigen::Vector3d(p.x, p.y, p.z) - centroid;
         double proj_x = p_centered.dot(v_x);
@@ -423,13 +421,10 @@ std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
     double pca_len_x = pca_x_max - pca_x_min;
     double pca_len_y = pca_y_max - pca_y_min;
 
-    // PCA 축의 길이와 모델의 길이를 비교하여 축을 정렬
     if ((pca_len_x > pca_len_y && model_len_y > model_len_x) ||
         (pca_len_y > pca_len_x && model_len_x > model_len_y)) {
-        // PCA의 긴 축이 모델의 짧은 축과 일치하는 경우, 축을 교환
         std::swap(v_x, v_y);
     }
-    // 수정된 부분 끝
     // ====================================================================================================
 
     Eigen::Matrix3d Rpcs;
@@ -580,13 +575,10 @@ std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
     for (const auto &p : lidar_points_full_vec) lidar_pts_world.emplace_back(Eigen::Vector3d(p.x, p.y, p.z));
 
     // ====================================================================================================
-    // 수정된 부분 시작: 모델 코너를 중심을 기준으로 생성
+    // 모델 코너를 중심을 기준으로 생성
     std::vector<Eigen::Vector2d> model_internal_corners_2d;
-    // 내부 코너 그리드의 절반 너비와 높이를 계산
     double half_w = (internal_corners_x - 1) * checker_size_m / 2.0;
     double half_h = (internal_corners_y - 1) * checker_size_m / 2.0;
-    
-    // 중심을 기준으로 첫 번째 내부 코너의 좌표를 계산
     double start_x = -half_w;
     double start_y = -half_h;
     
@@ -597,7 +589,6 @@ std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
             model_internal_corners_2d.emplace_back(cx, cy);
         }
     }
-    // 수정된 부분 끝
     // ====================================================================================================
 
     // Transform model corners to PCA frame (x,y), then to world (lidar) coords
@@ -606,6 +597,13 @@ std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
     Rz_best << ct, -st, st, ct;
 
     double max_corner_dist = checker_size_m * 0.6; // tolerance: ~0.6 * square_size (tunable)
+
+    // 코너점과 PCA 좌표를 함께 저장할 구조체
+    struct CornerData {
+        PointXYZI world_point;
+        Eigen::Vector2d pca_point;
+    };
+    std::vector<CornerData> corners_data;
 
     for (const auto &mc : model_internal_corners_2d) {
         Eigen::Vector2d p_pca2 = Rz_best * mc + Eigen::Vector2d(best_params[0], best_params[1]);
@@ -623,15 +621,83 @@ std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
             }
         }
         if (has_nearby) {
-            PointXYZI outp;
-            outp.x = p_world[0];
-            outp.y = p_world[1];
-            outp.z = p_world[2];
-            outp.intensity = 0.0;
-            out_corners.push_back(outp);
+            CornerData cd;
+            cd.world_point.x = p_world[0];
+            cd.world_point.y = p_world[1];
+            cd.world_point.z = p_world[2];
+            cd.world_point.intensity = 0.0;
+            cd.pca_point = p_pca2; // PCA 좌표를 저장
+            corners_data.push_back(cd);
+        }
+    }
+    
+    cout << "[estimateChessboardCornersPaperMethod] detected corners (nearby-filtered): " << corners_data.size() << endl;
+
+    // ====================================================================================================
+    // PCA 축을 기준으로 코너 정렬
+    if (!corners_data.empty()) {
+        // 1. PCA Y축을 기준으로 행(row) 정렬
+        std::sort(corners_data.begin(), corners_data.end(), [](const CornerData& a, const CornerData& b) {
+            return a.pca_point.y() < b.pca_point.y();
+        });
+
+        // 2. 각 행(row) 내에서 PCA X축을 기준으로 열(col) 정렬
+        size_t start_idx = 0;
+        double half_checker_size = checker_size_m * 0.5;
+        for (size_t i = 1; i < corners_data.size(); ++i) {
+            if (std::abs(corners_data[i].pca_point.y() - corners_data[i-1].pca_point.y()) > half_checker_size) {
+                std::sort(corners_data.begin() + start_idx, corners_data.begin() + i, [](const CornerData& a, const CornerData& b) {
+                    return a.pca_point.x() < b.pca_point.x();
+                });
+                start_idx = i;
+            }
+        }
+        // 마지막 행 정렬
+        std::sort(corners_data.begin() + start_idx, corners_data.end(), [](const CornerData& a, const CornerData& b) {
+            return a.pca_point.x() < b.pca_point.x();
+        });
+        
+        // 3. 라이다 좌표계 기반 최종 순서 보정 (요청하신 로직 적용)
+        bool all_x_negative = true;
+        bool all_x_positive = true;
+        bool has_both_x_signs = false;
+        if (corners_data.size() > 0) {
+            for (const auto& cd : corners_data) {
+                if (cd.world_point.x >= 0) all_x_negative = false;
+                if (cd.world_point.x < 0) all_x_positive = false;
+            }
+            if (!all_x_negative && !all_x_positive) {
+                has_both_x_signs = true;
+            }
+        }
+
+        if (all_x_negative) {
+            if (corners_data.front().world_point.y > corners_data.back().world_point.y) {
+                std::reverse(corners_data.begin(), corners_data.end());
+            }
+        } else if (all_x_positive) {
+            if (corners_data.front().world_point.y < corners_data.back().world_point.y) {
+                std::reverse(corners_data.begin(), corners_data.end());
+            }
+        } else if (has_both_x_signs) {
+            if (corners_data.front().world_point.y < 0) {
+                if (corners_data.front().world_point.x < corners_data.back().world_point.x) {
+                    std::reverse(corners_data.begin(), corners_data.end());
+                }
+            } else { // y >= 0
+                if (corners_data.front().world_point.x > corners_data.back().world_point.x) {
+                    std::reverse(corners_data.begin(), corners_data.end());
+                }
+            }
         }
     }
 
-    cout << "[estimateChessboardCornersPaperMethod] detected corners (nearby-filtered): " << out_corners.size() << endl;
+    // 정렬된 코너를 최종 결과 벡터에 복사
+    for (const auto& cd : corners_data) {
+        out_corners.push_back(cd.world_point);
+    }
+    // ====================================================================================================
+    
+    cout << "[estimateChessboardCornersPaperMethod] detected corners (sorted): " << out_corners.size() << endl;
     return out_corners;
 }

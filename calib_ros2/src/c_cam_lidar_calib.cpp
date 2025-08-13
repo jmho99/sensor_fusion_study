@@ -1174,10 +1174,10 @@ private:
         RCLCPP_INFO(this->get_logger(), "LiDAR 점의 카메라 Z축 값: %.4f (양수 일치: %s)",
                     random_selected_lidar_point_in_cam_frame_.z, z_positive_consistent ? "TRUE" : "FALSE");
 
-        bool should_flip_based_on_z = true;
+        bool should_flip_based_on_z = false;
         if (random_selected_lidar_point_in_cam_frame_.z < 0)
         { // Z축이 음수이면 뒤집어야 함
-            should_flip_based_on_z = false;
+            should_flip_based_on_z = true;
         }
 
         // 6. 최종 방향 결정 및 flip_normal_direction_ 변경
