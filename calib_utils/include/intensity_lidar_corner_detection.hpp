@@ -62,7 +62,6 @@ double costFunction(const Eigen::Vector3d& params,
 // 반환: 원본 LiDAR 프레임에서의 3D 코너 좌표 (PointXYZI 벡터)
 std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
     const std::vector<PointXYZI>& lidar_points_full_vec,
-    int internal_corners_x, int internal_corners_y, double checker_size_m,
-    bool flip_normal_direction);
+    int internal_corners_x, int internal_corners_y, double checker_size_m);
 
 #endif // LIDAR_CORNER_DETECTION_HPP

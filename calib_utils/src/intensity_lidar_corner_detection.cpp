@@ -7,8 +7,10 @@
 #include <cmath>
 #include <limits>
 #include <random>
+#include <numeric>
 
 #include <Eigen/Dense>
+#include <Eigen/Eigenvalues>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -18,14 +20,12 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-// -------------------------------
 // Helper: clamp
 template <typename T>
 static T clamp_val(T v, T lo, T hi) {
     return std::min(hi, std::max(lo, v));
 }
 
-// -------------------------------
 // 1) PCD (ASCII) 파싱: 문자열에서 x,y,z,intensity 읽기
 std::vector<PointXYZI> parsePCDString(const std::string& pcd_string) {
     std::vector<PointXYZI> lidar_points;
@@ -47,7 +47,7 @@ std::vector<PointXYZI> parsePCDString(const std::string& pcd_string) {
             if (line.rfind("FIELDS", 0) == 0) {
                 std::stringstream ls(line);
                 std::string token;
-                ls >> token; // FIELDS
+                ls >> token;
                 while (ls >> token) fields.push_back(token);
                 auto it = std::find(fields.begin(), fields.end(), "intensity");
                 if (it != fields.end()) {
@@ -58,7 +58,7 @@ std::vector<PointXYZI> parsePCDString(const std::string& pcd_string) {
             } else if (line.rfind("DATA", 0) == 0) {
                 std::stringstream ls(line);
                 std::string token;
-                ls >> token; // DATA
+                ls >> token;
                 if (!(ls >> token)) {
                     cerr << "[parsePCDString] Error: malformed DATA line\n";
                     return {};
@@ -76,12 +76,10 @@ std::vector<PointXYZI> parsePCDString(const std::string& pcd_string) {
             std::string part;
             while (ls >> part) parts.push_back(part);
             if (fields.size() > 0 && parts.size() != fields.size()) {
-                // some PCD variants may differ; safe-guard: if counts mismatch skip
                 continue;
             }
             try {
                 PointXYZI p;
-                // find x,y,z positions
                 if (fields.size() >= 3) {
                     auto itx = std::find(fields.begin(), fields.end(), "x");
                     auto ity = std::find(fields.begin(), fields.end(), "y");
@@ -91,7 +89,6 @@ std::vector<PointXYZI> parsePCDString(const std::string& pcd_string) {
                         p.y = std::stod(parts[std::distance(fields.begin(), ity)]);
                         p.z = std::stod(parts[std::distance(fields.begin(), itz)]);
                     } else {
-                        // fallback: assume first 3 entries are x y z
                         p.x = std::stod(parts[0]);
                         p.y = std::stod(parts[1]);
                         p.z = std::stod(parts[2]);
@@ -105,11 +102,10 @@ std::vector<PointXYZI> parsePCDString(const std::string& pcd_string) {
                 if (intensity_field_index != -1 && static_cast<size_t>(intensity_field_index) < parts.size()) {
                     p.intensity = std::stod(parts[intensity_field_index]);
                 } else {
-                    p.intensity = 128.0; // default
+                    p.intensity = 128.0;
                 }
                 lidar_points.push_back(p);
             } catch (const std::exception &e) {
-                // skip line
                 continue;
             }
         }
@@ -123,9 +119,7 @@ std::vector<PointXYZI> parsePCDString(const std::string& pcd_string) {
     return lidar_points;
 }
 
-// -------------------------------
-// 2) intensity 분류: black(0) / white(1) / gray(-1)
-// returns (classified_vector, tau_l, tau_h)
+// intensity 분류: black(0) / white(1) / gray(-1)
 std::tuple<Eigen::VectorXi, double, double> classifyIntensityColor(const Eigen::VectorXd& intensities, double epsilon_g) {
     Eigen::VectorXi classified = Eigen::VectorXi::Constant(intensities.size(), -1);
     double tau_l = 0.0, tau_h = 0.0;
@@ -134,7 +128,6 @@ std::tuple<Eigen::VectorXi, double, double> classifyIntensityColor(const Eigen::
     double R_L = intensities.minCoeff();
     double R_H = intensities.maxCoeff();
     if (std::abs(R_H - R_L) < 1e-9) {
-        // everything ambiguous
         return std::make_tuple(classified, R_L, R_H);
     }
 
@@ -151,18 +144,16 @@ std::tuple<Eigen::VectorXi, double, double> classifyIntensityColor(const Eigen::
     return std::make_tuple(classified, tau_l, tau_h);
 }
 
-// -------------------------------
-// 3) checkerboard model color lookup (grid_size = number of squares)
+// checkerboard model color lookup
 int getCheckerboardPatternColor(double x, double y, int grid_size_x_squares, int grid_size_y_squares, double checker_size_m) {
     if (checker_size_m <= 0.0) return -1;
     int col = static_cast<int>(std::floor(x / checker_size_m));
     int row = static_cast<int>(std::floor(y / checker_size_m));
     if (!(col >= 0 && col < grid_size_x_squares && row >= 0 && row < grid_size_y_squares)) return -1;
-    return ((row + col) % 2 == 0) ? 1 : 0; // 1: white, 0: black
+    return ((row + col) % 2 == 0) ? 1 : 0;
 }
 
-// -------------------------------
-// 4) cost function (with center regularization)
+// cost function (with center regularization)
 double costFunction(const Eigen::Vector3d& params,
                     const Eigen::MatrixXd& points_in_pca_plane_2d,
                     const Eigen::VectorXi& classified_colors,
@@ -186,7 +177,7 @@ double costFunction(const Eigen::Vector3d& params,
     double model_max_y =  board_h / 2.0;
 
     Eigen::MatrixXd shifted = points_in_pca_plane_2d.rowwise() - Eigen::RowVector2d(tx, ty);
-    Eigen::MatrixXd transformed = (Rz.transpose() * shifted.transpose()).transpose(); // Nx2
+    Eigen::MatrixXd transformed = (Rz.transpose() * shifted.transpose()).transpose();
 
     double cost = 0.0;
     const double out_scale = std::max(board_w, board_h) * 10.0;
@@ -226,9 +217,7 @@ double costFunction(const Eigen::Vector3d& params,
     return cost;
 }
 
-// -------------------------------
-// 5) Orientation & center refinement using intensity-pattern cross-correlation
-// Returns {tx_est, ty_est, theta_est}
+// Orientation & center refinement using intensity-pattern cross-correlation
 Eigen::Vector3d refineOrientationAndCenter(
     const Eigen::MatrixXd &points2d,
     const Eigen::VectorXd &intensities2d,
@@ -274,7 +263,6 @@ Eigen::Vector3d refineOrientationAndCenter(
     double score_y = periodicityScore(hist_y, range_y);
     bool rows_along_x = (score_x > score_y);
 
-    // Build coarse intensity image for cross-correlation
     std::vector<double> angle_candidates;
     for (double a = -10.0*M_PI/180.0; a <= 10.0*M_PI/180.0; a += 1.0*M_PI/180.0) angle_candidates.push_back(a);
 
@@ -332,12 +320,10 @@ Eigen::Vector3d refineOrientationAndCenter(
     return out;
 }
 
-// -------------------------------
-// 6) Main: 논문 방식의 코너 추정 함수 (외부에서 호출되는 함수)
+// 메인 함수: 논문 방식의 코너 추정 함수 (외부에서 호출됨)
 std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
     const std::vector<PointXYZI>& lidar_points_full_vec,
-    int internal_corners_x, int internal_corners_y, double checker_size_m,
-    bool flip_normal_direction)
+    int internal_corners_x, int internal_corners_y, double checker_size_m)
 {
     cout << "[estimateChessboardCornersPaperMethod] start. Npoints=" << lidar_points_full_vec.size() << endl;
     std::vector<PointXYZI> out_corners;
@@ -351,7 +337,6 @@ std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
         return out_corners;
     }
 
-    // convert to Eigen matrices
     int N = static_cast<int>(lidar_points_full_vec.size());
     Eigen::MatrixXd pts3d(N, 3);
     Eigen::VectorXd intens(N);
@@ -362,81 +347,86 @@ std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
         intens(i)   = lidar_points_full_vec[i].intensity;
     }
 
-    // centroid as Vector3d
+    // Centroid 계산
     Eigen::Vector3d centroid = pts3d.colwise().mean().transpose();
+    
+    // Covariance Matrix 계산
     Eigen::MatrixXd centered = pts3d.rowwise() - centroid.transpose();
-
     Eigen::Matrix3d cov = (centered.transpose() * centered) / double(std::max(1, N-1));
+    
+    // PCA를 위한 고유값/고유벡터 계산
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> es(cov);
     Eigen::Vector3d eigvals = es.eigenvalues();
     Eigen::Matrix3d eigvecs = es.eigenvectors();
 
-    // sort eigenpairs descending
     std::vector<std::pair<double, Eigen::Vector3d>> pairs;
     for (int i = 0; i < 3; ++i) pairs.emplace_back(eigvals(i), eigvecs.col(i));
     std::sort(pairs.begin(), pairs.end(), [](auto &a, auto &b){ return a.first > b.first; });
 
     Eigen::Matrix3d pcs;
     for (int i = 0; i < 3; ++i) pcs.col(i) = pairs[i].second;
-
+    
+    // -----------------------------------------------------------
+    // PCA 축 안정화를 위한 보정 로직
+    // -----------------------------------------------------------
     Eigen::Vector3d v_z = pcs.col(2);
-    if (v_z.dot(-centroid) < 0) v_z = -v_z;
-    if (flip_normal_direction) v_z = -v_z;
-    v_z.normalize();
-
-    Eigen::Vector3d v_x = pcs.col(0);
-    v_x = v_x - v_x.dot(v_z) * v_z;
-    if (v_x.norm() < 1e-6) {
-        Eigen::Vector3d arbitrary(1,0,0);
-        if (std::abs(v_z.dot(arbitrary)) > 0.9) arbitrary = Eigen::Vector3d(0,1,0);
-        v_x = arbitrary - arbitrary.dot(v_z) * v_z;
+    Eigen::Vector3d v_y_temp = pcs.col(1);
+    Eigen::Vector3d v_x_temp = pcs.col(0);
+    
+    // 이전에 선언되지 않아 오류가 발생했던 v_x와 v_y를 여기서 선언합니다.
+    Eigen::Vector3d v_x;
+    Eigen::Vector3d v_y;
+    
+    // 1. 법선 벡터(v_z) 방향 고정 (사용자분께서 유지하길 원하는 로직)
+    // LiDAR 원점에서 평면 중심까지의 벡터와 v_z의 내적을 이용해 방향을 고정합니다.
+    if (v_z.dot(-centroid) < 0) {
+        v_z = -v_z;
     }
-    v_x.normalize();
-    if (v_x.dot(Eigen::Vector3d(1,0,0)) < 0) v_x = -v_x;
-    Eigen::Vector3d v_y = v_z.cross(v_x);
-    v_y.normalize();
-    v_x = v_y.cross(v_z);
-    v_x.normalize();
-
-    // ====================================================================================================
-    // PCA 축의 길이를 계산하여 모델의 길이와 비교, 축의 방향을 보정
+    
+    // 2. PCA의 두 주축(v_x, v_y)이 체커보드의 가로/세로 방향과 일치하도록 정렬
+    // 여기에서 오류가 발생했던 코드를 수정합니다.
+    Eigen::VectorXd projections_x = centered * v_x_temp;
+    Eigen::VectorXd projections_y = centered * v_y_temp;
+    
+    double pca_len_x = projections_x.maxCoeff() - projections_x.minCoeff();
+    double pca_len_y = projections_y.maxCoeff() - projections_y.minCoeff();
+    
     double model_len_x = (internal_corners_x) * checker_size_m;
     double model_len_y = (internal_corners_y) * checker_size_m;
 
-    double pca_x_min = std::numeric_limits<double>::max();
-    double pca_x_max = std::numeric_limits<double>::lowest();
-    double pca_y_min = std::numeric_limits<double>::max();
-    double pca_y_max = std::numeric_limits<double>::lowest();
+    if ((pca_len_x > pca_len_y && model_len_x > model_len_y) ||
+        (pca_len_y > pca_len_x && model_len_y > model_len_x)) {
+        v_x = v_x_temp;
+        v_y = v_y_temp;
+    } else {
+        v_x = v_y_temp;
+        v_y = v_x_temp;
+    }
+
+    // 3. X, Y축의 방향성을 더 안정적인 기준으로 고정
+    // 기존의 LiDAR Y축 대신, 체커보드의 수직축(v_y)이 LiDAR Z축과 같은 방향을 향하도록 합니다.
+    Eigen::Vector3d lidar_z_axis(0.0, 0.0, 1.0);
+    if (v_y.dot(lidar_z_axis) < 0) {
+        v_y = -v_y;
+    }
+
+    // 4. 오른손 좌표계 규칙을 강제하기 위해 v_x를 재계산
+    v_x = v_y.cross(v_z);
+
+    v_z.normalize();
+    v_x.normalize();
+    v_y.normalize();
     
-    for (const auto& p : lidar_points_full_vec) {
-        Eigen::Vector3d p_centered = Eigen::Vector3d(p.x, p.y, p.z) - centroid;
-        double proj_x = p_centered.dot(v_x);
-        double proj_y = p_centered.dot(v_y);
-        if (proj_x < pca_x_min) pca_x_min = proj_x;
-        if (proj_x > pca_x_max) pca_x_max = proj_x;
-        if (proj_y < pca_y_min) pca_y_min = proj_y;
-        if (proj_y > pca_y_max) pca_y_max = proj_y;
-    }
-
-    double pca_len_x = pca_x_max - pca_x_min;
-    double pca_len_y = pca_y_max - pca_y_min;
-
-    if ((pca_len_x > pca_len_y && model_len_y > model_len_x) ||
-        (pca_len_y > pca_len_x && model_len_x > model_len_y)) {
-        std::swap(v_x, v_y);
-    }
-    // ====================================================================================================
+    // -----------------------------------------------------------
 
     Eigen::Matrix3d Rpcs;
     Rpcs.col(0) = v_x;
     Rpcs.col(1) = v_y;
     Rpcs.col(2) = v_z;
 
-    // transform to PCA frame
-    Eigen::MatrixXd pts_pca = (centered * Rpcs).eval(); // Nx3
-    Eigen::MatrixXd pts_pca_2d = pts_pca.leftCols(2); // Nx2
+    Eigen::MatrixXd pts_pca = (centered * Rpcs).eval();
+    Eigen::MatrixXd pts_pca_2d = pts_pca.leftCols(2);
 
-    // bounding crop w/ small margin
     double min_x = pts_pca_2d.col(0).minCoeff();
     double max_x = pts_pca_2d.col(0).maxCoeff();
     double min_y = pts_pca_2d.col(1).minCoeff();
@@ -463,7 +453,6 @@ std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
         intens_opt(i) = intens(keep_idx[i]);
     }
 
-    // intensity classification
     Eigen::VectorXi classified;
     double tau_l = 0.0, tau_h = 0.0;
     std::tie(classified, tau_l, tau_h) = classifyIntensityColor(intens_opt, 2.0);
@@ -471,22 +460,13 @@ std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
     int num_squares_x = internal_corners_x + 1;
     int num_squares_y = internal_corners_y + 1;
 
-    // initial guess: centroid in PCA 2D coords
-    Eigen::Vector3d initial_guess;
-    initial_guess[0] = pts_opt.col(0).mean();
-    initial_guess[1] = pts_opt.col(1).mean();
-    initial_guess[2] = 0.0;
-
-    // refined initial guess using intensity pattern correlation
     Eigen::Vector3d refined = refineOrientationAndCenter(pts_opt, intens_opt, checker_size_m, num_squares_x, num_squares_y);
-    // include a few quadrant-shifted thetas
     std::vector<double> theta_guesses = { refined[2] - M_PI/2.0, refined[2], refined[2] + M_PI/2.0, refined[2] + M_PI };
 
-    double lambda_center = 10.0; // tunable
+    double lambda_center = 10.0;
     double best_cost = std::numeric_limits<double>::infinity();
-    Eigen::Vector3d best_params = refined; // starting point
+    Eigen::Vector3d best_params = refined;
 
-    // coarse multi-start coordinate descent
     for (double tg : theta_guesses) {
         Eigen::Vector3d params(refined[0], refined[1], tg);
         double current_cost = costFunction(params, pts_opt, classified, num_squares_x, num_squares_y, checker_size_m,
@@ -525,7 +505,6 @@ std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
         }
     }
 
-    // small local sweep on theta and refine tx/ty
     {
         Eigen::Vector3d base = best_params;
         double base_cost = best_cost;
@@ -569,13 +548,10 @@ std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
     cout << "[estimateChessboardCornersPaperMethod] best_params tx,ty,theta(deg)=("
          << best_params[0] << ", " << best_params[1] << ", " << best_params[2]*180.0/M_PI << ") cost=" << best_cost << endl;
 
-    // Prepare quick lookup of original LiDAR 3D points to test proximity
     std::vector<Eigen::Vector3d> lidar_pts_world;
     lidar_pts_world.reserve(N);
     for (const auto &p : lidar_points_full_vec) lidar_pts_world.emplace_back(Eigen::Vector3d(p.x, p.y, p.z));
 
-    // ====================================================================================================
-    // 모델 코너를 중심을 기준으로 생성
     std::vector<Eigen::Vector2d> model_internal_corners_2d;
     double half_w = (internal_corners_x - 1) * checker_size_m / 2.0;
     double half_h = (internal_corners_y - 1) * checker_size_m / 2.0;
@@ -589,16 +565,12 @@ std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
             model_internal_corners_2d.emplace_back(cx, cy);
         }
     }
-    // ====================================================================================================
 
-    // Transform model corners to PCA frame (x,y), then to world (lidar) coords
     Eigen::Matrix2d Rz_best;
     double ct = std::cos(best_params[2]), st = std::sin(best_params[2]);
     Rz_best << ct, -st, st, ct;
 
-    double max_corner_dist = checker_size_m * 0.6; // tolerance: ~0.6 * square_size (tunable)
-
-    // 코너점과 PCA 좌표를 함께 저장할 구조체
+    double max_corner_dist = checker_size_m * 0.6;
     struct CornerData {
         PointXYZI world_point;
         Eigen::Vector2d pca_point;
@@ -608,10 +580,8 @@ std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
     for (const auto &mc : model_internal_corners_2d) {
         Eigen::Vector2d p_pca2 = Rz_best * mc + Eigen::Vector2d(best_params[0], best_params[1]);
         Eigen::Vector3d p_pca3(p_pca2[0], p_pca2[1], 0.0);
-        // back to world: world = Rpcs * p_pca3 + centroid
         Eigen::Vector3d p_world = Rpcs * p_pca3 + centroid;
 
-        // Check if near any LiDAR point (within tolerance)
         bool has_nearby = false;
         for (const auto &lp : lidar_pts_world) {
             double d2 = (lp - p_world).squaredNorm();
@@ -626,77 +596,31 @@ std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
             cd.world_point.y = p_world[1];
             cd.world_point.z = p_world[2];
             cd.world_point.intensity = 0.0;
-            cd.pca_point = p_pca2; // PCA 좌표를 저장
+            cd.pca_point = p_pca2;
             corners_data.push_back(cd);
         }
     }
     
     cout << "[estimateChessboardCornersPaperMethod] detected corners (nearby-filtered): " << corners_data.size() << endl;
 
-    // ====================================================================================================
-    // PCA 축을 기준으로 코너 정렬
     if (!corners_data.empty()) {
-        // 1. PCA Y축을 기준으로 행(row) 정렬
-        std::sort(corners_data.begin(), corners_data.end(), [](const CornerData& a, const CornerData& b) {
-            return a.pca_point.y() < b.pca_point.y();
+        std::sort(corners_data.begin(), corners_data.end(), [&](const CornerData& a, const CornerData& b) {
+            Eigen::Vector3d a_vec(a.world_point.x, a.world_point.y, a.world_point.z);
+            Eigen::Vector3d b_vec(b.world_point.x, b.world_point.y, b.world_point.z);
+            if (std::abs(a_vec.dot(v_y) - b_vec.dot(v_y)) < checker_size_m * 0.5) {
+                return a_vec.dot(v_x) < b_vec.dot(v_x);
+            }
+            return a_vec.dot(v_y) > b_vec.dot(v_y);
         });
-
-        // 2. 각 행(row) 내에서 PCA X축을 기준으로 열(col) 정렬
-        size_t start_idx = 0;
-        double half_checker_size = checker_size_m * 0.5;
-        for (size_t i = 1; i < corners_data.size(); ++i) {
-            if (std::abs(corners_data[i].pca_point.y() - corners_data[i-1].pca_point.y()) > half_checker_size) {
-                std::sort(corners_data.begin() + start_idx, corners_data.begin() + i, [](const CornerData& a, const CornerData& b) {
-                    return a.pca_point.x() < b.pca_point.x();
-                });
-                start_idx = i;
-            }
-        }
-        // 마지막 행 정렬
-        std::sort(corners_data.begin() + start_idx, corners_data.end(), [](const CornerData& a, const CornerData& b) {
-            return a.pca_point.x() < b.pca_point.x();
-        });
-        
-        // 3. 라이다 좌표계 기반 최종 순서 보정 (요청하신 로직 적용)
-        bool all_x_negative = true;
-        bool all_x_positive = true;
-        bool has_both_x_signs = false;
-        if (corners_data.size() > 0) {
-            for (const auto& cd : corners_data) {
-                if (cd.world_point.x >= 0) all_x_negative = false;
-                if (cd.world_point.x < 0) all_x_positive = false;
-            }
-            if (!all_x_negative && !all_x_positive) {
-                has_both_x_signs = true;
-            }
-        }
-
-        if (all_x_negative) {
-            if (corners_data.front().world_point.y > corners_data.back().world_point.y) {
-                std::reverse(corners_data.begin(), corners_data.end());
-            }
-        } else if (all_x_positive) {
-            if (corners_data.front().world_point.y < corners_data.back().world_point.y) {
-                std::reverse(corners_data.begin(), corners_data.end());
-            }
-        } else if (has_both_x_signs) {
-            if (corners_data.front().world_point.y < 0) {
-                if (corners_data.front().world_point.x < corners_data.back().world_point.x) {
-                    std::reverse(corners_data.begin(), corners_data.end());
-                }
-            } else { // y >= 0
-                if (corners_data.front().world_point.x > corners_data.back().world_point.x) {
-                    std::reverse(corners_data.begin(), corners_data.end());
-                }
-            }
-        }
     }
 
-    // 정렬된 코너를 최종 결과 벡터에 복사
     for (const auto& cd : corners_data) {
         out_corners.push_back(cd.world_point);
     }
-    // ====================================================================================================
+
+    if (!out_corners.empty()) {
+        out_corners[0].intensity = 255.0;
+    }
     
     cout << "[estimateChessboardCornersPaperMethod] detected corners (sorted): " << out_corners.size() << endl;
     return out_corners;
