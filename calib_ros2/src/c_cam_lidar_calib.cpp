@@ -29,10 +29,9 @@
 #include <cmath>                 // For std::acos, std::fabs
 #include <random>                // For random number generation
 
-// Lidar Corner Detection Library Header (경로 변경)
-// intensity_lidar_corner_detection_lib의 PUBLIC include directory가 추가되었으므로,
-// 해당 라이브러리의 include 폴더 내에서 직접 헤더 파일을 찾습니다.
 #include "intensity_lidar_corner_detection.hpp"
+#include "keyboard.hpp"
+#include "save.hpp"
 
 namespace fs = std::filesystem;
 
@@ -246,15 +245,6 @@ private:
         fs::create_directories(pcd_path_);
     }
 
-    bool keyboardAvailable()
-    {
-        struct timeval tv{0L, 0L};
-        fd_set fds;
-        FD_ZERO(&fds);
-        FD_SET(STDIN_FILENO, &fds);
-        return select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv) > 0;
-    }
-
     void keyboardCallback()
     {
         if (keyboardAvailable())
@@ -284,7 +274,9 @@ private:
 
             if (input == "s")
             {
-                saveFrame();
+                saveImageFile("png", img_path_, frame_counter_, current_frame_);
+                savePcdFile("pcd", pcd_path_, frame_counter_, last_cloud_);
+                frame_counter_++;
             }
             else if (input == "c")
             {
@@ -332,28 +324,6 @@ private:
                 rclcpp::shutdown();
             }
         }
-    }
-
-    void saveFrame()
-    {
-        if (current_frame_.empty())
-        {
-            RCLCPP_WARN(rclcpp::get_logger("saveFrame"), "No current camera frame captured yet! Cannot save image.");
-            return;
-        }
-
-        std::string img_filename = img_path_ + "img_" + std::to_string(frame_counter_) + ".png";
-        cv::imwrite(img_filename, current_frame_);
-
-        if (last_cloud_->empty())
-        {
-            RCLCPP_WARN(rclcpp::get_logger("saveFrame"), "No point cloud captured yet! Cannot save PCD.");
-            return;
-        }
-        std::string pcd_filename = pcd_path_ + "pcd_" + std::to_string(frame_counter_) + ".pcd";
-        pcl::io::savePCDFile(pcd_filename, *last_cloud_);
-        RCLCPP_INFO(this->get_logger(), "Saved image and pointcloud.");
-        frame_counter_++;
     }
 
     void findData()
@@ -830,7 +800,7 @@ private:
         RCLCPP_INFO(this->get_logger(), "Mean Reprojection Error: %.4f pixels", mean_reprojection_error);
 
         // 선택적: 에러 결과를 파일에 저장
-        saveToFile("txt", "reprojection_error", std::string("Mean Reprojection Error: ") + std::to_string(mean_reprojection_error) + " pixels");
+        saveFile("txt",cam_lidar_path_, "reprojection_error", std::string("Mean Reprojection Error: ") + std::to_string(mean_reprojection_error) + " pixels");
     }
 
     // Output and Reporting - Save to YAML
@@ -1042,54 +1012,6 @@ private:
         msg.header.stamp = stamp;
         msg.header.frame_id = frame_id;
     }
-
-    template <typename T>
-    void saveToFile(const std::string &extension,
-                    const std::string &filename,
-                    const T &data)
-    {
-        std::string fullpath = cam_lidar_path_ + filename + "." + extension;
-        std::ofstream ofs(fullpath);
-
-        if (!ofs.is_open())
-        {
-            RCLCPP_ERROR(this->get_logger(), "Failed to open file: %s", fullpath.c_str());
-            rclcpp::shutdown();
-        }
-
-        ofs << data << std::endl;
-        ofs.close();
-
-        RCLCPP_INFO(this->get_logger(), "File saved: %s", fullpath.c_str());
-    }
-
-    void saveToFile(const std::string &extension,
-                    const std::string &filename,
-                    const cv::Mat &mat)
-    {
-        std::string fullpath = cam_lidar_path_ + filename + "." + extension;
-        std::ofstream ofs(fullpath);
-
-        if (!ofs.is_open())
-        {
-            RCLCPP_ERROR(this->get_logger(), "Failed to open file: %s", fullpath.c_str());
-            rclcpp::shutdown();
-        }
-
-        for (int i = 0; i < mat.rows; ++i)
-        {
-            for (int j = 0; j < mat.cols; ++j)
-            {
-                ofs << mat.at<double>(i, j) << " ";
-            }
-            ofs << "\n";
-        }
-
-        ofs.close();
-
-        RCLCPP_INFO(this->get_logger(), "cv::Mat saved: %s", fullpath.c_str());
-    }
-
 }; // End of CamLidarCalibNode class
 
 int main(int argc, char **argv)

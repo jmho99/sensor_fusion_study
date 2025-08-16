@@ -6,10 +6,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Eigen3 라이브러리 찾기
 find_package(Eigen3 REQUIRED NO_MODULE)
+find_package(OpenCV REQUIRED NO_MODULE)
+find_package(PCL REQUIRED NO_MODULE)
 
 # 코너 검출 로직을 위한 정적 라이브러리 생성
 add_library(calib_utils STATIC
     src/intensity_lidar_corner_detection.cpp
+    src/keyboard.cpp
+    src/save.cpp
 )
 
 # 헤더 파일 경로를 PUBLIC으로 설정하여 이 라이브러리를 사용하는 다른 타겟에 전파되도록 합니다.
@@ -22,6 +26,8 @@ target_include_directories(calib_utils PUBLIC
 # Eigen3 라이브러리를 새로 생성한 라이브러리에 링크
 target_link_libraries(calib_utils
     Eigen3::Eigen
+    ${OpenCV_LIBS}
+    ${PCL_LIBRARIES}
 )
 
 # (선택 사항) 이 라이브러리를 시스템에 설치하고 싶다면 install 명령을 추가할 수 있습니다.

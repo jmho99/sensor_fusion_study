@@ -36,6 +36,9 @@ ament_target_dependencies(
   "sensor_msgs"
   "image_transport"
 )
+target_link_libraries(a_one_cam_calib
+  calib_utils
+)
 target_include_directories(a_one_cam_calib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
@@ -50,6 +53,9 @@ ament_target_dependencies(
   "cv_bridge"
   "sensor_msgs"
   "image_transport"
+)
+target_link_libraries(b_stereo_cam_calib
+  calib_utils
 )
 target_include_directories(b_stereo_cam_calib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -91,6 +97,9 @@ ament_target_dependencies(
   "PCL"
   "visualization_msgs"
   "pcl_conversions"
+)
+target_link_libraries(d_multi_lidar_calib
+  calib_utils
 )
 target_include_directories(d_multi_lidar_calib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

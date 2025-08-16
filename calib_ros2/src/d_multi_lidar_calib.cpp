@@ -24,6 +24,8 @@
 #include <pcl/surface/convex_hull.h>
 #include <pcl/common/transforms.h>
 
+#include "keyboard.hpp"
+
 namespace fs = std::filesystem;
 // #define LOOK_DEBUG
 
@@ -49,6 +51,7 @@ private:
 
     void keyboardCallback()
     {
+        //using cpp_utils library, keyboardAailable)
         if (keyboardAvailable())
         {
             std::string input;
@@ -84,15 +87,6 @@ private:
                 rclcpp::shutdown();
             }
         }
-    }
-
-    bool keyboardAvailable()
-    {
-        struct timeval tv{0L, 0L};
-        fd_set fds;
-        FD_ZERO(&fds);
-        FD_SET(STDIN_FILENO, &fds);
-        return select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv) > 0;
     }
 
     void filePath()
