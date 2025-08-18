@@ -8,6 +8,8 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
 
+#include "calib_utils/calib_utils.hpp"
+
 using std::placeholders::_1;
 
 namespace fs = std::filesystem;
@@ -17,18 +19,17 @@ class StereoCamCalibNode : public rclcpp::Node
 public:
     StereoCamCalibNode() : Node("b_stereo_cam_calib")
     {
+        readWritePath();
+        initializedParameters();
+
         left_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
             "/left/image_raw", 10, std::bind(&StereoCamCalibNode::leftCallback, this, _1));
         right_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
             "/right/image_raw", 10, std::bind(&StereoCamCalibNode::rightCallback, this, _1));
 
-        timer_ = this->create_wall_timer(
+        keyboard_timer_ = this->create_wall_timer(
             std::chrono::milliseconds(30),
-            std::bind(&StereoCamCalibNode::timerCallback, this));
-
-        std::string where_ = "company";
-        readWritePath(where_);
-        initializedParameters();
+            std::bind(&StereoCamCalibNode::keyboardCallback, this));
     }
 
 private:
@@ -54,7 +55,7 @@ private:
     int count_ = 0;
     double rms_;
 
-    rclcpp::TimerBase::SharedPtr timer_;
+    rclcpp::TimerBase::SharedPtr keyboard_timer_;
     cv::Mat last_image_;
 
     void leftCallback(const sensor_msgs::msg::Image::SharedPtr msg)
@@ -67,22 +68,33 @@ private:
         right_frame_ = cv_bridge::toCvCopy(msg, "bgr8")->image;
     }
 
-    void timerCallback()
+    void keyboardCallback()
     {
+        if (keyboardAvailable())
+        {
+            std::string input;
+            std::getline(std::cin, input);
 
-        // 빈 화면이라도 띄우도록 할 수 있음
-        cv::Mat dummy = cv::Mat::zeros(480, 640, CV_8UC3);
-        cv::putText(dummy, "No camera image", cv::Point(50, 240),
-                    cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 255), 2);
-        cv::imshow("Camera Image", dummy);
-
-        inputKeyboard(last_image_);
+            if (input == "s")
+            {
+                saveImageFile("png", origin_path_, count_, left_frame_);
+                saveImageFile("png", origin_path_, count_, right_frame_);
+                count_++;
+            }
+            else if (input == "c")
+            {
+                calibrateEachCamera();
+            }
+            else if (input == "e")
+            {
+               
+            }
+        }
     }
 
     void initializedParameters()
     {
-        std::string where = "company";
-        readWritePath(where);
+        readWritePath();
 
         cv::FileStorage fs(one_cam_result_path_ + "a_one_cam_calib_result.yaml", cv::FileStorage::READ);
         if (!fs.isOpened())
@@ -110,7 +122,7 @@ private:
         }
     }
 
-    void readWritePath(std::string where)
+    void readWritePath()
     {
         std::string home_dir = std::getenv("HOME");
         std::string calibration_path = home_dir + "/sensor_fusion_study_ws/src/sensor_fusion_study/calib_data";
@@ -123,40 +135,7 @@ private:
         fs::create_directories(calib_path_);
     }
 
-    void inputKeyboard(const cv::Mat &frame)
-    {
-        int key = cv::waitKey(1);
-        if (key == 's')
-        {
-            saveFrame();
-        }
-        else if (key == 'c')
-        {
-            calibrateEachCamera();
-        }
-        else if (key == 'e')
-        {
-        }
-    }
-
-    void saveFrame()
-    {
-        if (left_frame_.empty() || right_frame_.empty())
-            return;
-
-        // [ADD] Save origin images with numbering
-        std::string filename_left = origin_path_ + "img_" + std::to_string(count_) + "_left.png";
-        std::string filename_right = origin_path_ + "img_" + std::to_string(count_) + "_right.png";
-        cv::imwrite(filename_left, left_frame_);
-        cv::imwrite(filename_right, right_frame_);
-
-        RCLCPP_INFO(this->get_logger(), "📸 캘리브레이션 이미지 %d 장 수집됨", ++count_);
-
-        count_++;
-    }
-
-    void
-    calibrateEachCamera()
+    void calibrateEachCamera()
     {
         int i = 0;
         int valid_pairs_count = 0;

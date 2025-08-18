@@ -8,6 +8,8 @@
 #include <opencv2/core.hpp>
 #include <filesystem>
 
+#include "calib_utils/calib_utils.hpp"
+
 namespace fs = std::filesystem;
 
 class OneCamCalibNode : public rclcpp::Node
@@ -49,9 +51,9 @@ public:
     }
     else if (select_connect_ == "none")
     {
-      timer_ = this->create_wall_timer(
+      keyboard_timer_ = this->create_wall_timer(
           std::chrono::milliseconds(30),
-          std::bind(&OneCamCalibNode::timerCallback, this));
+          std::bind(&OneCamCalibNode::keyboardCallback, this));
     }
 
     readWritePath();
@@ -81,7 +83,7 @@ private:
   std::vector<cv::String> image_files_;
 
   std::vector<int> successful_indices_;
-  rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::TimerBase::SharedPtr keyboard_timer_;
   cv::Mat last_image_;
 
   void readWritePath()
@@ -96,25 +98,6 @@ private:
     fs::create_directories(calib_path_);
   }
 
-  void timerCallback()
-  {
-    if (!last_image_.empty())
-    {
-      cv::namedWindow("Camera Image", cv::WINDOW_NORMAL);
-      cv::resizeWindow("Camera Image", 640, 480);
-      cv::imshow("Camera Image", last_image_);
-    }
-    else
-    {
-      // 빈 화면이라도 띄우도록 할 수 있음
-      cv::Mat dummy = cv::Mat::zeros(480, 640, CV_8UC3);
-      cv::putText(dummy, "No camera image", cv::Point(50, 240),
-                  cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 0, 255), 2);
-      cv::imshow("Camera Image", dummy);
-    }
-
-    inputKeyboard(last_image_);
-  }
   void connectUsbCamera()
   {
     cv::VideoCapture cap;
@@ -130,17 +113,15 @@ private:
     cap.set(cv::CAP_PROP_FRAME_HEIGHT, frame_height_);
     cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
 
-    cv::Mat frame;
-    if (!cap.read(frame) || frame.empty())
+    if (!cap.read(current_frame_) || current_frame_.empty())
     {
       RCLCPP_INFO(this->get_logger(), "ERROR_frame");
       return;
     }
     while (true)
     {
-      cap >> frame;
-      cv::imshow("MJPEG CAM", frame);
-      inputKeyboard(frame);
+      cap >> current_frame_;
+      cv::imshow("MJPEG CAM", current_frame_);
     }
   }
 
@@ -152,7 +133,6 @@ private:
       cv::namedWindow("FLIR View", cv::WINDOW_NORMAL);
       cv::resizeWindow("FLIR View", 640, 480);
       cv::imshow("FLIR View", current_frame_);
-      inputKeyboard(current_frame_);
     }
     catch (cv_bridge::Exception &e)
     {
@@ -160,30 +140,29 @@ private:
     }
   }
 
-  void inputKeyboard(const cv::Mat &frame)
+  void keyboardCallback()
   {
-    int key = cv::waitKey(1);
-    if (key == 's')
+    if (keyboardAvailable())
     {
-      saveCurrentFrame(frame.clone());
-    }
-    else if (key == 'c')
-    {
-      runCalibrateFromFolder();
-    }
-    else if (key == 'e')
-    {
-      reporjectionError(obj_points_, img_points_, rvecs_, tvecs_, intrinsic_matrix_, dist_coeffs_, successful_indices_);
+      std::string input;
+      std::getline(std::cin, input);
+
+      if (input == "s")
+      {
+        saveImageFile("png", origin_path_, frame_counter_, current_frame_);
+        frame_counter_++;
+      }
+      else if (input == "c")
+      {
+        runCalibrateFromFolder();
+      }
+      else if (input == "e")
+      {
+        reporjectionError(obj_points_, img_points_, rvecs_, tvecs_, intrinsic_matrix_, dist_coeffs_, successful_indices_);
+      }
     }
   }
 
-  void saveCurrentFrame(const cv::Mat &frame)
-  {
-    std::string filename = origin_path_ + "img_" + std::to_string(frame_counter_) + ".png";
-    cv::imwrite(filename, frame);
-    RCLCPP_INFO(this->get_logger(), "Save Image: %s", filename.c_str());
-    frame_counter_++;
-  }
   int extractNumber(const std::string &filename)
   {
     std::string number;

@@ -24,7 +24,7 @@
 #include <pcl/surface/convex_hull.h>
 #include <pcl/common/transforms.h>
 
-#include "keyboard.hpp"
+#include "calib_utils/calib_utils.hpp"
 
 namespace fs = std::filesystem;
 // #define LOOK_DEBUG
@@ -75,7 +75,7 @@ private:
             }
             else if (input == "s")
             {
-                savePointCloud(number_lidars_, frame_counter_);
+                savePcdFile("pcd", origin_path_, number_lidars_, frame_counter_, clouds_);
                 frame_counter_++;
             }
             else if (input == "c")
@@ -104,20 +104,6 @@ private:
     void pcdCallback(const sensor_msgs::msg::PointCloud2::SharedPtr message, int index)
     {
         pcl::fromROSMsg(*message, *clouds_[index]);
-    }
-
-    void savePointCloud(int num, int frame_counter)
-    {
-        RCLCPP_INFO(this->get_logger(), "Save current Point Cloud");
-        if (clouds_.empty())
-        {
-            RCLCPP_WARN(rclcpp::get_logger("savePointCloud"), "Lidar is Not Working!!!");
-        }
-        for (int i = 0; i < num; i++)
-        {
-            std::string filename = origin_path_ + "lidar" + std::to_string(i) + "_" + std::to_string(frame_counter) + ".pcd";
-            pcl::io::savePCDFile(filename, *clouds_[i]);
-        }
     }
 
     void runMultiLidarCalibrate(int number)
