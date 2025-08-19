@@ -160,6 +160,11 @@ private:
       {
         reporjectionError(obj_points_, img_points_, rvecs_, tvecs_, intrinsic_matrix_, dist_coeffs_, successful_indices_);
       }
+
+      else if (input == "u")
+      {
+        saveUndistortedImages();
+      }
     }
   }
 
@@ -239,7 +244,7 @@ private:
         fs << "translation" << tvecs_;
         fs << "RMS error" << rms_;
         fs.release();
-        RCLCPP_INFO(this->get_logger(), "Succeeded result saving: calibration_result.yaml");
+        RCLCPP_INFO(this->get_logger(), "Succeeded result.yaml saving");
 
         // ✅ 여기부터 시각화 코드 최소화
         cv::Mat vis = img.clone();
@@ -249,7 +254,7 @@ private:
 
         std::string save_name = calib_path_ + "img_" + std::to_string(idx) + "_calib.png";
         cv::imwrite(save_name, vis);
-        RCLCPP_INFO(this->get_logger(), "Save calibration image: %s", save_name.c_str());
+        RCLCPP_INFO(this->get_logger(), "Save calibration image: ", std::to_string(idx).c_str());
         successful_indices_.push_back(idx);
       }
       else
@@ -258,7 +263,7 @@ private:
         cv::Mat vis = img.clone();
         std::string failed_save_name = calib_path_ + "img_" + std::to_string(idx) + "_failed.png";
         cv::imwrite(failed_save_name, vis);
-        RCLCPP_INFO(this->get_logger(), "Save failed image: %s", failed_save_name.c_str());
+        RCLCPP_INFO(this->get_logger(), "Save failed image: %s", std::to_string(idx).c_str());
       }
 
       if (img_points_.empty())
@@ -288,7 +293,7 @@ private:
       if (img.empty())
       {
         RCLCPP_WARN(rclcpp::get_logger("reporjectionError"),
-                    "Image load failed: %s", origin_file.c_str());
+                    "Image load failed: %s", std::to_string(idx).c_str());
         continue;
       }
       /*
@@ -321,11 +326,54 @@ private:
 
       std::string save_name = calib_path_ + "img_" + std::to_string(idx) + "_error.png";
       cv::imwrite(save_name, vis);
-      RCLCPP_INFO(this->get_logger(), "Save error visualization: %s", save_name.c_str());
+      RCLCPP_INFO(this->get_logger(), "Save error visualization: %s", std::to_string(idx).c_str());
 
       cv::Point3f p = obj_points_[i][69];
       cv::Point2f c = img_points_[i][69];
     }
+  }
+
+  void saveUndistortedImages()
+  {
+    RCLCPP_INFO(this->get_logger(), "Start saving undistorted images...");
+
+    if (intrinsic_matrix_.empty() || dist_coeffs_.empty())
+    {
+      RCLCPP_ERROR(this->get_logger(), "Intrinsic matrix or distortion coefficients are not available. Please run calibration ('c') first.");
+      return;
+    }
+
+    cv::Mat map1, map2;
+    cv::Size image_size(frame_width_, frame_height_);
+
+    // 왜곡 보정 맵 생성
+    cv::initUndistortRectifyMap(intrinsic_matrix_, dist_coeffs_, cv::Mat(),
+                                cv::getOptimalNewCameraMatrix(intrinsic_matrix_, dist_coeffs_, image_size, 1, image_size),
+                                image_size, CV_32FC1, map1, map2);
+
+    std::string undistorted_path = one_cam_path_ + "undistorted_images/";
+    fs::create_directories(undistorted_path);
+
+    // 캘리브레이션에 성공한 이미지들에 대해서만 왜곡 보정 적용
+    for (size_t i = 0; i < successful_indices_.size(); ++i)
+    {
+      int idx = successful_indices_[i];
+      std::string origin_file = origin_path_ + "img_" + std::to_string(idx) + ".png";
+      cv::Mat img = cv::imread(origin_file);
+      if (img.empty())
+      {
+        RCLCPP_WARN(this->get_logger(), "Image load failed: %s", std::to_string(idx).c_str());
+        continue;
+      }
+
+      cv::Mat undistorted_img;
+      cv::remap(img, undistorted_img, map1, map2, cv::INTER_LINEAR);
+
+      std::string save_name = undistorted_path + "img_" + std::to_string(idx) + "_undistorted.png";
+      cv::imwrite(save_name, undistorted_img);
+      RCLCPP_INFO(this->get_logger(), "Saved undistorted image: %s", std::to_string(idx).c_str());
+    }
+    RCLCPP_INFO(this->get_logger(), "Completed saving undistorted images.");
   }
 };
 

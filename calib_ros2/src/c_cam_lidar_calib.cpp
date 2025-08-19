@@ -682,6 +682,7 @@ private:
             RCLCPP_WARN(this->get_logger(), "No valid projected LiDAR points to select a random point from.");
         }
 
+        cv::imwrite(cam_lidar_path_ + "results/"+ img_file_+"projected_image.png", image_with_lidar_projection);
         cv::namedWindow("Lidar Projected on Image", cv::WINDOW_NORMAL); // Uncommented for display
         cv::resizeWindow("Lidar Projected on Image", 640, 480);
         cv::imshow("Lidar Projected on Image", image_with_lidar_projection);

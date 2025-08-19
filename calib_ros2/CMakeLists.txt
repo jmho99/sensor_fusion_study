@@ -20,6 +20,8 @@ find_package(calib_interfaces REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(message_filters REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(rosbag2_cpp REQUIRED)
+find_package(rosbag2_storage REQUIRED)
 
 find_package(ament_cmake_python REQUIRED)
 find_package(rclpy REQUIRED)
@@ -106,6 +108,26 @@ target_include_directories(d_multi_lidar_calib PUBLIC
   $<INSTALL_INTERFACE:include>)
 target_compile_features(d_multi_lidar_calib PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
 
+add_executable(e_lidar_imu_calib src/e_lidar_imu_calib.cpp)
+ament_target_dependencies(
+  e_lidar_imu_calib
+  "rclcpp"
+  "sensor_msgs"
+  "message_filters"
+  "PCL"
+  "pcl_conversions"
+  "Eigen3"
+  "rosbag2_cpp"
+  "rosbag2_storage"
+)
+target_link_libraries(e_lidar_imu_calib
+  calib_utils
+)
+target_include_directories(e_lidar_imu_calib PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(e_lidar_imu_calib PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
+
 add_executable(z_cv_random src/z_cv_random.cpp)
 ament_target_dependencies(
   z_cv_random
@@ -189,6 +211,7 @@ install(TARGETS
   b_stereo_cam_calib
   c_cam_lidar_calib
   d_multi_lidar_calib
+  e_lidar_imu_calib
   z_cv_random
   z_intensity
   z_pcd_publisher

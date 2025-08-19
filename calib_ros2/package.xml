@@ -22,6 +22,8 @@
   <depend>eigen</depend>
   <depend>message_filters</depend>
   <depend>nav_msgs</depend>
+  <depend>rosbag2_cpp</depend>
+  <depend>rosbag2_storage</depend>
 
   <depend>calib_interfaces</depend>
 
