@@ -110,6 +110,9 @@ private:
     std::string img_file_;
     std::string pcd_file_;
 
+    cv::Mat new_camera_matrix_, undistorted_image_;
+    std::vector<cv::Point2f> image_corners_undistorted_latest_;
+
     // 이미지에서 찾은 2D 코너
     std::vector<cv::Point2f> image_corners_latest_;
     // 라이다에서 찾은 체스보드 평면 포인트
@@ -385,7 +388,6 @@ private:
 
         std::vector<cv::Point2f> corners;
         bool found = cv::findChessboardCorners(img_gray, board_size_, corners); // board_size_ is now (cols-1, rows-1)
-        image_corners_latest_ = corners;                                        // 이미지에서 감지된 2D 코너 저장
         if (!found)
         {
             RCLCPP_ERROR(this->get_logger(), "SHUTDOWN_CAUSE: Chessboard not found in image! Shutting down node.");
@@ -395,6 +397,24 @@ private:
         cv::cornerSubPix(img_gray, corners, cv::Size(5, 5),
                          cv::Size(-1, -1),
                          cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 30, 0.1));
+
+        image_corners_latest_ = corners;
+
+        // 2) 새 카메라 행렬 계산 및 이미지 언디스토션
+        new_camera_matrix_ = cv::getOptimalNewCameraMatrix(intrinsic_matrix_, distortion_coeffs_,
+                                                           img_gray.size(), 0 /*alpha*/, img_gray.size());
+
+        // 언디스토션된 이미지 생성
+        cv::undistort(img_color, undistorted_image_, intrinsic_matrix_, distortion_coeffs_, new_camera_matrix_);
+
+        // 3) 코너 픽셀도 언디스토션된 픽셀로 변환
+        std::vector<cv::Point2f> undist_norm;
+        cv::undistortPoints(image_corners_latest_, undist_norm,
+                            intrinsic_matrix_, distortion_coeffs_,
+                            cv::noArray(), new_camera_matrix_);
+
+        // undistortPoints의 결과는 이미 새 K 픽셀 좌표계이므로 그대로 사용
+        image_corners_undistorted_latest_.assign(undist_norm.begin(), undist_norm.end());
 
         std::vector<cv::Point3f> object_points;
         // Object points should also reflect the number of internal corners.
@@ -660,7 +680,8 @@ private:
 
         // 6. Project LiDAR points onto the camera image for visual verification
         cv::Mat image_with_lidar_projection;
-        projectLidarToImage(transformed_cloud, last_image_, image_with_lidar_projection);
+        projectLidarToImage(transformed_cloud, !undistorted_image_.empty() ? undistorted_image_ : last_image_,
+                            image_with_lidar_projection);
 
         // 7. 랜덤 점 선택 및 방향 비교
         if (!projected_lidar_points_2d.empty())
@@ -682,7 +703,7 @@ private:
             RCLCPP_WARN(this->get_logger(), "No valid projected LiDAR points to select a random point from.");
         }
 
-        cv::imwrite(cam_lidar_path_ + "results/"+ img_file_+"projected_image.png", image_with_lidar_projection);
+        cv::imwrite(cam_lidar_path_ + "results/" + img_file_ + "projected_image.png", image_with_lidar_projection);
         cv::namedWindow("Lidar Projected on Image", cv::WINDOW_NORMAL); // Uncommented for display
         cv::resizeWindow("Lidar Projected on Image", 640, 480);
         cv::imshow("Lidar Projected on Image", image_with_lidar_projection);
@@ -754,52 +775,97 @@ private:
             return;
         }
 
-        // 1. LiDAR 3D 코너 포인트를 cv::Point3f 벡터로 변환 (이미 Eigen::Vector3d로 저장되어 있으므로 변환 필요)
-        std::vector<cv::Point3f> lidar_3d_corners_cv;
+        const std::vector<cv::Point2f> *img_corners_ptr = nullptr;
+        if (!image_corners_undistorted_latest_.empty())
+        {
+            img_corners_ptr = &image_corners_undistorted_latest_;
+        }
+        else if (!image_corners_latest_.empty())
+        {
+            img_corners_ptr = &image_corners_latest_;
+        }
+        if (img_corners_ptr == nullptr)
+        {
+            RCLCPP_ERROR(this->get_logger(), "No image corners available for error calculation.");
+            return;
+        }
+
+        // LiDAR 3D → 카메라 좌표계
+        std::vector<cv::Point3f> transformed_lidar_3d_corners;
+        transformed_lidar_3d_corners.reserve(chessboard_corners_3d_.size());
         for (const auto &eigen_pt : chessboard_corners_3d_)
         {
-            lidar_3d_corners_cv.emplace_back(eigen_pt.x(), eigen_pt.y(), eigen_pt.z());
-        }
-
-        // 2. LiDAR 3D 코너 포인트를 카메라 좌표계로 변환 (lidar2cam_R_과 lidar2cam_t_ 사용)
-        std::vector<cv::Point3f> transformed_lidar_3d_corners;
-        for (const auto &pt_lidar : lidar_3d_corners_cv)
-        {
-            cv::Mat pt_mat = (cv::Mat_<double>(3, 1) << pt_lidar.x, pt_lidar.y, pt_lidar.z);
-            cv::Mat pt_transformed = lidar2cam_R_ * pt_mat + lidar2cam_t_;
+            cv::Mat pt = (cv::Mat_<double>(3, 1) << eigen_pt.x(), eigen_pt.y(), eigen_pt.z());
+            cv::Mat q = lidar2cam_R_ * pt + lidar2cam_t_;
             transformed_lidar_3d_corners.emplace_back(
-                pt_transformed.at<double>(0),
-                pt_transformed.at<double>(1),
-                pt_transformed.at<double>(2));
+                q.at<double>(0), q.at<double>(1), q.at<double>(2));
         }
 
-        // 3. 변환된 3D LiDAR 포인트를 2D 이미지 평면에 투영
-        std::vector<cv::Point2f> projected_lidar_2d_corners;
-        cv::Mat dummy_rvec = cv::Mat::zeros(3, 1, CV_64F); // 3D 포인트가 이미 카메라 좌표계에 있으므로 회전 벡터는 0
-        cv::Mat dummy_tvec = cv::Mat::zeros(3, 1, CV_64F); // 3D 포인트가 이미 카메라 좌표계에 있으므로 이동 벡터는 0
+        // 프로젝션: newK + no distortion
+        std::vector<cv::Point2f> proj;
+        cv::Mat zero_r = cv::Mat::zeros(3, 1, CV_64F);
+        cv::Mat zero_t = cv::Mat::zeros(3, 1, CV_64F);
+        const cv::Mat &K = new_camera_matrix_.empty() ? intrinsic_matrix_ : new_camera_matrix_;
+        cv::projectPoints(transformed_lidar_3d_corners, zero_r, zero_t, K,
+                          cv::noArray(), proj);
 
-        cv::projectPoints(transformed_lidar_3d_corners,
-                          dummy_rvec, // 3D 점이 이미 카메라 좌표계에 있으므로 0
-                          dummy_tvec, // 3D 점이 이미 카메라 좌표계에 있으므로 0
-                          intrinsic_matrix_,
-                          distortion_coeffs_,
-                          projected_lidar_2d_corners);
+        // 에러 계산 (img_corners_ptr과 proj 크기 확인)
+        if (proj.size() != img_corners_ptr->size())
+        { /* ... */
+            return;
+        }
 
-        // 4. 재투영 에러 계산 (RMS 에러)
-        double sum_squared_error = 0.0;
-        for (size_t i = 0; i < image_corners_latest_.size(); ++i)
+        double sse = 0.0;
+        for (size_t i = 0; i < proj.size(); ++i)
         {
-            double dx = image_corners_latest_[i].x - projected_lidar_2d_corners[i].x;
-            double dy = image_corners_latest_[i].y - projected_lidar_2d_corners[i].y;
-            sum_squared_error += (dx * dx + dy * dy);
+            double dx = (*img_corners_ptr)[i].x - proj[i].x;
+            double dy = (*img_corners_ptr)[i].y - proj[i].y;
+            sse += dx * dx + dy * dy;
+        }
+        double rms = std::sqrt(sse / proj.size());
+        RCLCPP_INFO(this->get_logger(), "Mean Reprojection Error (undistorted): %.4f px", rms);
+        saveFile("txt", cam_lidar_path_, "reprojection_error",
+                 std::string("Mean Reprojection Error (undistorted newK): ") + std::to_string(rms) + " pixels");
+
+        // 사용 중인 카메라 행렬/초점거리 선택
+        const cv::Mat &K_used = new_camera_matrix_.empty() ? intrinsic_matrix_ : new_camera_matrix_;
+        const double fx_used = K_used.at<double>(0, 0);
+        const double fy_used = K_used.at<double>(1, 1);
+
+        double sse_px = 0.0; // px^2 합
+        double sse_m = 0.0;  // m^2 합
+        size_t N = proj.size();
+
+        for (size_t i = 0; i < N; ++i)
+        {
+            // 2D 픽셀 오차 (언디스토트면 undist 좌표 vs newK 투영, 원본이면 원본 좌표 vs K+dist 투영)
+            const double du = (*img_corners_ptr)[i].x - proj[i].x;
+            const double dv = (*img_corners_ptr)[i].y - proj[i].y;
+            sse_px += du * du + dv * dv;
+
+            // 대응 라이다 코너의 카메라 깊이 Zc (이미 L->C로 변환된 3D 사용)
+            const cv::Point3f &Pc = transformed_lidar_3d_corners[i];
+            const double Zc = static_cast<double>(Pc.z);
+
+            if (std::isfinite(Zc) && Zc > 1e-6)
+            {
+                // 픽셀 오차를 해당 깊이에서의 미터 오차로 변환
+                const double ex = (du / fx_used) * Zc; // X-축 방향 [m]
+                const double ey = (dv / fy_used) * Zc; // Y-축 방향 [m]
+                sse_m += ex * ex + ey * ey;
+            }
+            else
+            {
+                // 깊이 비정상이면 그 샘플은 미터 RMSE에서 제외하려면 N_m을 따로 두세요.
+                // 여기서는 단순히 무시: N_m 감소를 위해 카운팅 로직을 쓰는 게 정확합니다.
+            }
         }
 
-        double mean_reprojection_error = std::sqrt(sum_squared_error / image_corners_latest_.size());
+        double rmse_px = std::sqrt(sse_px / static_cast<double>(N));
+        double rmse_m = std::sqrt(sse_m / static_cast<double>(N)); // 위 주석처럼 유효 Zc 개수로 나눌 수도 있음
 
-        RCLCPP_INFO(this->get_logger(), "Mean Reprojection Error: %.4f pixels", mean_reprojection_error);
-
-        // 선택적: 에러 결과를 파일에 저장
-        saveFile("txt",cam_lidar_path_, "reprojection_error", std::string("Mean Reprojection Error: ") + std::to_string(mean_reprojection_error) + " pixels");
+        RCLCPP_INFO(this->get_logger(),
+                    "Reprojection RMSE: %.4f px   (back-projected) %.6f m", rmse_px, rmse_m);
     }
 
     // Output and Reporting - Save to YAML
@@ -822,15 +888,16 @@ private:
 
     void projectLidarToImage(
         const pcl::PointCloud<pcl::PointXYZI>::Ptr &cloud_in_cam,
-        const cv::Mat &image,
+        const cv::Mat &image_in,
         cv::Mat &image_out)
     {
-        image_out = image.clone();
+        // 언디스토션 이미지가 만들어졌으면 그걸 사용
+        const cv::Mat &base = !undistorted_image_.empty() ? undistorted_image_ : image_in;
+        image_out = base.clone();
 
-        double fx = intrinsic_matrix_.at<double>(0, 0);
-        double fy = intrinsic_matrix_.at<double>(1, 1);
-        double cx = intrinsic_matrix_.at<double>(0, 2);
-        double cy = intrinsic_matrix_.at<double>(1, 2);
+        const cv::Mat &K = !new_camera_matrix_.empty() ? new_camera_matrix_ : intrinsic_matrix_;
+        double fx = K.at<double>(0, 0), fy = K.at<double>(1, 1);
+        double cx = K.at<double>(0, 2), cy = K.at<double>(1, 2);
 
         float min_horizontal_dist = std::numeric_limits<float>::max();
         float max_horizontal_dist = std::numeric_limits<float>::min();
