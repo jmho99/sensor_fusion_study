@@ -4,6 +4,7 @@
 #include <string>
 #include <filesystem>
 #include "sensor_msgs/msg/image.hpp"
+#include "sensor_msgs/msg/compressed_image.hpp"
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <cstdlib>
 
@@ -30,6 +31,7 @@
 #include <random>                // For random number generation
 
 #include "calib_utils/calib_utils.hpp"
+#include "ceres/ceres.h"
 
 namespace fs = std::filesystem;
 
@@ -63,9 +65,9 @@ public:
     }
 
 private:
-    std::vector<rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr> sub_cam_;
+    std::vector<rclcpp::Subscription<sensor_msgs::msg::CompressedImage>::SharedPtr> sub_cam_;
     std::vector<rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr> sub_lidar_;
-    rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr sub_cam__;
+    rclcpp::Subscription<sensor_msgs::msg::CompressedImage>::SharedPtr sub_cam__;
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_lidar__;
     cv::Mat current_frame_;
     cv::Mat last_image_;                                                                   // Latest image data
@@ -106,6 +108,7 @@ private:
     std::vector<std::vector<cv::Point3f>> obj_points_;
     std::vector<cv::Mat> rvecs_, tvecs_;
     double rms_;
+    std::vector<double> all_frames_rms_;
 
     std::string img_file_;
     std::string pcd_file_;
@@ -144,11 +147,11 @@ private:
     cv::Point2f random_selected_image_point_;
     cv::Point3f random_selected_lidar_point_in_cam_frame_; // 카메라 좌표계로 변환된 라이다 점
 
-    std::vector<cv::Mat> all_frame_rvecs_;
-    std::vector<cv::Mat> all_frame_tvecs_;
+    std::vector<cv::Mat> all_frame_rot_;
+    std::vector<cv::Mat> all_frame_trans_;
     // --- 함수 선언 순서 조정 끝 ---
 
-    void imageCallback(const sensor_msgs::msg::Image::SharedPtr msg)
+    void imageCallback(const sensor_msgs::msg::CompressedImage::SharedPtr msg)
     {
         current_frame_ = cv_bridge::toCvCopy(msg, "bgr8")->image;
         cv::namedWindow("FLIR View", cv::WINDOW_NORMAL); // Uncommented for display
@@ -261,8 +264,9 @@ private:
             }
             if (input == "connect")
             {
-                auto sub_cam = this->create_subscription<sensor_msgs::msg::Image>("/flir_camera/image_raw", rclcpp::SensorDataQoS(),
-                                                                                  std::bind(&CamLidarCalibNode::imageCallback, this, std::placeholders::_1));
+                auto qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable().durability_volatile();
+                auto sub_cam = this->create_subscription<sensor_msgs::msg::CompressedImage>("/image_raw/compressed", qos,
+                                                                                            std::bind(&CamLidarCalibNode::imageCallback, this, std::placeholders::_1));
 
                 std::string lidar_topic = "/ouster/points";
                 auto sub_lidar = this->create_subscription<sensor_msgs::msg::PointCloud2>(lidar_topic, rclcpp::SensorDataQoS(),
@@ -307,6 +311,7 @@ private:
                     if (entry.path().extension() == ".png")
                         total_frames++;
                 }
+                RCLCPP_INFO(this->get_logger(), "Total frame is : %d", total_frames);
 
                 for (int frame_i = 0; frame_i < total_frames; ++frame_i)
                 {
@@ -329,6 +334,7 @@ private:
 
     void findData()
     {
+
         std::vector<cv::String> image_files;
         cv::glob(img_path_ + "*.png", image_files, false);
 
@@ -619,8 +625,8 @@ private:
         // dst: chessboard_3d_in_cam_frame (3D points in Camera frame)
         computeRigidTransformSVD(estimated_chessboard_corners_lidar, chessboard_3d_in_cam_frame, lidar2cam_R_, lidar2cam_t_);
 
-        all_frame_rvecs_.push_back(cb2cam_rvec_);
-        all_frame_tvecs_.push_back(cb2cam_tvec_);
+        all_frame_rot_.push_back(lidar2cam_R_);
+        all_frame_trans_.push_back(lidar2cam_t_);
 
         RCLCPP_INFO(this->get_logger(), "Lidar to Camera Rotation Matrix (R):\n%f %f %f\n%f %f %f\n%f %f %f",
                     lidar2cam_R_.at<double>(0, 0), lidar2cam_R_.at<double>(0, 1), lidar2cam_R_.at<double>(0, 2),
@@ -815,25 +821,26 @@ private:
             return;
         }
 
-        double sse = 0.0;
+        double error_square = 0.0;
         for (size_t i = 0; i < proj.size(); ++i)
         {
             double dx = (*img_corners_ptr)[i].x - proj[i].x;
             double dy = (*img_corners_ptr)[i].y - proj[i].y;
-            sse += dx * dx + dy * dy;
+            error_square += dx * dx + dy * dy;
         }
-        double rms = std::sqrt(sse / proj.size());
+        double rms = std::sqrt(error_square / proj.size());
         RCLCPP_INFO(this->get_logger(), "Mean Reprojection Error (undistorted): %.4f px", rms);
         saveFile("txt", cam_lidar_path_, "reprojection_error",
                  std::string("Mean Reprojection Error (undistorted newK): ") + std::to_string(rms) + " pixels");
+        all_frames_rms_.push_back(rms);
 
         // 사용 중인 카메라 행렬/초점거리 선택
         const cv::Mat &K_used = new_camera_matrix_.empty() ? intrinsic_matrix_ : new_camera_matrix_;
         const double fx_used = K_used.at<double>(0, 0);
         const double fy_used = K_used.at<double>(1, 1);
 
-        double sse_px = 0.0; // px^2 합
-        double sse_m = 0.0;  // m^2 합
+        double error_square_px = 0.0; // px^2 합
+        double error_square_m = 0.0;  // m^2 합
         size_t N = proj.size();
 
         for (size_t i = 0; i < N; ++i)
@@ -841,7 +848,7 @@ private:
             // 2D 픽셀 오차 (언디스토트면 undist 좌표 vs newK 투영, 원본이면 원본 좌표 vs K+dist 투영)
             const double du = (*img_corners_ptr)[i].x - proj[i].x;
             const double dv = (*img_corners_ptr)[i].y - proj[i].y;
-            sse_px += du * du + dv * dv;
+            error_square_px += du * du + dv * dv;
 
             // 대응 라이다 코너의 카메라 깊이 Zc (이미 L->C로 변환된 3D 사용)
             const cv::Point3f &Pc = transformed_lidar_3d_corners[i];
@@ -852,7 +859,7 @@ private:
                 // 픽셀 오차를 해당 깊이에서의 미터 오차로 변환
                 const double ex = (du / fx_used) * Zc; // X-축 방향 [m]
                 const double ey = (dv / fy_used) * Zc; // Y-축 방향 [m]
-                sse_m += ex * ex + ey * ey;
+                error_square_m += ex * ex + ey * ey;
             }
             else
             {
@@ -861,11 +868,18 @@ private:
             }
         }
 
-        double rmse_px = std::sqrt(sse_px / static_cast<double>(N));
-        double rmse_m = std::sqrt(sse_m / static_cast<double>(N)); // 위 주석처럼 유효 Zc 개수로 나눌 수도 있음
+        double rmse_px = std::sqrt(error_square_px / static_cast<double>(N));
+        double rmse_m = std::sqrt(error_square_m / static_cast<double>(N)); // 위 주석처럼 유효 Zc 개수로 나눌 수도 있음
 
         RCLCPP_INFO(this->get_logger(),
                     "Reprojection RMSE: %.4f px   (back-projected) %.6f m", rmse_px, rmse_m);
+    }
+
+    void optimizationAllFrames()
+    {
+        //if (all_frames_rms_<=1) return;
+
+        
     }
 
     // Output and Reporting - Save to YAML

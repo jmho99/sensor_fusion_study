@@ -1,5 +1,6 @@
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/image.hpp"
+#include "sensor_msgs/msg/compressed_image.hpp"
 #include "std_msgs/msg/header.hpp"
 #include <chrono>
 #include <cv_bridge/cv_bridge.h>
@@ -17,13 +18,13 @@ class OneCamCalibNode : public rclcpp::Node
 public:
   OneCamCalibNode() : Node("a_one_cam_calib"), frame_counter_(0)
   {
-    declare_parameter("select_connect", "none");
+    declare_parameter("select_connect", "ethernet");
     declare_parameter("device_path", "/dev/video1");
     declare_parameter("checkerboard_cols", 5);
     declare_parameter("checkerboard_rows", 7);
-    declare_parameter("square_size", 0.095);
-    declare_parameter("frame_width", 2448);
-    declare_parameter("frame_height", 2048);
+    declare_parameter("square_size", 0.1);
+    declare_parameter("frame_width", 1920);
+    declare_parameter("frame_height", 1200);
 
     get_parameter("select_connect", select_connect_);
     get_parameter("device_path", device_path_);
@@ -44,17 +45,17 @@ public:
     }
     else if (select_connect_ == "ethernet")
     {
+      auto qos = rclcpp::QoS(rclcpp::KeepLast(1)).reliable().durability_volatile();
       subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
-          "/flir_camera/image_raw", rclcpp::SensorDataQoS(),
+          "/flir_camera/image_raw", qos,
           std::bind(&OneCamCalibNode::imageCallback, this, std::placeholders::_1));
       RCLCPP_INFO(this->get_logger(), "Open camera using ETHERNET");
     }
-    else if (select_connect_ == "none")
-    {
-      keyboard_timer_ = this->create_wall_timer(
+
+    keyboard_timer_ = this->create_wall_timer(
           std::chrono::milliseconds(30),
           std::bind(&OneCamCalibNode::keyboardCallback, this));
-    }
+
 
     readWritePath();
   }
@@ -146,7 +147,7 @@ private:
     {
       std::string input;
       std::getline(std::cin, input);
-
+      
       if (input == "s")
       {
         saveImageFile("png", origin_path_, frame_counter_, current_frame_);

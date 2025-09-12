@@ -24,6 +24,11 @@
   <depend>nav_msgs</depend>
   <depend>rosbag2_cpp</depend>
   <depend>rosbag2_storage</depend>
+  <depend>Ceres</depend>
+  <depend>geometry_msgs</depend>
+  <depend>tf2</depend>
+  <depend>std_srvs</depend>
+  <depend>tf2_ros</depend>
 
   <depend>calib_interfaces</depend>
 

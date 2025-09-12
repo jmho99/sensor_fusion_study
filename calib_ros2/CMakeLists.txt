@@ -22,6 +22,11 @@ find_package(message_filters REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(rosbag2_cpp REQUIRED)
 find_package(rosbag2_storage REQUIRED)
+find_package(Ceres REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(std_srvs REQUIRED)
+find_package(tf2_ros REQUIRED)
 
 find_package(ament_cmake_python REQUIRED)
 find_package(rclpy REQUIRED)
@@ -78,6 +83,7 @@ ament_target_dependencies(
   "pcl_conversions"
   "calib_interfaces"
   "Eigen3"
+  "Ceres"
 )
 target_link_libraries(c_cam_lidar_calib
   calib_utils
@@ -128,95 +134,12 @@ target_include_directories(e_lidar_imu_calib PUBLIC
   $<INSTALL_INTERFACE:include>)
 target_compile_features(e_lidar_imu_calib PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
 
-add_executable(z_cv_random src/z_cv_random.cpp)
-ament_target_dependencies(
-  z_cv_random
-  "rclcpp"
-  "std_msgs"
-  "OpenCV"
-  "cv_bridge"
-  "sensor_msgs"
-  "image_transport"
-)
-target_include_directories(z_cv_random PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_compile_features(z_cv_random PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
-
-add_executable(z_intensity src/z_intensity.cpp)
-ament_target_dependencies(
-  z_intensity
-  "rclcpp"
-  "std_msgs"
-  "OpenCV"
-  "cv_bridge"
-  "sensor_msgs"
-  "image_transport"
-  "PCL"
-  "visualization_msgs"
-  "pcl_conversions"
-  "calib_interfaces"
-  "Eigen3"
-)
-target_include_directories(z_intensity PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_compile_features(z_intensity PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
-
-add_executable(z_pcd_publisher src/z_pcd_publisher.cpp)
-ament_target_dependencies(
-  z_pcd_publisher
-  "rclcpp"
-  "std_msgs"
-  "sensor_msgs"
-  "PCL"
-  "pcl_conversions"
-  "visualization_msgs"
-)
-target_include_directories(z_pcd_publisher PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_compile_features(z_pcd_publisher PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
-
-add_executable(z_time_synchronizer src/z_time_synchronizer.cpp)
-ament_target_dependencies(
-  z_time_synchronizer
-  "rclcpp"
-  "std_msgs"
-  "sensor_msgs"
-  "message_filters"
-)
-target_include_directories(z_time_synchronizer PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_compile_features(z_time_synchronizer PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
-
-add_executable(z_ndt_scan_matching src/z_ndt_scan_matching.cpp)
-ament_target_dependencies(
-  z_ndt_scan_matching
-  "rclcpp"
-  "std_msgs"
-  "sensor_msgs"
-  "pcl_conversions"
-  "PCL"
-  "nav_msgs"
-)
-target_include_directories(z_ndt_scan_matching PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_compile_features(z_ndt_scan_matching PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
-
 install(TARGETS
   a_one_cam_calib
   b_stereo_cam_calib
   c_cam_lidar_calib
   d_multi_lidar_calib
   e_lidar_imu_calib
-  z_cv_random
-  z_intensity
-  z_pcd_publisher
-  z_time_synchronizer
-  z_ndt_scan_matching
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY include/
@@ -227,7 +150,6 @@ install(DIRECTORY include/
   #python module
 ament_python_install_package(${PROJECT_NAME})
 install (PROGRAMS
-  scripts/intensity.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
