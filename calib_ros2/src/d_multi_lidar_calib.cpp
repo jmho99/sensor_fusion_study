@@ -52,7 +52,7 @@ private:
     void keyboardCallback()
     {
         //using cpp_utils library, keyboardAailable)
-        if (keyboardAvailable())
+        if (calib_utils::keyboardAvailable())
         {
             std::string input;
             std::getline(std::cin, input);
@@ -75,7 +75,7 @@ private:
             }
             else if (input == "s")
             {
-                savePcdFile("pcd", origin_path_, number_lidars_, frame_counter_, clouds_);
+                calib_utils::savePcdFile("pcd", origin_path_, number_lidars_, frame_counter_, clouds_);
                 frame_counter_++;
             }
             else if (input == "c")

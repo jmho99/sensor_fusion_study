@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/calib_utils/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/calib_utils/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

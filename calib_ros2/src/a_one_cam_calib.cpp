@@ -143,14 +143,14 @@ private:
 
   void keyboardCallback()
   {
-    if (keyboardAvailable())
+    if (calib_utils::keyboardAvailable())
     {
       std::string input;
       std::getline(std::cin, input);
       
       if (input == "s")
       {
-        saveImageFile("png", origin_path_, frame_counter_, current_frame_);
+        calib_utils::saveImageFile("png", origin_path_, frame_counter_, current_frame_);
         frame_counter_++;
       }
       else if (input == "c")

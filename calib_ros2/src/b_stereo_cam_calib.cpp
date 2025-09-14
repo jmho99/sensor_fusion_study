@@ -70,15 +70,15 @@ private:
 
     void keyboardCallback()
     {
-        if (keyboardAvailable())
+        if (calib_utils::keyboardAvailable())
         {
             std::string input;
             std::getline(std::cin, input);
 
             if (input == "s")
             {
-                saveImageFile("png", origin_path_, count_, left_frame_);
-                saveImageFile("png", origin_path_, count_, right_frame_);
+                calib_utils::saveImageFile("png", origin_path_, count_, left_frame_);
+                calib_utils::saveImageFile("png", origin_path_, count_, right_frame_);
                 count_++;
             }
             else if (input == "c")

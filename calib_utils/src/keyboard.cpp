@@ -4,11 +4,14 @@
 #include <sys/select.h>
 #include <sys/time.h>
 
-bool keyboardAvailable()
+namespace calib_utils
 {
-    struct timeval tv{0L, 0L};
-    fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(STDIN_FILENO, &fds);
-    return select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv) > 0;
+    bool keyboardAvailable()
+    {
+        struct timeval tv{0L, 0L};
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(STDIN_FILENO, &fds);
+        return select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv) > 0;
+    }
 }

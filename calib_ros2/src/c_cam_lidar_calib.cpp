@@ -251,7 +251,7 @@ private:
 
     void keyboardCallback()
     {
-        if (keyboardAvailable())
+        if (calib_utils::keyboardAvailable())
         {
             std::string input;
             std::getline(std::cin, input);
@@ -279,8 +279,8 @@ private:
 
             if (input == "s")
             {
-                saveImageFile("png", img_path_, frame_counter_, current_frame_);
-                savePcdFile("pcd", pcd_path_, frame_counter_, last_cloud_);
+                calib_utils::saveImageFile("png", img_path_, frame_counter_, current_frame_);
+                calib_utils::savePcdFile("pcd", pcd_path_, frame_counter_, last_cloud_);
                 frame_counter_++;
             }
             else if (input == "c")
@@ -539,7 +539,7 @@ private:
         RCLCPP_INFO(this->get_logger(), "Detected %zu points in LiDAR plane.", lidar_plane_points_latest_->points.size());
 
         // Convert PCL PointCloud to std::vector<PointXYZI> for the external function
-        std::vector<PointXYZI> lidar_points_for_corner_detection;
+        std::vector<calib_utils::PointXYZI> lidar_points_for_corner_detection;
         lidar_points_for_corner_detection.reserve(lidar_plane_points_latest_->points.size());
         for (const auto &p : lidar_plane_points_latest_->points)
         {
@@ -549,7 +549,7 @@ private:
         RCLCPP_INFO(this->get_logger(), "Calling external corner detection function...");
 
         // Call the external corner detection function directly, passing the parameter
-        std::vector<PointXYZI> detected_corners_xyz_i = estimateChessboardCornersPaperMethod(
+        std::vector<calib_utils::PointXYZI> detected_corners_xyz_i = calib_utils::estimateChessboardCornersPaperMethod(
             lidar_points_for_corner_detection,
             pattern_size_cols_, // internal_corners_x
             pattern_size_rows_, // internal_corners_y
@@ -830,7 +830,7 @@ private:
         }
         double rms = std::sqrt(error_square / proj.size());
         RCLCPP_INFO(this->get_logger(), "Mean Reprojection Error (undistorted): %.4f px", rms);
-        saveFile("txt", cam_lidar_path_, "reprojection_error",
+        calib_utils::saveFile("txt", cam_lidar_path_, "reprojection_error",
                  std::string("Mean Reprojection Error (undistorted newK): ") + std::to_string(rms) + " pixels");
         all_frames_rms_.push_back(rms);
 

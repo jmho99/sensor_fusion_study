@@ -60,7 +60,7 @@ EQUALS = =
 CMAKE_SOURCE_DIR = /home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/calib_utils
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/calib_utils
+CMAKE_BINARY_DIR = /home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/calib_utils/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/calib_utils/CMakeFiles /home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/calib_utils//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/calib_utils/build/CMakeFiles /home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/calib_utils/build//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/calib_utils/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/calib_utils/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -153,6 +153,78 @@ src/intensity_lidar_corner_detection.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/calib_utils.dir/build.make CMakeFiles/calib_utils.dir/src/intensity_lidar_corner_detection.cpp.s
 .PHONY : src/intensity_lidar_corner_detection.cpp.s
 
+src/keyboard.o: src/keyboard.cpp.o
+.PHONY : src/keyboard.o
+
+# target to build an object file
+src/keyboard.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/calib_utils.dir/build.make CMakeFiles/calib_utils.dir/src/keyboard.cpp.o
+.PHONY : src/keyboard.cpp.o
+
+src/keyboard.i: src/keyboard.cpp.i
+.PHONY : src/keyboard.i
+
+# target to preprocess a source file
+src/keyboard.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/calib_utils.dir/build.make CMakeFiles/calib_utils.dir/src/keyboard.cpp.i
+.PHONY : src/keyboard.cpp.i
+
+src/keyboard.s: src/keyboard.cpp.s
+.PHONY : src/keyboard.s
+
+# target to generate assembly for a file
+src/keyboard.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/calib_utils.dir/build.make CMakeFiles/calib_utils.dir/src/keyboard.cpp.s
+.PHONY : src/keyboard.cpp.s
+
+src/ndt_transformation.o: src/ndt_transformation.cpp.o
+.PHONY : src/ndt_transformation.o
+
+# target to build an object file
+src/ndt_transformation.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/calib_utils.dir/build.make CMakeFiles/calib_utils.dir/src/ndt_transformation.cpp.o
+.PHONY : src/ndt_transformation.cpp.o
+
+src/ndt_transformation.i: src/ndt_transformation.cpp.i
+.PHONY : src/ndt_transformation.i
+
+# target to preprocess a source file
+src/ndt_transformation.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/calib_utils.dir/build.make CMakeFiles/calib_utils.dir/src/ndt_transformation.cpp.i
+.PHONY : src/ndt_transformation.cpp.i
+
+src/ndt_transformation.s: src/ndt_transformation.cpp.s
+.PHONY : src/ndt_transformation.s
+
+# target to generate assembly for a file
+src/ndt_transformation.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/calib_utils.dir/build.make CMakeFiles/calib_utils.dir/src/ndt_transformation.cpp.s
+.PHONY : src/ndt_transformation.cpp.s
+
+src/save.o: src/save.cpp.o
+.PHONY : src/save.o
+
+# target to build an object file
+src/save.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/calib_utils.dir/build.make CMakeFiles/calib_utils.dir/src/save.cpp.o
+.PHONY : src/save.cpp.o
+
+src/save.i: src/save.cpp.i
+.PHONY : src/save.i
+
+# target to preprocess a source file
+src/save.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/calib_utils.dir/build.make CMakeFiles/calib_utils.dir/src/save.cpp.i
+.PHONY : src/save.cpp.i
+
+src/save.s: src/save.cpp.s
+.PHONY : src/save.s
+
+# target to generate assembly for a file
+src/save.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/calib_utils.dir/build.make CMakeFiles/calib_utils.dir/src/save.cpp.s
+.PHONY : src/save.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -165,6 +237,15 @@ help:
 	@echo "... src/intensity_lidar_corner_detection.o"
 	@echo "... src/intensity_lidar_corner_detection.i"
 	@echo "... src/intensity_lidar_corner_detection.s"
+	@echo "... src/keyboard.o"
+	@echo "... src/keyboard.i"
+	@echo "... src/keyboard.s"
+	@echo "... src/ndt_transformation.o"
+	@echo "... src/ndt_transformation.i"
+	@echo "... src/ndt_transformation.s"
+	@echo "... src/save.o"
+	@echo "... src/save.i"
+	@echo "... src/save.s"
 .PHONY : help
 
 

@@ -53,7 +53,7 @@ private:
     void keyboardCallback()
     {
 
-        if (keyboardAvailable())
+        if (calib_utils::keyboardAvailable())
         {
             std::string input;
             std::getline(std::cin, input);

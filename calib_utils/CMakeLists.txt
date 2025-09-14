@@ -14,6 +14,7 @@ add_library(calib_utils STATIC
     src/intensity_lidar_corner_detection.cpp
     src/keyboard.cpp
     src/save.cpp
+    src/ndt_transformation.cpp
 )
 
 # 헤더 파일 경로를 PUBLIC으로 설정하여 이 라이브러리를 사용하는 다른 타겟에 전파되도록 합니다.

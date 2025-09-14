@@ -4,5 +4,6 @@
 #include "calib_utils/save.hpp"
 #include "calib_utils/keyboard.hpp"
 #include "calib_utils/intensity_lidar_corner_detection.hpp"
+#include "calib_utils/ndt_transformation.hpp"
 
 #endif

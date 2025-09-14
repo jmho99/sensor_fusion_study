@@ -22,6 +22,8 @@
 #include <filesystem>
 #include <iomanip>
 
+#include "calib_utils/calib_utils.hpp"
+
 namespace fs = std::filesystem;
 using PointT = pcl::PointXYZ;
 using CloudT = pcl::PointCloud<PointT>;
@@ -67,6 +69,59 @@ public:
     }
 
 private:
+    void onCloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
+    {
+        std::string home_dir = std::getenv("HOME");
+        std::string file_dir = home_dir + "/sensor_fusion_study_ws/src/sensor_fusion_study/calib_test/data";
+        fs::path file_path = "/rotation.yaml";
+        fs::create_directories(file_path.parent_path());
+
+        auto cloud_raw = std::make_shared<CloudT>();
+        pcl::fromROSMsg(*msg, *cloud_raw);
+        if (cloud_raw->empty())
+        {
+            RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000, "Empty cloud, skip.");
+            return;
+        }
+
+        // 첫 프레임이면 저장만
+        if (!prev_cloud_)
+        {
+            prev_cloud_ = cloud_raw;
+            prev_stamp_ = msg->header.stamp;
+            std::ofstream init_output(file_path, std::ios::out | std::ios::trunc);
+            init_output.close();
+            return;
+        }
+
+        Eigen::VectorXf ndt_param;
+        ndt_param.resize(4);
+
+        ndt_param[0] = ndt_resolution_;
+        ndt_param[1] = ndt_step_size_;
+        ndt_param[2] = ndt_trans_eps_;
+        ndt_param[3] = static_cast<float>(ndt_max_iter_);
+        std::string res_type = "degree";
+
+        auto res_xyz = calib_utils::ndtRotation(cloud_raw, prev_cloud_, voxel_leaf_, ndt_param, res_type);
+
+        RCLCPP_INFO(this->get_logger(), "NDT func rotation(%s): [%.2f, %.2f, %.2f]",
+                    res_type.c_str(), res_xyz[0], res_xyz[1], res_xyz[2]);
+
+        std::ofstream output(file_path, std::ios::out | std::ios::app);
+        output << std::fixed << std::setprecision(6) << res_xyz.transpose() << std::endl;
+
+        if (cloud_raw->empty())
+        {
+            output.close();
+            RCLCPP_INFO(this->get_logger(), "save rotation");
+        }
+
+        // 다음을 위해 현재를 prev로 보관
+        prev_cloud_ = cloud_raw;
+        prev_stamp_ = msg->header.stamp;
+    }
+
     static CloudT::Ptr voxelDown(CloudT::Ptr in, float leaf)
     {
         if (leaf <= 0.f)
@@ -216,53 +271,6 @@ private:
         }
 
         return res_xyz;
-    }
-
-    void onCloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
-    {
-        std::string home_dir = std::getenv("HOME");
-        std::string file_dir = home_dir + "/sensor_fusion_study_ws/src/sensor_fusion_study/calib_test/data";
-        fs::path file_path = "/rotation.yaml"
-        fs::create_directories(file_path.parent_path());
-
-        auto cloud_raw = std::make_shared<CloudT>();
-        pcl::fromROSMsg(*msg, *cloud_raw);
-        if (cloud_raw->empty())
-        {
-            RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000, "Empty cloud, skip.");
-            return;
-        }
-
-        auto cloud_ds = voxelDown(cloud_raw, voxel_leaf_);
-
-        // 첫 프레임이면 저장만
-        if (!prev_cloud_)
-        {
-            prev_cloud_ = cloud_ds;
-            prev_stamp_ = msg->header.stamp;
-            std::ofstream init_output(file_path, std::ios::out | std::ios::trunc);
-            init_output.close();
-            return;
-        }
-        // 1) 각 프레임을 센트로이드로 평행이동 → translation 영향 억제
-        Eigen::Vector4f c_prev, c_cur;
-        auto prev_c = centerToCentroid(prev_cloud_, c_prev);
-        auto cur_c = centerToCentroid(cloud_ds, c_cur);
-
-        auto ypr_deg = solveRotation(cur_c, prev_c);
-
-        std::ofstream output(file_path, std::ios::out | std::ios::app);
-        output << std::fixed << std::setprecision(6) << ypr_deg.transpose() << std::endl;
-
-        if (cloud_ds->empty())
-        {
-            output.close();
-            RCLCPP_INFO(this->get_logger(), "save rotation");
-        }
-
-        // 다음을 위해 현재를 prev로 보관
-        prev_cloud_ = cloud_ds;
-        prev_stamp_ = msg->header.stamp;
     }
 
     void example_ndt()

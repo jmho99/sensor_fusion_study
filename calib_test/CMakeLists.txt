@@ -110,6 +110,9 @@ ament_target_dependencies(
   "nav_msgs"
   "tf2_ros"
 )
+target_link_libraries(z_ndt_scan_matching
+  calib_utils
+)
 target_include_directories(z_ndt_scan_matching PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)

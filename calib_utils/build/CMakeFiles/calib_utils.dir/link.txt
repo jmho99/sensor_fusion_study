@@ -1,2 +1,2 @@
-/usr/bin/ar qc libcalib_utils.a CMakeFiles/calib_utils.dir/src/intensity_lidar_corner_detection.cpp.o
+/usr/bin/ar qc libcalib_utils.a CMakeFiles/calib_utils.dir/src/intensity_lidar_corner_detection.cpp.o CMakeFiles/calib_utils.dir/src/keyboard.cpp.o CMakeFiles/calib_utils.dir/src/save.cpp.o CMakeFiles/calib_utils.dir/src/ndt_transformation.cpp.o
 /usr/bin/ranlib libcalib_utils.a

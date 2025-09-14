@@ -5,6 +5,9 @@
 #include <sys/select.h>
 #include <sys/time.h>
 
-bool keyboardAvailable();
+namespace calib_utils
+{
+    bool keyboardAvailable();
+}
 
 #endif
