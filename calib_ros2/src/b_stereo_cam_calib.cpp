@@ -8,7 +8,7 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
 
-#include "calib_utils/calib_utils.hpp"
+#include "jmh_utils/jmh_utils.hpp"
 
 using std::placeholders::_1;
 
@@ -70,15 +70,15 @@ private:
 
     void keyboardCallback()
     {
-        if (calib_utils::keyboardAvailable())
+        if (jmh_utils::keyboardAvailable())
         {
             std::string input;
             std::getline(std::cin, input);
 
             if (input == "s")
             {
-                calib_utils::saveImageFile("png", origin_path_, count_, left_frame_);
-                calib_utils::saveImageFile("png", origin_path_, count_, right_frame_);
+                jmh_utils::saveImageFile("png", origin_path_, count_, left_frame_);
+                jmh_utils::saveImageFile("png", origin_path_, count_, right_frame_);
                 count_++;
             }
             else if (input == "c")

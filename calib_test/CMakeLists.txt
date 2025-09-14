@@ -31,7 +31,7 @@ find_package(tf2_ros REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclpy REQUIRED)
 
-add_subdirectory(../calib_utils ${CMAKE_CURRENT_BINARY_DIR}/calib_utils_build)
+add_subdirectory(../jmh_utils ${CMAKE_CURRENT_BINARY_DIR}/jmh_utils_build)
 
 add_executable(z_cv_random src/z_cv_random.cpp)
 ament_target_dependencies(
@@ -79,7 +79,7 @@ ament_target_dependencies(
   "visualization_msgs"
 )
 target_link_libraries(z_pcd_publisher
-  calib_utils
+  jmh_utils
 )
 target_include_directories(z_pcd_publisher PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -111,7 +111,7 @@ ament_target_dependencies(
   "tf2_ros"
 )
 target_link_libraries(z_ndt_scan_matching
-  calib_utils
+  jmh_utils
 )
 target_include_directories(z_ndt_scan_matching PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

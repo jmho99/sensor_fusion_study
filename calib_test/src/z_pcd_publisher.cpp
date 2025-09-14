@@ -25,7 +25,7 @@
 #include <sys/select.h>
 #include <algorithm> // for std::sort
 #include <cmath>     // for std::atan2, std::fabs
-#include "calib_utils/calib_utils.hpp"
+#include "jmh_utils/jmh_utils.hpp"
 
 class PcdPublisher : public rclcpp::Node
 {
@@ -53,7 +53,7 @@ private:
     void keyboardCallback()
     {
 
-        if (calib_utils::keyboardAvailable())
+        if (jmh_utils::keyboardAvailable())
         {
             std::string input;
             std::getline(std::cin, input);

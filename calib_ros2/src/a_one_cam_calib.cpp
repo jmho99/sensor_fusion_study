@@ -9,7 +9,7 @@
 #include <opencv2/core.hpp>
 #include <filesystem>
 
-#include "calib_utils/calib_utils.hpp"
+#include "jmh_utils/jmh_utils.hpp"
 
 namespace fs = std::filesystem;
 
@@ -143,14 +143,14 @@ private:
 
   void keyboardCallback()
   {
-    if (calib_utils::keyboardAvailable())
+    if (jmh_utils::keyboardAvailable())
     {
       std::string input;
       std::getline(std::cin, input);
       
       if (input == "s")
       {
-        calib_utils::saveImageFile("png", origin_path_, frame_counter_, current_frame_);
+        jmh_utils::saveImageFile("png", origin_path_, frame_counter_, current_frame_);
         frame_counter_++;
       }
       else if (input == "c")

@@ -22,7 +22,7 @@
 #include <filesystem>
 #include <iomanip>
 
-#include "calib_utils/calib_utils.hpp"
+#include "jmh_utils/jmh_utils.hpp"
 
 namespace fs = std::filesystem;
 using PointT = pcl::PointXYZ;
@@ -103,7 +103,7 @@ private:
         ndt_param[3] = static_cast<float>(ndt_max_iter_);
         std::string res_type = "degree";
 
-        auto res_xyz = calib_utils::ndtRotation(cloud_raw, prev_cloud_, voxel_leaf_, ndt_param, res_type);
+        auto res_xyz = jmh_utils::ndtRotation(cloud_raw, prev_cloud_, voxel_leaf_, ndt_param, res_type);
 
         RCLCPP_INFO(this->get_logger(), "NDT func rotation(%s): [%.2f, %.2f, %.2f]",
                     res_type.c_str(), res_xyz[0], res_xyz[1], res_xyz[2]);

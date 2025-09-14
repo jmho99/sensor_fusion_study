@@ -31,7 +31,7 @@ find_package(tf2_ros REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclpy REQUIRED)
 
-add_subdirectory(../calib_utils ${CMAKE_CURRENT_BINARY_DIR}/calib_utils_build)
+add_subdirectory(../jmh_utils ${CMAKE_CURRENT_BINARY_DIR}/jmh_utils_build)
 
 add_executable(a_one_cam_calib src/a_one_cam_calib.cpp)
 ament_target_dependencies(
@@ -44,7 +44,7 @@ ament_target_dependencies(
   "image_transport"
 )
 target_link_libraries(a_one_cam_calib
-  calib_utils
+  jmh_utils
 )
 target_include_directories(a_one_cam_calib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -62,7 +62,7 @@ ament_target_dependencies(
   "image_transport"
 )
 target_link_libraries(b_stereo_cam_calib
-  calib_utils
+  jmh_utils
 )
 target_include_directories(b_stereo_cam_calib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -86,7 +86,7 @@ ament_target_dependencies(
   "Ceres"
 )
 target_link_libraries(c_cam_lidar_calib
-  calib_utils
+  jmh_utils
 )
 target_include_directories(c_cam_lidar_calib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -107,7 +107,7 @@ ament_target_dependencies(
   "pcl_conversions"
 )
 target_link_libraries(d_multi_lidar_calib
-  calib_utils
+  jmh_utils
 )
 target_include_directories(d_multi_lidar_calib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -127,7 +127,7 @@ ament_target_dependencies(
   "rosbag2_storage"
 )
 target_link_libraries(e_lidar_imu_calib
-  calib_utils
+  jmh_utils
 )
 target_include_directories(e_lidar_imu_calib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
