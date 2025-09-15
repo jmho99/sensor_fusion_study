@@ -7,6 +7,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/jmh_utils.dir/src/main_ndt_transformation.cpp.o.d"
   "CMakeFiles/jmh_utils.dir/src/serve_keyboard.cpp.o"
   "CMakeFiles/jmh_utils.dir/src/serve_keyboard.cpp.o.d"
+  "CMakeFiles/jmh_utils.dir/src/serve_load.cpp.o"
+  "CMakeFiles/jmh_utils.dir/src/serve_load.cpp.o.d"
   "CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o"
   "CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o.d"
   "libjmh_utils.a"

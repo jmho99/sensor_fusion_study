@@ -14,6 +14,7 @@ add_library(jmh_utils STATIC
     src/main_intensity_lidar_corner_detection.cpp
     src/serve_keyboard.cpp
     src/serve_save.cpp
+    src/serve_load.cpp
     src/main_ndt_transformation.cpp
     src/main_camera_calib.cpp
 )

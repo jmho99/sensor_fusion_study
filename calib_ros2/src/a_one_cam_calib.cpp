@@ -53,9 +53,8 @@ public:
     }
 
     keyboard_timer_ = this->create_wall_timer(
-          std::chrono::milliseconds(30),
-          std::bind(&OneCamCalibNode::keyboardCallback, this));
-
+        std::chrono::milliseconds(30),
+        std::bind(&OneCamCalibNode::keyboardCallback, this));
 
     readWritePath();
   }
@@ -70,18 +69,15 @@ private:
 
   std::string select_connect_;
   std::string device_path_;
-  int cols_;
-  int rows_;
+  int cols_, rows_, frame_width_, frame_height_;
   float square_size_;
-  int frame_width_;
-  int frame_height_;
   double rms_;
 
   std::vector<std::vector<cv::Point2f>> img_points_;
   std::vector<std::vector<cv::Point3f>> obj_points_;
   std::vector<cv::Mat> rvecs_, tvecs_;
   cv::Mat intrinsic_matrix_, dist_coeffs_;
-  std::vector<cv::String> image_files_;
+  std::vector<std::string> image_files_;
 
   std::vector<int> successful_indices_;
   rclcpp::TimerBase::SharedPtr keyboard_timer_;
@@ -147,7 +143,7 @@ private:
     {
       std::string input;
       std::getline(std::cin, input);
-      
+
       if (input == "s")
       {
         jmh_utils::saveImageFile("png", origin_path_, frame_counter_, current_frame_);
@@ -169,109 +165,83 @@ private:
     }
   }
 
-  int extractNumber(const std::string &filename)
-  {
-    std::string number;
-    for (char c : filename)
-    {
-      if (std::isdigit(c))
-      {
-        number += c;
-      }
-    }
-    return number.empty() ? -1 : std::stoi(number);
-  }
-
   void runCalibrateFromFolder()
   {
     RCLCPP_INFO(this->get_logger(), "Start calibration...");
 
-    cv::glob(origin_path_ + "*.png", image_files_);
-    if (image_files_.size() < 10)
+    image_files_ = jmh_utils::loadFiles(".png", origin_path_);
+
+    jmh_utils::BoardParameter params;
+    params.columns = cols_;
+    params.rows = rows_;
+    params.square_size = square_size_;
+    params.frame_width = frame_width_;
+    params.frame_height = frame_height_;
+
+    jmh_utils::ResultIntrinsic result;
+    result = jmh_utils::runCalibrate(params, image_files_);
+
+    intrinsic_matrix_ = result.intrinsic_mat;
+    dist_coeffs_ = result.distortion_coeffs;
+
+    RCLCPP_INFO(this->get_logger(), "RMS error: %.4f", result.rms);
+    cv::FileStorage fs(one_cam_path_ + "a_one_cam_calib_result.yaml", cv::FileStorage::WRITE);
+    fs << "checkerboard_cols" << params.columns;
+    fs << "checkerboard_rows" << params.rows;
+    fs << "square_size" << params.square_size;
+    fs << "frame_width" << params.frame_width;
+    fs << "frame_height" << params.frame_height;
+    fs << "intrinsic_matrix" << result.intrinsic_mat;
+    fs << "distortion_coefficients" << result.distortion_coeffs;
+    fs << "RMS error" << result.rms;
+    fs.release();
+    RCLCPP_INFO(this->get_logger(), "Succeeded result.yaml saving");
+
+    for (int idx = 0; idx < result.visualize_corners.size(); idx++)
     {
-      RCLCPP_WARN(this->get_logger(), "Not enough image (%lu)", image_files_.size());
-      return;
+      const auto &file_num = result.successed_index[idx];
+      std::string save_name = calib_path_ + "img_" + std::to_string(file_num) + "_calib.png";
+      cv::imwrite(save_name, result.visualize_corners[idx]);
+      RCLCPP_INFO(this->get_logger(), "Save calibration image: %d", file_num);
     }
-    std::sort(image_files_.begin(), image_files_.end(),
-              [this](const std::string &a, const std::string &b)
-              {
-                return extractNumber(a) < extractNumber(b);
-              });
+    /*
+    // 코너 검출 실패 시 원본 이미지만 저장
+    cv::Mat vis = img.clone();
+    std::string failed_save_name = calib_path_ + "img_" + std::to_string(idx) + "_failed.png";
+    cv::imwrite(failed_save_name, vis);
+    RCLCPP_INFO(this->get_logger(), "Save failed image: %s", std::to_string(idx).c_str());
+    */
+  }
 
-    cv::Size pattern_size(cols_, rows_);
-    float square_size = square_size_;
-    std::vector<cv::Point3f> objp;
+  void saveUndistortedImages()
+  {
+    RCLCPP_INFO(this->get_logger(), "Start saving undistorted images...");
 
-    for (int i = 0; i < pattern_size.height; ++i)
-      for (int j = 0; j < pattern_size.width; ++j)
-        objp.emplace_back(j * square_size, i * square_size, 0.0f);
-
-    successful_indices_.clear();
-
-    for (size_t idx = 0; idx < image_files_.size(); ++idx)
+    if (intrinsic_matrix_.empty() || dist_coeffs_.empty())
     {
-      const auto &file = image_files_[idx];
-      cv::Mat img = cv::imread(file);
-      if (img.empty())
-        continue;
+      RCLCPP_INFO(this->get_logger(), "Find intrinsic parameter...");
+      cv::FileStorage fs(one_cam_path_ + "a_one_cam_calib_result.yaml", cv::FileStorage::READ);
+      fs ["frame_width"] >> frame_width_;
+      fs ["frame_height"] >> frame_height_;
+      fs["intrinsic_matrix"] >> intrinsic_matrix_;
+      fs["distortion_coefficients"] >> dist_coeffs_;
+      fs.release();
 
-      std::vector<cv::Point2f> corners;
-      bool found = cv::findChessboardCorners(img, pattern_size, corners,
-                                             cv::CALIB_CB_ADAPTIVE_THRESH | cv::CALIB_CB_NORMALIZE_IMAGE);
+      image_files_ = jmh_utils::loadFiles(".png", origin_path_);
+    }
 
-      if (found)
-      {
-        cv::Mat gray;
-        cv::cvtColor(img, gray, cv::COLOR_BGR2GRAY);
-        cv::cornerSubPix(gray, corners, cv::Size(5, 5), cv::Size(-1, -1),
-                         cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 30, 0.001));
+    jmh_utils::ResultUndistort result_undistort = jmh_utils::runUndistorted(frame_width_, frame_height_,
+                                                                            intrinsic_matrix_, dist_coeffs_,
+                                                                            image_files_);
 
-        img_points_.push_back(corners);
-        obj_points_.push_back(objp);
-
-        rms_ = cv::calibrateCamera(obj_points_, img_points_, cv::Size(frame_width_, frame_height_),
-                                   intrinsic_matrix_, dist_coeffs_, rvecs_, tvecs_);
-
-        RCLCPP_INFO(this->get_logger(), "RMS error: %.4f", rms_);
-        cv::FileStorage fs(one_cam_path_ + "a_one_cam_calib_result.yaml", cv::FileStorage::WRITE);
-        fs << "checkerboard_cols" << cols_;
-        fs << "checkerboard_rows" << rows_;
-        fs << "square_size" << square_size_;
-        fs << "frame_width" << frame_width_;
-        fs << "frame_height" << frame_height_;
-        fs << "intrinsic_matrix" << intrinsic_matrix_;
-        fs << "distortion_coefficients" << dist_coeffs_;
-        fs << "rotation" << rvecs_;
-        fs << "translation" << tvecs_;
-        fs << "RMS error" << rms_;
-        fs.release();
-        RCLCPP_INFO(this->get_logger(), "Succeeded result.yaml saving");
-
-        // ✅ 여기부터 시각화 코드 최소화
-        cv::Mat vis = img.clone();
-
-        // corners 만 표시 (체스보드 코너)
-        cv::drawChessboardCorners(vis, pattern_size, corners, found);
-
-        std::string save_name = calib_path_ + "img_" + std::to_string(idx) + "_calib.png";
-        cv::imwrite(save_name, vis);
-        RCLCPP_INFO(this->get_logger(), "Save calibration image: ", std::to_string(idx).c_str());
-        successful_indices_.push_back(idx);
-      }
-      else
-      {
-        // 코너 검출 실패 시 원본 이미지만 저장
-        cv::Mat vis = img.clone();
-        std::string failed_save_name = calib_path_ + "img_" + std::to_string(idx) + "_failed.png";
-        cv::imwrite(failed_save_name, vis);
-        RCLCPP_INFO(this->get_logger(), "Save failed image: %s", std::to_string(idx).c_str());
-      }
-
-      if (img_points_.empty())
-      {
-        RCLCPP_ERROR(this->get_logger(), "Failed calibration.");
-        return;
-      }
+    std::string undistorted_path = one_cam_path_ + "undistorted_images/";
+    fs::create_directories(undistorted_path);
+    for (int i = 0; i < result_undistort.visualize_undistort.size(); i++)
+    {
+      const auto &file_num = result_undistort.undistroted_index[i];
+      std::string save_name = undistorted_path + "img_" + std::to_string(file_num) + "_undistorted.png";
+      cv::imwrite(save_name, result_undistort.visualize_undistort[i]);
+      RCLCPP_INFO(this->get_logger(), "Save undistorted image: %d", file_num);
     }
   }
 
@@ -332,49 +302,6 @@ private:
       cv::Point3f p = obj_points_[i][69];
       cv::Point2f c = img_points_[i][69];
     }
-  }
-
-  void saveUndistortedImages()
-  {
-    RCLCPP_INFO(this->get_logger(), "Start saving undistorted images...");
-
-    if (intrinsic_matrix_.empty() || dist_coeffs_.empty())
-    {
-      RCLCPP_ERROR(this->get_logger(), "Intrinsic matrix or distortion coefficients are not available. Please run calibration ('c') first.");
-      return;
-    }
-
-    cv::Mat map1, map2;
-    cv::Size image_size(frame_width_, frame_height_);
-
-    // 왜곡 보정 맵 생성
-    cv::initUndistortRectifyMap(intrinsic_matrix_, dist_coeffs_, cv::Mat(),
-                                cv::getOptimalNewCameraMatrix(intrinsic_matrix_, dist_coeffs_, image_size, 1, image_size),
-                                image_size, CV_32FC1, map1, map2);
-
-    std::string undistorted_path = one_cam_path_ + "undistorted_images/";
-    fs::create_directories(undistorted_path);
-
-    // 캘리브레이션에 성공한 이미지들에 대해서만 왜곡 보정 적용
-    for (size_t i = 0; i < successful_indices_.size(); ++i)
-    {
-      int idx = successful_indices_[i];
-      std::string origin_file = origin_path_ + "img_" + std::to_string(idx) + ".png";
-      cv::Mat img = cv::imread(origin_file);
-      if (img.empty())
-      {
-        RCLCPP_WARN(this->get_logger(), "Image load failed: %s", std::to_string(idx).c_str());
-        continue;
-      }
-
-      cv::Mat undistorted_img;
-      cv::remap(img, undistorted_img, map1, map2, cv::INTER_LINEAR);
-
-      std::string save_name = undistorted_path + "img_" + std::to_string(idx) + "_undistorted.png";
-      cv::imwrite(save_name, undistorted_img);
-      RCLCPP_INFO(this->get_logger(), "Saved undistorted image: %s", std::to_string(idx).c_str());
-    }
-    RCLCPP_INFO(this->get_logger(), "Completed saving undistorted images.");
   }
 };
 

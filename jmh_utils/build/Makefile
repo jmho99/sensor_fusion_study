@@ -225,6 +225,30 @@ src/serve_keyboard.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/serve_keyboard.cpp.s
 .PHONY : src/serve_keyboard.cpp.s
 
+src/serve_load.o: src/serve_load.cpp.o
+.PHONY : src/serve_load.o
+
+# target to build an object file
+src/serve_load.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/serve_load.cpp.o
+.PHONY : src/serve_load.cpp.o
+
+src/serve_load.i: src/serve_load.cpp.i
+.PHONY : src/serve_load.i
+
+# target to preprocess a source file
+src/serve_load.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/serve_load.cpp.i
+.PHONY : src/serve_load.cpp.i
+
+src/serve_load.s: src/serve_load.cpp.s
+.PHONY : src/serve_load.s
+
+# target to generate assembly for a file
+src/serve_load.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/serve_load.cpp.s
+.PHONY : src/serve_load.cpp.s
+
 src/serve_save.o: src/serve_save.cpp.o
 .PHONY : src/serve_save.o
 
@@ -270,6 +294,9 @@ help:
 	@echo "... src/serve_keyboard.o"
 	@echo "... src/serve_keyboard.i"
 	@echo "... src/serve_keyboard.s"
+	@echo "... src/serve_load.o"
+	@echo "... src/serve_load.i"
+	@echo "... src/serve_load.s"
 	@echo "... src/serve_save.o"
 	@echo "... src/serve_save.i"
 	@echo "... src/serve_save.s"
