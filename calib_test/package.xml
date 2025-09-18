@@ -16,6 +16,7 @@
   <depend>OpenCV</depend>
   <depend>sensor_msgs</depend>
   <depend>image_transport</depend>
+  <depend>compressed_image_transport</depend>
   <depend>PCL</depend>
   <depend>visualization_msgs</depend>
   <depend>pcl_conversions</depend>

@@ -135,6 +135,28 @@ target_include_directories(z_imu_trajectory PUBLIC
   $<INSTALL_INTERFACE:include>)
 target_compile_features(z_imu_trajectory PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
 
+add_executable(z_cam_lidar_fusion src/z_cam_lidar_fusion.cpp)
+ament_target_dependencies(
+  z_cam_lidar_fusion
+  "rclcpp"
+  "std_msgs"
+  "sensor_msgs"
+  "message_filters"
+  "OpenCV"
+  "cv_bridge"
+  "image_transport"
+  "pcl_conversions"
+  "PCL"
+  "Eigen3"
+)
+target_link_libraries(z_cam_lidar_fusion
+  jmh_utils
+)
+target_include_directories(z_cam_lidar_fusion PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(z_cam_lidar_fusion PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
+
 install(TARGETS
   z_cv_random
   z_intensity
@@ -142,6 +164,7 @@ install(TARGETS
   z_time_synchronizer
   z_ndt_scan_matching
   z_imu_trajectory
+  z_cam_lidar_fusion
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY include/

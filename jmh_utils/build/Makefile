@@ -85,6 +85,51 @@ rebuild_cache:
 rebuild_cache/fast: rebuild_cache
 .PHONY : rebuild_cache/fast
 
+# Special rule for the target list_install_components
+list_install_components:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Available install components are: \"Unspecified\""
+.PHONY : list_install_components
+
+# Special rule for the target list_install_components
+list_install_components/fast: list_install_components
+.PHONY : list_install_components/fast
+
+# Special rule for the target install
+install: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Install the project..."
+	/usr/bin/cmake -P cmake_install.cmake
+.PHONY : install
+
+# Special rule for the target install
+install/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Install the project..."
+	/usr/bin/cmake -P cmake_install.cmake
+.PHONY : install/fast
+
+# Special rule for the target install/local
+install/local: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Installing only the local directory..."
+	/usr/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+.PHONY : install/local
+
+# Special rule for the target install/local
+install/local/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Installing only the local directory..."
+	/usr/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
+.PHONY : install/local/fast
+
+# Special rule for the target install/strip
+install/strip: preinstall
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Installing the project stripped..."
+	/usr/bin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+.PHONY : install/strip
+
+# Special rule for the target install/strip
+install/strip/fast: preinstall/fast
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Installing the project stripped..."
+	/usr/bin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
+.PHONY : install/strip/fast
+
 # The main all target
 all: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/jmh_utils/build/CMakeFiles /home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/jmh_utils/build//CMakeFiles/progress.marks
@@ -129,6 +174,43 @@ jmh_utils/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/build
 .PHONY : jmh_utils/fast
 
+#=============================================================================
+# Target rules for targets named jmh_utils_examples
+
+# Build rule for target.
+jmh_utils_examples: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 jmh_utils_examples
+.PHONY : jmh_utils_examples
+
+# fast build rule for target.
+jmh_utils_examples/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils_examples.dir/build.make CMakeFiles/jmh_utils_examples.dir/build
+.PHONY : jmh_utils_examples/fast
+
+examples/z_fusion_output.o: examples/z_fusion_output.cpp.o
+.PHONY : examples/z_fusion_output.o
+
+# target to build an object file
+examples/z_fusion_output.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils_examples.dir/build.make CMakeFiles/jmh_utils_examples.dir/examples/z_fusion_output.cpp.o
+.PHONY : examples/z_fusion_output.cpp.o
+
+examples/z_fusion_output.i: examples/z_fusion_output.cpp.i
+.PHONY : examples/z_fusion_output.i
+
+# target to preprocess a source file
+examples/z_fusion_output.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils_examples.dir/build.make CMakeFiles/jmh_utils_examples.dir/examples/z_fusion_output.cpp.i
+.PHONY : examples/z_fusion_output.cpp.i
+
+examples/z_fusion_output.s: examples/z_fusion_output.cpp.s
+.PHONY : examples/z_fusion_output.s
+
+# target to generate assembly for a file
+examples/z_fusion_output.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils_examples.dir/build.make CMakeFiles/jmh_utils_examples.dir/examples/z_fusion_output.cpp.s
+.PHONY : examples/z_fusion_output.cpp.s
+
 src/main_camera_calib.o: src/main_camera_calib.cpp.o
 .PHONY : src/main_camera_calib.o
 
@@ -152,6 +234,30 @@ src/main_camera_calib.s: src/main_camera_calib.cpp.s
 src/main_camera_calib.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/main_camera_calib.cpp.s
 .PHONY : src/main_camera_calib.cpp.s
+
+src/main_fusion_visualization.o: src/main_fusion_visualization.cpp.o
+.PHONY : src/main_fusion_visualization.o
+
+# target to build an object file
+src/main_fusion_visualization.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/main_fusion_visualization.cpp.o
+.PHONY : src/main_fusion_visualization.cpp.o
+
+src/main_fusion_visualization.i: src/main_fusion_visualization.cpp.i
+.PHONY : src/main_fusion_visualization.i
+
+# target to preprocess a source file
+src/main_fusion_visualization.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/main_fusion_visualization.cpp.i
+.PHONY : src/main_fusion_visualization.cpp.i
+
+src/main_fusion_visualization.s: src/main_fusion_visualization.cpp.s
+.PHONY : src/main_fusion_visualization.s
+
+# target to generate assembly for a file
+src/main_fusion_visualization.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/main_fusion_visualization.cpp.s
+.PHONY : src/main_fusion_visualization.cpp.s
 
 src/main_intensity_lidar_corner_detection.o: src/main_intensity_lidar_corner_detection.cpp.o
 .PHONY : src/main_intensity_lidar_corner_detection.o
@@ -200,6 +306,30 @@ src/main_ndt_transformation.s: src/main_ndt_transformation.cpp.s
 src/main_ndt_transformation.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/main_ndt_transformation.cpp.s
 .PHONY : src/main_ndt_transformation.cpp.s
+
+src/serve_convert.o: src/serve_convert.cpp.o
+.PHONY : src/serve_convert.o
+
+# target to build an object file
+src/serve_convert.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/serve_convert.cpp.o
+.PHONY : src/serve_convert.cpp.o
+
+src/serve_convert.i: src/serve_convert.cpp.i
+.PHONY : src/serve_convert.i
+
+# target to preprocess a source file
+src/serve_convert.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/serve_convert.cpp.i
+.PHONY : src/serve_convert.cpp.i
+
+src/serve_convert.s: src/serve_convert.cpp.s
+.PHONY : src/serve_convert.s
+
+# target to generate assembly for a file
+src/serve_convert.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/serve_convert.cpp.s
+.PHONY : src/serve_convert.cpp.s
 
 src/serve_keyboard.o: src/serve_keyboard.cpp.o
 .PHONY : src/serve_keyboard.o
@@ -280,17 +410,31 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... edit_cache"
+	@echo "... install"
+	@echo "... install/local"
+	@echo "... install/strip"
+	@echo "... list_install_components"
 	@echo "... rebuild_cache"
 	@echo "... jmh_utils"
+	@echo "... jmh_utils_examples"
+	@echo "... examples/z_fusion_output.o"
+	@echo "... examples/z_fusion_output.i"
+	@echo "... examples/z_fusion_output.s"
 	@echo "... src/main_camera_calib.o"
 	@echo "... src/main_camera_calib.i"
 	@echo "... src/main_camera_calib.s"
+	@echo "... src/main_fusion_visualization.o"
+	@echo "... src/main_fusion_visualization.i"
+	@echo "... src/main_fusion_visualization.s"
 	@echo "... src/main_intensity_lidar_corner_detection.o"
 	@echo "... src/main_intensity_lidar_corner_detection.i"
 	@echo "... src/main_intensity_lidar_corner_detection.s"
 	@echo "... src/main_ndt_transformation.o"
 	@echo "... src/main_ndt_transformation.i"
 	@echo "... src/main_ndt_transformation.s"
+	@echo "... src/serve_convert.o"
+	@echo "... src/serve_convert.i"
+	@echo "... src/serve_convert.s"
 	@echo "... src/serve_keyboard.o"
 	@echo "... src/serve_keyboard.i"
 	@echo "... src/serve_keyboard.s"

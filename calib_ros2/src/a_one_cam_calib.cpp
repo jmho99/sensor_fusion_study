@@ -155,7 +155,7 @@ private:
       }
       else if (input == "e")
       {
-        reporjectionError(obj_points_, img_points_, rvecs_, tvecs_, intrinsic_matrix_, dist_coeffs_, successful_indices_);
+        reporjectionError();
       }
 
       else if (input == "u")
@@ -221,8 +221,8 @@ private:
     {
       RCLCPP_INFO(this->get_logger(), "Find intrinsic parameter...");
       cv::FileStorage fs(one_cam_path_ + "a_one_cam_calib_result.yaml", cv::FileStorage::READ);
-      fs ["frame_width"] >> frame_width_;
-      fs ["frame_height"] >> frame_height_;
+      fs["frame_width"] >> frame_width_;
+      fs["frame_height"] >> frame_height_;
       fs["intrinsic_matrix"] >> intrinsic_matrix_;
       fs["distortion_coefficients"] >> dist_coeffs_;
       fs.release();
@@ -245,63 +245,27 @@ private:
     }
   }
 
-  void reporjectionError(const std::vector<std::vector<cv::Point3f>> &obj_points_,
-                         const std::vector<std::vector<cv::Point2f>> &img_points_,
-                         const std::vector<cv::Mat> &rvecs_,
-                         const std::vector<cv::Mat> &tvecs_,
-                         const cv::Mat &intrinsic_matrix_,
-                         const cv::Mat &dist_coeffs_,
-                         const std::vector<int> &successful_indices_)
+  void reporjectionError()
   {
-
-    for (size_t i = 0; i < successful_indices_.size(); ++i)
+    if (intrinsic_matrix_.empty() || dist_coeffs_.empty())
     {
-      int idx = successful_indices_[i];
+      RCLCPP_INFO(this->get_logger(), "Find intrinsic parameter...");
+      cv::FileStorage fs(one_cam_path_ + "a_one_cam_calib_result.yaml", cv::FileStorage::READ);
+      fs["frame_width"] >> frame_width_;
+      fs["frame_height"] >> frame_height_;
+      fs["intrinsic_matrix"] >> intrinsic_matrix_;
+      fs["distortion_coefficients"] >> dist_coeffs_;
+      fs.release();
 
-      // 원본 이미지 경로
-      std::string origin_file = origin_path_ + "img_" + std::to_string(idx) + ".png";
-      cv::Mat img = cv::imread(origin_file);
-      if (img.empty())
-      {
-        RCLCPP_WARN(rclcpp::get_logger("reporjectionError"),
-                    "Image load failed: %s", std::to_string(idx).c_str());
-        continue;
-      }
-      /*
-            cv::Mat optimal_intrinsic = cv::getOptimalNewCameraMatrix(intrinsic_matrix_, dist_coeffs_, cv::Size(frame_width_, frame_height_),
-                                                                      1, cv::Size(frame_width_, frame_height_));
-
-            cv::Mat undistort_img;
-            img = cv::undistort(img, undistort_img, intrinsic_matrix_, dist_coeffs_, optimal_intrinsic);*/
-
-      std::vector<cv::Point2f> projected_points;
-      cv::projectPoints(obj_points_[i], rvecs_[i], tvecs_[i],
-                        intrinsic_matrix_, dist_coeffs_, projected_points);
-
-      cv::Mat vis = img.clone();
-
-      for (size_t j = 0; j < img_points_[i].size(); ++j)
-      {
-        cv::Point2f actual = img_points_[i][j];
-        cv::Point2f reprojected = projected_points[j];
-
-        cv::circle(vis, actual, 1, cv::Scalar(0, 255, 0), -1);
-        cv::circle(vis, reprojected, 1, cv::Scalar(0, 0, 255), -1);
-      }
-
-      cv::Mat act = cv::Mat(img_points_[i]);
-      cv::Mat reproj = cv::Mat(projected_points);
-      float mean_error = cv::norm(act, reproj, cv::NORM_L2);
-
-      RCLCPP_INFO(this->get_logger(), "norm error: %f", mean_error / img_points_[i].size());
-
-      std::string save_name = calib_path_ + "img_" + std::to_string(idx) + "_error.png";
-      cv::imwrite(save_name, vis);
-      RCLCPP_INFO(this->get_logger(), "Save error visualization: %s", std::to_string(idx).c_str());
-
-      cv::Point3f p = obj_points_[i][69];
-      cv::Point2f c = img_points_[i][69];
+      image_files_ = jmh_utils::loadFiles(".png", origin_path_);
     }
+    jmh_utils::BoardParameter params;
+    params.columns = cols_;
+    params.rows = rows_;
+    params.square_size = square_size_;
+    params.frame_width = frame_width_;
+    params.frame_height = frame_height_;
+    jmh_utils::ResultRmse rmse = jmh_utils::runRMSE(params, intrinsic_matrix_, dist_coeffs_, image_files_);
   }
 };
 

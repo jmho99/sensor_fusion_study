@@ -161,6 +161,7 @@ set(CMAKE_MAKEFILE_DEPENDS
   "/usr/share/cmake-3.22/Modules/FindThreads.cmake"
   "/usr/share/cmake-3.22/Modules/FindX11.cmake"
   "/usr/share/cmake-3.22/Modules/FindZLIB.cmake"
+  "/usr/share/cmake-3.22/Modules/GNUInstallDirs.cmake"
   "/usr/share/cmake-3.22/Modules/GenerateExportHeader.cmake"
   "/usr/share/cmake-3.22/Modules/Internal/CheckCompilerFlag.cmake"
   "/usr/share/cmake-3.22/Modules/Internal/CheckSourceCompiles.cmake"
@@ -188,4 +189,5 @@ set(CMAKE_MAKEFILE_PRODUCTS
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/jmh_utils.dir/DependInfo.cmake"
+  "CMakeFiles/jmh_utils_examples.dir/DependInfo.cmake"
   )

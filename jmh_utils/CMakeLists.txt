@@ -15,8 +15,10 @@ add_library(jmh_utils STATIC
     src/serve_keyboard.cpp
     src/serve_save.cpp
     src/serve_load.cpp
+    src/serve_convert.cpp
     src/main_ndt_transformation.cpp
     src/main_camera_calib.cpp
+    src/main_fusion_visualization.cpp
 )
 
 # 헤더 파일 경로를 PUBLIC으로 설정하여 이 라이브러리를 사용하는 다른 타겟에 전파되도록 합니다.
@@ -26,11 +28,31 @@ target_include_directories(jmh_utils PUBLIC
     $<INSTALL_INTERFACE:include> # 설치 시 (선택 사항)
 )
 
+
 # Eigen3 라이브러리를 새로 생성한 라이브러리에 링크
 target_link_libraries(jmh_utils
     Eigen3::Eigen
     ${OpenCV_LIBS}
     ${PCL_LIBRARIES}
+)
+
+add_executable(jmh_utils_examples
+  examples/z_fusion_output.cpp
+)
+
+target_link_libraries(jmh_utils_examples PRIVATE jmh_utils)
+
+
+include(GNUInstallDirs)
+install(TARGETS jmh_utils
+    EXPORT jmh_utilsTargets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}  # (공유 라이브러리인 경우)
+)
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(TARGETS jmh_utils_examples
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
 # (선택 사항) 이 라이브러리를 시스템에 설치하고 싶다면 install 명령을 추가할 수 있습니다.
