@@ -175,41 +175,126 @@ jmh_utils/fast:
 .PHONY : jmh_utils/fast
 
 #=============================================================================
-# Target rules for targets named jmh_utils_examples
+# Target rules for targets named fusion_output
 
 # Build rule for target.
-jmh_utils_examples: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 jmh_utils_examples
-.PHONY : jmh_utils_examples
+fusion_output: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 fusion_output
+.PHONY : fusion_output
 
 # fast build rule for target.
-jmh_utils_examples/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils_examples.dir/build.make CMakeFiles/jmh_utils_examples.dir/build
-.PHONY : jmh_utils_examples/fast
+fusion_output/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/fusion_output.dir/build.make CMakeFiles/fusion_output.dir/build
+.PHONY : fusion_output/fast
 
-examples/z_fusion_output.o: examples/z_fusion_output.cpp.o
-.PHONY : examples/z_fusion_output.o
+#=============================================================================
+# Target rules for targets named cam_lidar_calibration
+
+# Build rule for target.
+cam_lidar_calibration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cam_lidar_calibration
+.PHONY : cam_lidar_calibration
+
+# fast build rule for target.
+cam_lidar_calibration/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cam_lidar_calibration.dir/build.make CMakeFiles/cam_lidar_calibration.dir/build
+.PHONY : cam_lidar_calibration/fast
+
+examples/cam_lidar_calibration.o: examples/cam_lidar_calibration.cpp.o
+.PHONY : examples/cam_lidar_calibration.o
 
 # target to build an object file
-examples/z_fusion_output.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils_examples.dir/build.make CMakeFiles/jmh_utils_examples.dir/examples/z_fusion_output.cpp.o
-.PHONY : examples/z_fusion_output.cpp.o
+examples/cam_lidar_calibration.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cam_lidar_calibration.dir/build.make CMakeFiles/cam_lidar_calibration.dir/examples/cam_lidar_calibration.cpp.o
+.PHONY : examples/cam_lidar_calibration.cpp.o
 
-examples/z_fusion_output.i: examples/z_fusion_output.cpp.i
-.PHONY : examples/z_fusion_output.i
+examples/cam_lidar_calibration.i: examples/cam_lidar_calibration.cpp.i
+.PHONY : examples/cam_lidar_calibration.i
 
 # target to preprocess a source file
-examples/z_fusion_output.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils_examples.dir/build.make CMakeFiles/jmh_utils_examples.dir/examples/z_fusion_output.cpp.i
-.PHONY : examples/z_fusion_output.cpp.i
+examples/cam_lidar_calibration.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cam_lidar_calibration.dir/build.make CMakeFiles/cam_lidar_calibration.dir/examples/cam_lidar_calibration.cpp.i
+.PHONY : examples/cam_lidar_calibration.cpp.i
 
-examples/z_fusion_output.s: examples/z_fusion_output.cpp.s
-.PHONY : examples/z_fusion_output.s
+examples/cam_lidar_calibration.s: examples/cam_lidar_calibration.cpp.s
+.PHONY : examples/cam_lidar_calibration.s
 
 # target to generate assembly for a file
-examples/z_fusion_output.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils_examples.dir/build.make CMakeFiles/jmh_utils_examples.dir/examples/z_fusion_output.cpp.s
-.PHONY : examples/z_fusion_output.cpp.s
+examples/cam_lidar_calibration.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cam_lidar_calibration.dir/build.make CMakeFiles/cam_lidar_calibration.dir/examples/cam_lidar_calibration.cpp.s
+.PHONY : examples/cam_lidar_calibration.cpp.s
+
+examples/fusion_output.o: examples/fusion_output.cpp.o
+.PHONY : examples/fusion_output.o
+
+# target to build an object file
+examples/fusion_output.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/fusion_output.dir/build.make CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o
+.PHONY : examples/fusion_output.cpp.o
+
+examples/fusion_output.i: examples/fusion_output.cpp.i
+.PHONY : examples/fusion_output.i
+
+# target to preprocess a source file
+examples/fusion_output.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/fusion_output.dir/build.make CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.i
+.PHONY : examples/fusion_output.cpp.i
+
+examples/fusion_output.s: examples/fusion_output.cpp.s
+.PHONY : examples/fusion_output.s
+
+# target to generate assembly for a file
+examples/fusion_output.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/fusion_output.dir/build.make CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.s
+.PHONY : examples/fusion_output.cpp.s
+
+src/calc_compute.o: src/calc_compute.cpp.o
+.PHONY : src/calc_compute.o
+
+# target to build an object file
+src/calc_compute.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/calc_compute.cpp.o
+.PHONY : src/calc_compute.cpp.o
+
+src/calc_compute.i: src/calc_compute.cpp.i
+.PHONY : src/calc_compute.i
+
+# target to preprocess a source file
+src/calc_compute.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/calc_compute.cpp.i
+.PHONY : src/calc_compute.cpp.i
+
+src/calc_compute.s: src/calc_compute.cpp.s
+.PHONY : src/calc_compute.s
+
+# target to generate assembly for a file
+src/calc_compute.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/calc_compute.cpp.s
+.PHONY : src/calc_compute.cpp.s
+
+src/calc_convert.o: src/calc_convert.cpp.o
+.PHONY : src/calc_convert.o
+
+# target to build an object file
+src/calc_convert.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/calc_convert.cpp.o
+.PHONY : src/calc_convert.cpp.o
+
+src/calc_convert.i: src/calc_convert.cpp.i
+.PHONY : src/calc_convert.i
+
+# target to preprocess a source file
+src/calc_convert.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/calc_convert.cpp.i
+.PHONY : src/calc_convert.cpp.i
+
+src/calc_convert.s: src/calc_convert.cpp.s
+.PHONY : src/calc_convert.s
+
+# target to generate assembly for a file
+src/calc_convert.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/calc_convert.cpp.s
+.PHONY : src/calc_convert.cpp.s
 
 src/main_camera_calib.o: src/main_camera_calib.cpp.o
 .PHONY : src/main_camera_calib.o
@@ -283,6 +368,30 @@ src/main_intensity_lidar_corner_detection.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/main_intensity_lidar_corner_detection.cpp.s
 .PHONY : src/main_intensity_lidar_corner_detection.cpp.s
 
+src/main_lidar_calib.o: src/main_lidar_calib.cpp.o
+.PHONY : src/main_lidar_calib.o
+
+# target to build an object file
+src/main_lidar_calib.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/main_lidar_calib.cpp.o
+.PHONY : src/main_lidar_calib.cpp.o
+
+src/main_lidar_calib.i: src/main_lidar_calib.cpp.i
+.PHONY : src/main_lidar_calib.i
+
+# target to preprocess a source file
+src/main_lidar_calib.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/main_lidar_calib.cpp.i
+.PHONY : src/main_lidar_calib.cpp.i
+
+src/main_lidar_calib.s: src/main_lidar_calib.cpp.s
+.PHONY : src/main_lidar_calib.s
+
+# target to generate assembly for a file
+src/main_lidar_calib.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/main_lidar_calib.cpp.s
+.PHONY : src/main_lidar_calib.cpp.s
+
 src/main_ndt_transformation.o: src/main_ndt_transformation.cpp.o
 .PHONY : src/main_ndt_transformation.o
 
@@ -306,30 +415,6 @@ src/main_ndt_transformation.s: src/main_ndt_transformation.cpp.s
 src/main_ndt_transformation.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/main_ndt_transformation.cpp.s
 .PHONY : src/main_ndt_transformation.cpp.s
-
-src/serve_convert.o: src/serve_convert.cpp.o
-.PHONY : src/serve_convert.o
-
-# target to build an object file
-src/serve_convert.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/serve_convert.cpp.o
-.PHONY : src/serve_convert.cpp.o
-
-src/serve_convert.i: src/serve_convert.cpp.i
-.PHONY : src/serve_convert.i
-
-# target to preprocess a source file
-src/serve_convert.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/serve_convert.cpp.i
-.PHONY : src/serve_convert.cpp.i
-
-src/serve_convert.s: src/serve_convert.cpp.s
-.PHONY : src/serve_convert.s
-
-# target to generate assembly for a file
-src/serve_convert.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/jmh_utils.dir/build.make CMakeFiles/jmh_utils.dir/src/serve_convert.cpp.s
-.PHONY : src/serve_convert.cpp.s
 
 src/serve_keyboard.o: src/serve_keyboard.cpp.o
 .PHONY : src/serve_keyboard.o
@@ -415,11 +500,21 @@ help:
 	@echo "... install/strip"
 	@echo "... list_install_components"
 	@echo "... rebuild_cache"
+	@echo "... cam_lidar_calibration"
+	@echo "... fusion_output"
 	@echo "... jmh_utils"
-	@echo "... jmh_utils_examples"
-	@echo "... examples/z_fusion_output.o"
-	@echo "... examples/z_fusion_output.i"
-	@echo "... examples/z_fusion_output.s"
+	@echo "... examples/cam_lidar_calibration.o"
+	@echo "... examples/cam_lidar_calibration.i"
+	@echo "... examples/cam_lidar_calibration.s"
+	@echo "... examples/fusion_output.o"
+	@echo "... examples/fusion_output.i"
+	@echo "... examples/fusion_output.s"
+	@echo "... src/calc_compute.o"
+	@echo "... src/calc_compute.i"
+	@echo "... src/calc_compute.s"
+	@echo "... src/calc_convert.o"
+	@echo "... src/calc_convert.i"
+	@echo "... src/calc_convert.s"
 	@echo "... src/main_camera_calib.o"
 	@echo "... src/main_camera_calib.i"
 	@echo "... src/main_camera_calib.s"
@@ -429,12 +524,12 @@ help:
 	@echo "... src/main_intensity_lidar_corner_detection.o"
 	@echo "... src/main_intensity_lidar_corner_detection.i"
 	@echo "... src/main_intensity_lidar_corner_detection.s"
+	@echo "... src/main_lidar_calib.o"
+	@echo "... src/main_lidar_calib.i"
+	@echo "... src/main_lidar_calib.s"
 	@echo "... src/main_ndt_transformation.o"
 	@echo "... src/main_ndt_transformation.i"
 	@echo "... src/main_ndt_transformation.s"
-	@echo "... src/serve_convert.o"
-	@echo "... src/serve_convert.i"
-	@echo "... src/serve_convert.s"
 	@echo "... src/serve_keyboard.o"
 	@echo "... src/serve_keyboard.i"
 	@echo "... src/serve_keyboard.s"

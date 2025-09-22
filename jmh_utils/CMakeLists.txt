@@ -11,14 +11,16 @@ find_package(PCL REQUIRED NO_MODULE)
 
 # 코너 검출 로직을 위한 정적 라이브러리 생성
 add_library(jmh_utils STATIC
+    src/main_camera_calib.cpp
+    src/main_lidar_calib.cpp   
     src/main_intensity_lidar_corner_detection.cpp
+    src/main_ndt_transformation.cpp
+    src/main_fusion_visualization.cpp
+    src/calc_convert.cpp
+    src/calc_compute.cpp
     src/serve_keyboard.cpp
     src/serve_save.cpp
     src/serve_load.cpp
-    src/serve_convert.cpp
-    src/main_ndt_transformation.cpp
-    src/main_camera_calib.cpp
-    src/main_fusion_visualization.cpp
 )
 
 # 헤더 파일 경로를 PUBLIC으로 설정하여 이 라이브러리를 사용하는 다른 타겟에 전파되도록 합니다.
@@ -36,11 +38,17 @@ target_link_libraries(jmh_utils
     ${PCL_LIBRARIES}
 )
 
-add_executable(jmh_utils_examples
-  examples/z_fusion_output.cpp
+add_executable(fusion_output
+  examples/fusion_output.cpp
 )
 
-target_link_libraries(jmh_utils_examples PRIVATE jmh_utils)
+target_link_libraries(fusion_output PRIVATE jmh_utils)
+
+add_executable(cam_lidar_calibration
+  examples/cam_lidar_calibration.cpp
+)
+
+target_link_libraries(cam_lidar_calibration PRIVATE jmh_utils)
 
 
 include(GNUInstallDirs)
@@ -51,7 +59,9 @@ install(TARGETS jmh_utils
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}  # (공유 라이브러리인 경우)
 )
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-install(TARGETS jmh_utils_examples
+install(TARGETS 
+    fusion_output
+    cam_lidar_calibration
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 

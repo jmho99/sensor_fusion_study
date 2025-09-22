@@ -3,6 +3,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/core.hpp>
+#include <Eigen/Dense>
 #include "jmh_utils/serve_load.hpp"
 
 namespace jmh_utils
@@ -51,6 +52,10 @@ namespace jmh_utils
     jmh_utils::ResultRmse runRMSE(const jmh_utils::BoardParameter &params,
                                   const cv::Mat &intinsic, const cv::Mat &distortion,
                                   std::vector<std::string> all_images);
+
+    std::vector<std::vector<Eigen::Vector3d>> runCameraPlane(const jmh_utils::BoardParameter &params,
+                                                const cv::Mat &intinsic, const cv::Mat &distortion,
+                                                std::vector<std::string> all_images);
 
     static jmh_utils::FindCorners findCorners(const jmh_utils::BoardParameter &params,
                                               std::vector<std::string> all_images);

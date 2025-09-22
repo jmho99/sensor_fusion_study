@@ -2,6 +2,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/core.hpp>
+#include <Eigen/Dense>
 #include "jmh_utils/serve_load.hpp"
 
 namespace jmh_utils
@@ -16,7 +17,7 @@ namespace jmh_utils
 
         jmh_utils::ResultIntrinsic result;
         result.rms = cv::calibrateCamera(corners.object_points, corners.image_corners, frame_size,
-                                    result.intrinsic_mat, result.distortion_coeffs, rvecs, tvecs);
+                                         result.intrinsic_mat, result.distortion_coeffs, rvecs, tvecs);
         result.visualize_corners = corners.visual_corners;
         result.successed_index = corners.successed_index;
 
@@ -115,6 +116,47 @@ namespace jmh_utils
         result.rmse_overall = overall_rmse;
 
         return result;
+    }
+
+    std::vector<std::vector<Eigen::Vector3d>> runCameraPlane(const jmh_utils::BoardParameter &params,
+                                                             const cv::Mat &intinsic, const cv::Mat &distortion,
+                                                             std::vector<std::string> all_images)
+    {
+        jmh_utils::FindCorners corners = jmh_utils::findCorners(params, all_images);
+
+        cv::Mat world_rvec_cam, world_tvec_cam;
+
+        std::vector<std::vector<Eigen::Vector3d>> corners_world_all_frame;
+
+        for (int i=0; i < corners.successed_index.size(); i++)
+        {
+            bool success = cv::solvePnP(corners.object_points[i], corners.image_corners[i],
+                                        intinsic, distortion,
+                                        world_rvec_cam, world_tvec_cam);
+
+            if (!success)
+            {
+                std::cout << "ERROR!!! Failed to run solvePnP" << std::endl;
+                continue;
+            }
+
+            std::vector<Eigen::Vector3d> corners_world;
+            cv::Mat world_R_cam;
+            cv::Rodrigues(world_rvec_cam, world_R_cam);
+
+            for (const auto &pt_obj : corners.object_points[i])
+            {
+                cv::Mat pt_cam = (cv::Mat_<double>(3, 1) << pt_obj.x, pt_obj.y, pt_obj.z);
+                cv::Mat pt_world = world_R_cam * pt_cam + world_tvec_cam;
+                corners_world.push_back(Eigen::Vector3d(
+                    pt_world.at<double>(0),
+                    pt_world.at<double>(1),
+                    pt_world.at<double>(2)));
+            }
+            corners_world_all_frame.push_back(corners_world);
+        }
+
+        return corners_world_all_frame;
     }
 
     static jmh_utils::FindCorners findCorners(const jmh_utils::BoardParameter &params,

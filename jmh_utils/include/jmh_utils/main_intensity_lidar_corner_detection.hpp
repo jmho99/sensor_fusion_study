@@ -1,16 +1,22 @@
 #ifndef MAIN_INTENSITY_LIDAR_CORNER_DETECTION_HPP
 #define MAIN_INTENSITY_LIDAR_CORNER_DETECTION_HPP
 
-#include <Eigen/Dense> // Eigen 라이브러리 사용
+#include <iostream>
+#include <sstream>
 #include <vector>
-#include <string>
-#include <tuple>   // std::tuple 사용
-#include <sstream> // std::stringstream 사용
+#include <algorithm>
+#include <cmath>
+#include <limits>
+#include <random>
+#include <numeric>
+
+#include <Eigen/Dense>
+#include <Eigen/Eigenvalues>
 
 namespace jmh_utils
 {
     // 사용자 정의 포인트 구조체: XYZ 좌표와 강도(Intensity)를 포함
-    struct PointXYZI
+    struct DoubleXYZI
     {
         double x, y, z, intensity;
     };
@@ -18,9 +24,9 @@ namespace jmh_utils
     // =============================================================================
     // 1. PCD 데이터 파싱 함수 (ASCII 문자열에서)
     // =============================================================================
-    // ASCII 형식의 PCD(Point Cloud Data) 문자열을 파싱하여 PointXYZI 벡터로 변환합니다.
+    // ASCII 형식의 PCD(Point Cloud Data) 문자열을 파싱하여 jmh_utils::DoubleXYZI 벡터로 변환합니다.
     // 헤더 정보와 XYZI 데이터를 추출합니다.
-    std::vector<PointXYZI> parsePCDString(const std::string &pcd_string);
+    std::vector<jmh_utils::DoubleXYZI> parsePCDString(const std::string &pcd_string);
 
     // =============================================================================
     // 3. 강도 기반 흑백 분류 (회색 영역 포함)
@@ -62,9 +68,9 @@ namespace jmh_utils
     // internal_corners_y: 세로 내부 코너 수 (예: 7x8 보드의 경우 7)
     // checker_size_m: 각 체커 사각형의 크기(미터)
     // flip_normal_direction: true이면 PCA Z축(법선 벡터)의 방향을 뒤집습니다.
-    // 반환: 원본 LiDAR 프레임에서의 3D 코너 좌표 (PointXYZI 벡터)
-    std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
-        const std::vector<PointXYZI> &lidar_points_full_vec,
+    // 반환: 원본 LiDAR 프레임에서의 3D 코너 좌표 (jmh_utils::DoubleXYZI 벡터)
+    std::vector<Eigen::Vector4d> estimateChessboardCornersPaperMethod(
+        const std::vector<Eigen::Vector4d> &lidar_points_full_vec,
         int internal_corners_x, int internal_corners_y, double checker_size_m);
 }
 #endif // LIDAR_CORNER_DETECTION_HPP

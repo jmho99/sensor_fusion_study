@@ -1,7 +1,10 @@
-#include "jmh_utils/serve_convert.hpp"
+#include "jmh_utils/calc_convert.hpp"
 
 #include <vector>
+#include <Eigen/Dense>
 #include <opencv2/opencv.hpp>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
 
 namespace jmh_utils
 {
@@ -35,5 +38,16 @@ namespace jmh_utils
         }
 
         return output;
+    }
+
+    std::vector<Eigen::Vector4d> convertPcl2Vector(const pcl::PointCloud<pcl::PointXYZI>::Ptr &pointcloud)
+    {
+        std::vector<Eigen::Vector4d> point_vector;
+        point_vector.reserve(pointcloud->points.size());
+        for (const auto &p : pointcloud->points)
+        {
+            point_vector.push_back(Eigen::Vector4d(p.x, p.y, p.z, p.intensity));
+        }
+        return point_vector;
     }
 }

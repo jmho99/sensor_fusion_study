@@ -317,7 +317,7 @@ private:
                 {
                     img_file_ = "img_" + std::to_string(frame_i) + ".png";
                     pcd_file_ = "pcd_" + std::to_string(frame_i) + ".pcd";
-#define LOOK_DEBUG
+#define LOOK
                     findData();
                     solveCameraPlane();
                     detectLidarPlane(); // This function will call corner estimation.

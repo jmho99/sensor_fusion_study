@@ -30,9 +30,9 @@ namespace jmh_utils
     }
 
     // 1) PCD (ASCII) 파싱: 문자열에서 x,y,z,intensity 읽기
-    std::vector<PointXYZI> parsePCDString(const std::string &pcd_string)
+    std::vector<jmh_utils::DoubleXYZI> parsePCDString(const std::string &pcd_string)
     {
-        std::vector<PointXYZI> lidar_points;
+        std::vector<jmh_utils::DoubleXYZI> lidar_points;
         std::vector<std::string> fields;
         int intensity_field_index = -1;
         bool header_parsed = false;
@@ -100,7 +100,7 @@ namespace jmh_utils
                 }
                 try
                 {
-                    PointXYZI p;
+                    jmh_utils::DoubleXYZI p;
                     if (fields.size() >= 3)
                     {
                         auto itx = std::find(fields.begin(), fields.end(), "x");
@@ -391,12 +391,12 @@ namespace jmh_utils
     }
 
     // 메인 함수: 논문 방식의 코너 추정 함수 (외부에서 호출됨)
-    std::vector<PointXYZI> estimateChessboardCornersPaperMethod(
-        const std::vector<PointXYZI> &lidar_points_full_vec,
+    std::vector<Eigen::Vector4d> estimateChessboardCornersPaperMethod(
+        const std::vector<Eigen::Vector4d> &lidar_points_full_vec,
         int internal_corners_x, int internal_corners_y, double checker_size_m)
     {
         cout << "[estimateChessboardCornersPaperMethod] start. Npoints=" << lidar_points_full_vec.size() << endl;
-        std::vector<PointXYZI> out_corners;
+        std::vector<Eigen::Vector4d> out_corners;
 
         if (lidar_points_full_vec.empty())
         {
@@ -409,15 +409,22 @@ namespace jmh_utils
             return out_corners;
         }
 
-        int N = static_cast<int>(lidar_points_full_vec.size());
+        std::vector<jmh_utils::DoubleXYZI> all_lidar_points_vec;
+        all_lidar_points_vec.resize(lidar_points_full_vec.size());
+        for (const auto &v : lidar_points_full_vec)
+        {
+            all_lidar_points_vec.emplace_back(jmh_utils::DoubleXYZI{ v(0), v(1), v(2), v(3) });
+        }
+
+        int N = static_cast<int>(all_lidar_points_vec.size());
         Eigen::MatrixXd pts3d(N, 3);
         Eigen::VectorXd intens(N);
         for (int i = 0; i < N; ++i)
         {
-            pts3d(i, 0) = lidar_points_full_vec[i].x;
-            pts3d(i, 1) = lidar_points_full_vec[i].y;
-            pts3d(i, 2) = lidar_points_full_vec[i].z;
-            intens(i) = lidar_points_full_vec[i].intensity;
+            pts3d(i, 0) = all_lidar_points_vec[i].x;
+            pts3d(i, 1) = all_lidar_points_vec[i].y;
+            pts3d(i, 2) = all_lidar_points_vec[i].z;
+            intens(i) = all_lidar_points_vec[i].intensity;
         }
 
         // Centroid 계산
@@ -647,7 +654,7 @@ namespace jmh_utils
 
         std::vector<Eigen::Vector3d> lidar_pts_world;
         lidar_pts_world.reserve(N);
-        for (const auto &p : lidar_points_full_vec)
+        for (const auto &p : all_lidar_points_vec)
             lidar_pts_world.emplace_back(Eigen::Vector3d(p.x, p.y, p.z));
 
         std::vector<Eigen::Vector2d> model_internal_corners_2d;
@@ -673,7 +680,7 @@ namespace jmh_utils
         double max_corner_dist = checker_size_m * 0.6;
         struct CornerData
         {
-            PointXYZI world_point;
+            jmh_utils::DoubleXYZI world_point;
             Eigen::Vector2d pca_point;
         };
         std::vector<CornerData> corners_data;
@@ -722,12 +729,12 @@ namespace jmh_utils
 
         for (const auto &cd : corners_data)
         {
-            out_corners.push_back(cd.world_point);
+            out_corners.emplace_back(cd.world_point.x,cd.world_point.y, cd.world_point.z, cd.world_point.intensity);
         }
 
         if (!out_corners.empty())
         {
-            out_corners[0].intensity = 255.0;
+            out_corners[0](3) = 255.0;
         }
 
         cout << "[estimateChessboardCornersPaperMethod] detected corners (sorted): " << out_corners.size() << endl;
