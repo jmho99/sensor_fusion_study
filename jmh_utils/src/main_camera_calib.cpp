@@ -122,6 +122,7 @@ namespace jmh_utils
                                                              const cv::Mat &intinsic, const cv::Mat &distortion,
                                                              std::vector<std::string> all_images)
     {
+        std::cout << "Begin 3D representation of checkerboard corners detected in the camera image" << std::endl;
         jmh_utils::FindCorners corners = jmh_utils::findCorners(params, all_images);
 
         cv::Mat world_rvec_cam, world_tvec_cam;
@@ -156,12 +157,17 @@ namespace jmh_utils
             corners_world_all_frame.push_back(corners_world);
         }
 
+        std::cout << "Succesed [ " << corners_world_all_frame.size() << " ] frames converting 3D" << std::endl;
+        std::cout << "Succesed [ " << corners_world_all_frame[0].size() << " ] corners converting 3D" << std::endl;
+        std::cout << "End 3D representation of checkerboard corners detected in the camera image" << std::endl;
+
         return corners_world_all_frame;
     }
 
     static jmh_utils::FindCorners findCorners(const jmh_utils::BoardParameter &params,
                                               std::vector<std::string> all_images)
     {
+        std::cout << "Begin find checkboard corners in the camera image" << std::endl;
         cv::Size pattern_size(params.columns, params.rows);
         float square_size = params.square_size;
         cv::Size frame_size(params.frame_width, params.frame_height);
@@ -222,6 +228,10 @@ namespace jmh_utils
         result.object_points = all_object_points;
         result.visual_corners = all_corners_visual;
         result.successed_index = successed_frame_index;
+
+        std::cout << "Succesed [ " << successed_frame_index.size() << " ] frames finding checkboard corners" << std::endl;
+        std::cout << "Found [ " << all_image_corners[0].size() << " ] corners in camera image" << std::endl;
+        std::cout << "End find checkboard corners in the camera image" << std::endl;
 
         return result;
     }

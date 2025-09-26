@@ -225,6 +225,8 @@ fusion_output: /usr/lib/x86_64-linux-gnu/libtbb.so.12.5
 fusion_output: /usr/lib/x86_64-linux-gnu/libvtksys-9.1.so.9.1.0
 fusion_output: /usr/lib/x86_64-linux-gnu/libflann_cpp.so
 fusion_output: /usr/lib/x86_64-linux-gnu/libqhull_r.so.8.0.2
+fusion_output: /usr/lib/x86_64-linux-gnu/libgsl.so
+fusion_output: /usr/lib/x86_64-linux-gnu/libcblas.so
 fusion_output: CMakeFiles/fusion_output.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/jmh_utils/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX executable fusion_output"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/fusion_output.dir/link.txt --verbose=$(VERBOSE)

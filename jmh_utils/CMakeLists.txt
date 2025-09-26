@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
-project(jmh_utils CXX) # 프로젝트 이름을 라이브러리 이름으로 변경
+project(jmh_utils LANGUAGES C CXX) # 프로젝트 이름을 라이브러리 이름으로 변경
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -8,6 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(OpenCV REQUIRED NO_MODULE)
 find_package(PCL REQUIRED NO_MODULE)
+find_package(Ceres REQUIRED)
+find_package(GSL REQUIRED)
 
 # 코너 검출 로직을 위한 정적 라이브러리 생성
 add_library(jmh_utils STATIC
@@ -36,6 +38,7 @@ target_link_libraries(jmh_utils
     Eigen3::Eigen
     ${OpenCV_LIBS}
     ${PCL_LIBRARIES}
+    ${GSL_LIBRARIES}
 )
 
 add_executable(fusion_output
@@ -48,7 +51,8 @@ add_executable(cam_lidar_calibration
   examples/cam_lidar_calibration.cpp
 )
 
-target_link_libraries(cam_lidar_calibration PRIVATE jmh_utils)
+target_link_libraries(cam_lidar_calibration PRIVATE jmh_utils ceres)
+
 
 
 include(GNUInstallDirs)

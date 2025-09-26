@@ -112,15 +112,15 @@ private:
         std::string home_dir = std::getenv("HOME");
         RCLCPP_INFO(this->get_logger(), "Home directory : %s", home_dir.c_str());
         std::string data_dir = home_dir + "/sensor_fusion_study_ws/src/sensor_fusion_study/calib_data/c_cam_lidar_calib";
-        // pcd_path_ = data_dir + "/pointclouds";
-        pcd_path_ = home_dir + "/sensor_fusion_study_ws/extrinsic_data/ouster";
+        pcd_path_ = data_dir + "/pointclouds";
+        //pcd_path_ = home_dir + "/sensor_fusion_study_ws/extrinsic_data/ouster";
     }
 
     void pubPlane(std::string pcd_path, std::string plane_path, int frame)
     {
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
-        std::string filename = pcd_path + "/00" + std::to_string(frame) + ".pcd";
+        std::string filename = pcd_path + "/pcd_" + std::to_string(frame) + ".pcd";
 
         pcl::io::loadPCDFile<pcl::PointXYZ>(filename, *cloud);
 
@@ -130,7 +130,7 @@ private:
         publisher_->publish(cloud_msg_);
 
         pcl::PointCloud<pcl::PointXYZ>::Ptr plane_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-        std::string plane_name = plane_path + "/00" + std::to_string(frame) + ".pcd";
+        std::string plane_name = plane_path + "/pcd_" + std::to_string(frame) + ".pcd";
         pcl::io::loadPCDFile<pcl::PointXYZ>(plane_name, *plane_cloud);
 
         pcl::toROSMsg(*plane_cloud, plane_msg_);
@@ -141,7 +141,7 @@ private:
     void viewPcd(int frame)
     {
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-        std::string filename = pcd_path_ + "/" + std::to_string(frame) + ".pcd";
+        std::string filename = pcd_path_ + "/pcd_" + std::to_string(frame) + ".pcd";
 
         if (pcl::io::loadPCDFile<pcl::PointXYZ>(filename, *cloud) == -1)
         {
@@ -250,7 +250,7 @@ private:
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
         // std::string filename = pcd_path_ + "/lidar" + std::to_string(num) + "_" + std::to_string(frame) + ".pcd";
         // std::string filename = pcd_path_ + "/pcd" + "_" + std::to_string(frame) + ".pcd";
-        std::string filename = pcd_path_ + "/" + std::to_string(frame) + ".pcd";
+        std::string filename = pcd_path_ + "/pcd_" + std::to_string(frame) + ".pcd";
 
         if (pcl::io::loadPCDFile<pcl::PointXYZ>(filename, *cloud) == -1)
         {
@@ -260,8 +260,8 @@ private:
 
         pcl::CropBox<pcl::PointXYZ> crop;
         crop.setInputCloud(cloud);
-        crop.setMin(Eigen::Vector4f(0.0, 0.0, -3.0, 1.0));
-        crop.setMax(Eigen::Vector4f(2.8, 2.5, 3.0, 1.0));
+        crop.setMin(Eigen::Vector4f(0.0, -1.0, -0.5, 1.0));
+        crop.setMax(Eigen::Vector4f(15.0, 1.0, 1.0, 1.0));
         // crop.setMin(Eigen::Vector4f(-4.0, -2.0, -0.85, 1.0));
         // crop.setMax(Eigen::Vector4f(-2.0, 0.8, 2.0, 1.0));
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_roi(new pcl::PointCloud<pcl::PointXYZ>);

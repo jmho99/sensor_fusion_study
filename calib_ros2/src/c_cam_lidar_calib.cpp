@@ -65,9 +65,9 @@ public:
     }
 
 private:
-    std::vector<rclcpp::Subscription<sensor_msgs::msg::CompressedImage>::SharedPtr> sub_cam_;
+    std::vector<rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr> sub_cam_;
     std::vector<rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr> sub_lidar_;
-    rclcpp::Subscription<sensor_msgs::msg::CompressedImage>::SharedPtr sub_cam__;
+    rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr sub_cam__;
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_lidar__;
     cv::Mat current_frame_;
     cv::Mat last_image_;                                                                   // Latest image data
@@ -149,9 +149,21 @@ private:
 
     std::vector<cv::Mat> all_frame_rot_;
     std::vector<cv::Mat> all_frame_trans_;
+
+    // === [ADD] 평면 방향/방정식 프레임별 저장 ===
+    std::vector<int> lidar_facing_flags_;       // 0: 원점 향함, 1: 원점 반대
+    std::vector<Eigen::Vector4d> lidar_planes_; // [a,b,c,d] (정규화된 노멀 기준)
+
+    std::vector<int> cam_facing_flags_;       // 0/1
+    std::vector<Eigen::Vector4d> cam_planes_; // [a,b,c,d] (카메라 좌표계)
+
+    // 이번 프레임의 라이다 평면 정보(다음 단계에서 사용)
+    Eigen::Vector4d last_lidar_plane_abcd_{0, 0, 0, 0};
+    Eigen::Vector3d last_lidar_plane_centroid_{0, 0, 0};
+    bool last_lidar_plane_valid_ = false;
     // --- 함수 선언 순서 조정 끝 ---
 
-    void imageCallback(const sensor_msgs::msg::CompressedImage::SharedPtr msg)
+    void imageCallback(const sensor_msgs::msg::Image::SharedPtr msg)
     {
         current_frame_ = cv_bridge::toCvCopy(msg, "bgr8")->image;
         cv::namedWindow("FLIR View", cv::WINDOW_NORMAL); // Uncommented for display
@@ -210,12 +222,12 @@ private:
         // Parameterization - Declare and get parameters for filters and RANSAC
         this->declare_parameter<double>("intensity_min_threshold", 1.0);
         this->declare_parameter<double>("intensity_max_threshold", 100000);
-        this->declare_parameter<double>("roi_min_x", -5.0);
-        this->declare_parameter<double>("roi_max_x", 0.0);
-        this->declare_parameter<double>("roi_min_y", -1.1);
-        this->declare_parameter<double>("roi_max_y", 0.6);
-        this->declare_parameter<double>("roi_min_z", -0.6);
-        this->declare_parameter<double>("roi_max_z", 3.0);
+        this->declare_parameter<double>("roi_min_x", 0.0);  //-5.0
+        this->declare_parameter<double>("roi_max_x", 15.0); // 0.0
+        this->declare_parameter<double>("roi_min_y", -1.0); //-1.1
+        this->declare_parameter<double>("roi_max_y", 1.0);  // 0.6
+        this->declare_parameter<double>("roi_min_z", -0.5); //-0.6
+        this->declare_parameter<double>("roi_max_z", 1.0);  // 3.0
         this->declare_parameter<double>("ransac_distance_threshold", 0.02);
         this->declare_parameter<int>("ransac_max_iterations", 1000);
 
@@ -265,8 +277,8 @@ private:
             if (input == "connect")
             {
                 auto qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable().durability_volatile();
-                auto sub_cam = this->create_subscription<sensor_msgs::msg::CompressedImage>("/image_raw/compressed", qos,
-                                                                                            std::bind(&CamLidarCalibNode::imageCallback, this, std::placeholders::_1));
+                auto sub_cam = this->create_subscription<sensor_msgs::msg::Image>("/flir_camera/image_raw", qos,
+                                                                                  std::bind(&CamLidarCalibNode::imageCallback, this, std::placeholders::_1));
 
                 std::string lidar_topic = "/ouster/points";
                 auto sub_lidar = this->create_subscription<sensor_msgs::msg::PointCloud2>(lidar_topic, rclcpp::SensorDataQoS(),
@@ -380,6 +392,57 @@ private:
         RCLCPP_INFO(this->get_logger(), "Successfully loaded calibration data (image and pointcloud).");
     }
 
+    // === [ADD] 평면 법선 정규화 및 d 정규화 ===
+    // 입력: (a,b,c,d). 출력: 노멀=(a,b,c)를 단위화; d도 같은 비율로 나눔
+    static inline Eigen::Vector4d normalize_plane(const Eigen::Vector4d &abcd)
+    {
+        Eigen::Vector3d n = abcd.head<3>();
+        double nn = n.norm();
+        if (nn <= 1e-12)
+            return abcd;
+        Eigen::Vector4d out = abcd;
+        out.head<3>() /= nn;
+        out[3] /= nn;
+        return out;
+    }
+
+    // === [ADD] 평면이 원점을 향하는지 판정 ===
+    // 규칙: (centroid · n) < 0  → "원점을 향함(0)" / 그렇지 않으면 1
+    static inline int facing_origin_label(const Eigen::Vector3d &n_unit,
+                                          const Eigen::Vector3d &centroid)
+    {
+        return (centroid.dot(n_unit) < 0.0) ? 0 : 1;
+    }
+
+    // === [ADD] LiDAR→Camera 로 평면(ax+by+cz+d=0) 변환 ===
+    // x_cam = R x_lid + t 일 때,
+    // n_cam = R * n_lid,   d_cam = d_lid - n_cam^T * t
+    static inline Eigen::Vector4d transform_plane_lidar_to_cam(const Eigen::Vector4d &plane_lidar,
+                                                               const cv::Mat &R, const cv::Mat &t)
+    {
+        Eigen::Vector3d nL(plane_lidar[0], plane_lidar[1], plane_lidar[2]);
+        Eigen::Vector3d nC(
+            R.at<double>(0, 0) * nL.x() + R.at<double>(0, 1) * nL.y() + R.at<double>(0, 2) * nL.z(),
+            R.at<double>(1, 0) * nL.x() + R.at<double>(1, 1) * nL.y() + R.at<double>(1, 2) * nL.z(),
+            R.at<double>(2, 0) * nL.x() + R.at<double>(2, 1) * nL.y() + R.at<double>(2, 2) * nL.z());
+        double dL = plane_lidar[3];
+        Eigen::Vector3d tC(t.at<double>(0), t.at<double>(1), t.at<double>(2));
+        double dC = dL - nC.dot(tC);
+        return normalize_plane(Eigen::Vector4d(nC.x(), nC.y(), nC.z(), dC));
+    }
+
+    // === [ADD] PCL 클라우드의 센트로이드 계산 (Eigen::Vector3d)
+    static inline Eigen::Vector3d centroid_from_cloud(const pcl::PointCloud<pcl::PointXYZI>::Ptr &cloud)
+    {
+        if (!cloud || cloud->empty())
+            return Eigen::Vector3d(0, 0, 0);
+        Eigen::Vector3d c(0, 0, 0);
+        for (const auto &p : cloud->points)
+            c += Eigen::Vector3d(p.x, p.y, p.z);
+        c /= static_cast<double>(cloud->points.size());
+        return c;
+    }
+
     void solveCameraPlane()
     {
         cv::Mat img_color = last_image_;
@@ -461,27 +524,10 @@ private:
 
     void detectLidarPlane()
     {
-        pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_filtered_intensity(new pcl::PointCloud<pcl::PointXYZI>);
-
-        // 1. 반사 강도 기반 필터링 (Reflectance Intensity Assisted)
-        pcl::PassThrough<pcl::PointXYZI> pass_intensity;
-        pass_intensity.setInputCloud(last_cloud_);
-        pass_intensity.setFilterFieldName("intensity");
-        // 파라미터로 설정된 강도 제한 사용
-        pass_intensity.setFilterLimits(intensity_min_threshold_, intensity_max_threshold_);
-        pass_intensity.filter(*cloud_filtered_intensity);
-
-        if (cloud_filtered_intensity->empty())
-        {
-            RCLCPP_WARN(rclcpp::get_logger("detectLidarPlane"), "SHUTDOWN_CAUSE: No points after intensity filtering. Shutting down node.");
-            lidar_plane_points_latest_->clear();
-            rclcpp::shutdown();
-        }
-
         pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_roi(new pcl::PointCloud<pcl::PointXYZI>);
         // 2. ROI 필터링 (CropBox) - 체스보드가 있을 것으로 예상되는 영역
         pcl::CropBox<pcl::PointXYZI> crop;
-        crop.setInputCloud(cloud_filtered_intensity);
+        crop.setInputCloud(last_cloud_);
         // 파라미터로 설정된 ROI 제한 사용
         crop.setMin(Eigen::Vector4f(roi_min_x_, roi_min_y_, roi_min_z_, 1.0));
         crop.setMax(Eigen::Vector4f(roi_max_x_, roi_max_y_, roi_max_z_, 1.0));
@@ -490,6 +536,23 @@ private:
         if (cloud_roi->empty())
         {
             RCLCPP_WARN(rclcpp::get_logger("detectLidarPlane"), "SHUTDOWN_CAUSE: No points after ROI filtering. Shutting down node.");
+            lidar_plane_points_latest_->clear();
+            rclcpp::shutdown();
+        }
+
+        pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_filtered_intensity(new pcl::PointCloud<pcl::PointXYZI>);
+
+        // 1. 반사 강도 기반 필터링 (Reflectance Intensity Assisted)
+        pcl::PassThrough<pcl::PointXYZI> pass_intensity;
+        pass_intensity.setInputCloud(cloud_roi);
+        pass_intensity.setFilterFieldName("intensity");
+        // 파라미터로 설정된 강도 제한 사용
+        pass_intensity.setFilterLimits(intensity_min_threshold_, intensity_max_threshold_);
+        pass_intensity.filter(*cloud_filtered_intensity);
+
+        if (cloud_filtered_intensity->empty())
+        {
+            RCLCPP_WARN(rclcpp::get_logger("detectLidarPlane"), "SHUTDOWN_CAUSE: No points after intensity filtering. Shutting down node.");
             lidar_plane_points_latest_->clear();
             rclcpp::shutdown();
         }
@@ -506,7 +569,7 @@ private:
         pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
         pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
 
-        seg.setInputCloud(cloud_roi);
+        seg.setInputCloud(cloud_filtered_intensity);
         seg.segment(*inliers, *coefficients);
 
         if (inliers->indices.empty())
@@ -522,7 +585,7 @@ private:
 
         // 4. 평면 내 포인트 추출
         pcl::ExtractIndices<pcl::PointXYZI> extract;
-        extract.setInputCloud(cloud_roi);
+        extract.setInputCloud(cloud_filtered_intensity);
         extract.setIndices(inliers);
         extract.setNegative(false); // 인라이어(평면 내 점)만 추출
         extract.filter(*lidar_plane_points_latest_);
@@ -539,7 +602,7 @@ private:
         RCLCPP_INFO(this->get_logger(), "Detected %zu points in LiDAR plane.", lidar_plane_points_latest_->points.size());
 
         // Convert PCL PointCloud to std::vector<PointXYZI> for the external function
-        std::vector<jmh_utils::PointXYZI> lidar_points_for_corner_detection;
+        std::vector<Eigen::Vector4d> lidar_points_for_corner_detection;
         lidar_points_for_corner_detection.reserve(lidar_plane_points_latest_->points.size());
         for (const auto &p : lidar_plane_points_latest_->points)
         {
@@ -549,7 +612,7 @@ private:
         RCLCPP_INFO(this->get_logger(), "Calling external corner detection function...");
 
         // Call the external corner detection function directly, passing the parameter
-        std::vector<jmh_utils::PointXYZI> detected_corners_xyz_i = jmh_utils::estimateChessboardCornersPaperMethod(
+        std::vector<Eigen::Vector4d> detected_corners_xyz_i = jmh_utils::estimateChessboardCornersPaperMethod(
             lidar_points_for_corner_detection,
             pattern_size_cols_, // internal_corners_x
             pattern_size_rows_, // internal_corners_y
@@ -566,9 +629,9 @@ private:
         chessboard_corners_3d_.clear(); // Clear existing corner data
         for (const auto &p : detected_corners_xyz_i)
         {
-            estimated_cv_corners.emplace_back(p.x, p.y, p.z);
+            estimated_cv_corners.emplace_back(p(0), p(1), p(2));
             // Store detected 3D corners as Eigen::Vector3d
-            chessboard_corners_3d_.emplace_back(p.x, p.y, p.z);
+            chessboard_corners_3d_.emplace_back(p(0), p(1), p(2));
         }
         RCLCPP_INFO(this->get_logger(), "Received %zu corners from external function and stored for reprojection error calculation.", estimated_cv_corners.size());
 
@@ -577,6 +640,33 @@ private:
 
         pub_service_corners_->publish(service_corners_msg_);
         RCLCPP_INFO(this->get_logger(), "Published detected corners to /detected_lidar_corners topic.");
+
+        // (a,b,c,d) → 단위 노멀/정규화
+        Eigen::Vector4d pl(coefficients->values[0],
+                           coefficients->values[1],
+                           coefficients->values[2],
+                           coefficients->values[3]);
+        pl = normalize_plane(pl);
+
+        // 인라이어 평면 포인트의 센트로이드
+        Eigen::Vector3d cL = centroid_from_cloud(lidar_plane_points_latest_);
+
+        // "원점 향함(0) / 아니면 1"
+        Eigen::Vector3d nL = pl.head<3>();
+        int lidar_label = facing_origin_label(nL, cL);
+
+        // 프레임 버퍼에 저장
+        lidar_planes_.push_back(pl);
+        lidar_facing_flags_.push_back(lidar_label);
+
+        // 이번 프레임용 캐시(나중에 R,t 후 카메라 좌표계 라벨링에 사용)
+        last_lidar_plane_abcd_ = pl;
+        last_lidar_plane_centroid_ = cL;
+        last_lidar_plane_valid_ = true;
+
+        RCLCPP_INFO(this->get_logger(),
+                    "[LiDAR] plane n=(%.6f, %.6f, %.6f) d=%.6f  centroid=(%.3f, %.3f, %.3f)  facing-origin=%d",
+                    nL.x(), nL.y(), nL.z(), pl[3], cL.x(), cL.y(), cL.z(), lidar_label);
 
         // Proceed with final calibration using the detected corners
         calibrateLidarCameraFinal(last_cloud_, estimated_cv_corners);
@@ -624,6 +714,49 @@ private:
         // src: estimated_chessboard_corners_lidar (3D points in LiDAR frame)
         // dst: chessboard_3d_in_cam_frame (3D points in Camera frame)
         computeRigidTransformSVD(estimated_chessboard_corners_lidar, chessboard_3d_in_cam_frame, lidar2cam_R_, lidar2cam_t_);
+
+        if (!last_lidar_plane_valid_)
+        {
+            RCLCPP_WARN(this->get_logger(), "[FrameGate] No cached LiDAR plane for this frame; skipping direction check.");
+        }
+        else
+        {
+            // LiDAR 평면을 카메라 좌표계로 변환
+            Eigen::Vector4d pl_cam = transform_plane_lidar_to_cam(last_lidar_plane_abcd_, lidar2cam_R_, lidar2cam_t_);
+            Eigen::Vector3d nC = pl_cam.head<3>();
+            // 센트로이드도 카메라 좌표계로 변환 (참고용)
+            cv::Mat cL = (cv::Mat_<double>(3, 1) << last_lidar_plane_centroid_.x(),
+                          last_lidar_plane_centroid_.y(),
+                          last_lidar_plane_centroid_.z());
+            cv::Mat cC = lidar2cam_R_ * cL + lidar2cam_t_;
+            Eigen::Vector3d centroid_cam(cC.at<double>(0), cC.at<double>(1), cC.at<double>(2));
+
+            // 카메라 좌표계 라벨: 원점(카메라 중심)을 향하면 0, 아니면 1
+            int cam_label = facing_origin_label(nC, centroid_cam);
+            std::cout << cam_label << std::endl;
+
+            // 저장
+            cam_planes_.push_back(pl_cam);
+            cam_facing_flags_.push_back(cam_label);
+
+            // LiDAR 라벨과 비교 (가장 최근 프레임의 것과 비교)
+            int lidar_label = lidar_facing_flags_.back();
+            if (lidar_label != cam_label)
+            {
+                // 불일치 → 이번 프레임 결과 무시 (R,t push/pop 안 함)
+                RCLCPP_INFO(this->get_logger(),
+                            "[FrameGate] Direction mismatch: LiDAR=%d vs Camera=%d. "
+                            "This frame will be ignored.",
+                            lidar_label, cam_label);
+                // 이 프레임의 라벨/평면은 기록으로 남겨두되, extrinsic 누적은 하지 않고 이후 처리 중단
+                return; // ← 이번 프레임의 후속 처리(포인트 변환/프로젝션 등) 스킵
+            }
+            else
+            {
+                RCLCPP_INFO(this->get_logger(),
+                            "[FrameGate] Direction matched: LiDAR=%d == Camera=%d. Using this frame.", lidar_label, cam_label);
+            }
+        }
 
         all_frame_rot_.push_back(lidar2cam_R_);
         all_frame_trans_.push_back(lidar2cam_t_);
@@ -749,7 +882,7 @@ private:
         cv::SVD::compute(H, S, U, Vt);
         R = U * Vt;
 
-        if (cv::determinant(R) < 0)
+        if (cv::determinant(R) < 0.0)
         {
             U.col(2) *= -1;
             R = U * Vt;
@@ -831,7 +964,7 @@ private:
         double rms = std::sqrt(error_square / proj.size());
         RCLCPP_INFO(this->get_logger(), "Mean Reprojection Error (undistorted): %.4f px", rms);
         jmh_utils::saveFile("txt", cam_lidar_path_, "reprojection_error",
-                 std::string("Mean Reprojection Error (undistorted newK): ") + std::to_string(rms) + " pixels");
+                            std::string("Mean Reprojection Error (undistorted newK): ") + std::to_string(rms) + " pixels");
         all_frames_rms_.push_back(rms);
 
         // 사용 중인 카메라 행렬/초점거리 선택
@@ -877,9 +1010,7 @@ private:
 
     void optimizationAllFrames()
     {
-        //if (all_frames_rms_<=1) return;
-
-        
+        // if (all_frames_rms_<=1) return;
     }
 
     // Output and Reporting - Save to YAML

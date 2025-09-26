@@ -247,6 +247,9 @@ CMAKE_STRIP:FILEPATH=/usr/bin/strip
 // Studio IDE projects all commands are done without /nologo.
 CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 
+//The directory containing a CMake configuration file for Ceres.
+Ceres_DIR:PATH=/usr/local/lib/cmake/Ceres
+
 //Path to a file.
 EIGEN_INCLUDE_DIR:PATH=/usr/include/eigen3
 
@@ -300,6 +303,26 @@ GLEW_INCLUDE_DIR:PATH=/usr/include
 
 //glew library
 GLEW_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/libGLEW.so
+
+//Path to a library.
+GSL_CBLAS_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/libcblas.so
+
+//Path to a library.
+GSL_CBLAS_LIBRARY_DEBUG:FILEPATH=/usr/lib/x86_64-linux-gnu/libcblas.so
+
+//Path to a program.
+GSL_CONFIG_EXECUTABLE:FILEPATH=GSL_CONFIG_EXECUTABLE-NOTFOUND
+
+//Path to a file.
+GSL_INCLUDE_DIR:PATH=/usr/include
+
+//Path to a library.
+GSL_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/libgsl.so
+
+//Path to a library.
+GSL_LIBRARY_DEBUG:FILEPATH=/usr/lib/x86_64-linux-gnu/libgsl.so
+
+GSL_ROOT_DIR:STRING=/usr
 
 //Path to a file.
 JPEG_INCLUDE_DIR:PATH=/usr/include
@@ -912,6 +935,12 @@ double-conversion_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/libdouble-conversio
 //The directory containing a CMake configuration file for flann.
 flann_DIR:PATH=flann_DIR-NOTFOUND
 
+//The directory containing a CMake configuration file for gflags.
+gflags_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/gflags
+
+//The directory containing a CMake configuration file for glog.
+glog_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/glog
+
 //Value Computed by CMake
 jmh_utils_BINARY_DIR:STATIC=/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/jmh_utils/build
 
@@ -919,7 +948,7 @@ jmh_utils_BINARY_DIR:STATIC=/home/antlab/sensor_fusion_study_ws/src/sensor_fusio
 jmh_utils_IS_TOP_LEVEL:STATIC=ON
 
 //Dependencies for the target
-jmh_utils_LIB_DEPENDS:STATIC=general;opencv_calib3d;general;opencv_core;general;opencv_dnn;general;opencv_features2d;general;opencv_flann;general;opencv_highgui;general;opencv_imgcodecs;general;opencv_imgproc;general;opencv_ml;general;opencv_objdetect;general;opencv_photo;general;opencv_stitching;general;opencv_video;general;opencv_videoio;general;opencv_alphamat;general;opencv_aruco;general;opencv_barcode;general;opencv_bgsegm;general;opencv_bioinspired;general;opencv_ccalib;general;opencv_datasets;general;opencv_dnn_objdetect;general;opencv_dnn_superres;general;opencv_dpm;general;opencv_face;general;opencv_freetype;general;opencv_fuzzy;general;opencv_hdf;general;opencv_hfs;general;opencv_img_hash;general;opencv_intensity_transform;general;opencv_line_descriptor;general;opencv_mcc;general;opencv_optflow;general;opencv_phase_unwrapping;general;opencv_plot;general;opencv_quality;general;opencv_rapid;general;opencv_reg;general;opencv_rgbd;general;opencv_saliency;general;opencv_shape;general;opencv_stereo;general;opencv_structured_light;general;opencv_superres;general;opencv_surface_matching;general;opencv_text;general;opencv_tracking;general;opencv_videostab;general;opencv_viz;general;opencv_wechat_qrcode;general;opencv_ximgproc;general;opencv_xobjdetect;general;opencv_xphoto;general;pcl_common;general;pcl_kdtree;general;pcl_octree;general;pcl_search;general;pcl_sample_consensus;general;pcl_filters;general;pcl_io;general;pcl_features;general;pcl_ml;general;pcl_segmentation;general;pcl_visualization;general;pcl_surface;general;pcl_registration;general;pcl_keypoints;general;pcl_tracking;general;pcl_recognition;general;pcl_stereo;general;pcl_apps;general;pcl_outofcore;general;pcl_people;general;Boost::system;general;Boost::filesystem;general;Boost::date_time;general;Boost::iostreams;general;Boost::serialization;general;/usr/lib/libOpenNI.so;general;libusb::libusb;general;/usr/lib/x86_64-linux-gnu/libOpenNI2.so;general;libusb::libusb;general;VTK::ChartsCore;general;VTK::CommonColor;general;VTK::CommonComputationalGeometry;general;VTK::CommonCore;general;VTK::CommonDataModel;general;VTK::CommonExecutionModel;general;VTK::CommonMath;general;VTK::CommonMisc;general;VTK::CommonTransforms;general;VTK::FiltersCore;general;VTK::FiltersExtraction;general;VTK::FiltersGeneral;general;VTK::FiltersGeometry;general;VTK::FiltersModeling;general;VTK::FiltersSources;general;VTK::ImagingCore;general;VTK::ImagingSources;general;VTK::InteractionImage;general;VTK::InteractionStyle;general;VTK::InteractionWidgets;general;VTK::IOCore;general;VTK::IOGeometry;general;VTK::IOImage;general;VTK::IOLegacy;general;VTK::IOPLY;general;VTK::RenderingAnnotation;general;VTK::RenderingCore;general;VTK::RenderingContext2D;general;VTK::RenderingLOD;general;VTK::RenderingFreeType;general;VTK::ViewsCore;general;VTK::ViewsContext2D;general;VTK::RenderingOpenGL2;general;VTK::GUISupportQt;general;FLANN::FLANN;
+jmh_utils_LIB_DEPENDS:STATIC=general;opencv_calib3d;general;opencv_core;general;opencv_dnn;general;opencv_features2d;general;opencv_flann;general;opencv_highgui;general;opencv_imgcodecs;general;opencv_imgproc;general;opencv_ml;general;opencv_objdetect;general;opencv_photo;general;opencv_stitching;general;opencv_video;general;opencv_videoio;general;opencv_alphamat;general;opencv_aruco;general;opencv_barcode;general;opencv_bgsegm;general;opencv_bioinspired;general;opencv_ccalib;general;opencv_datasets;general;opencv_dnn_objdetect;general;opencv_dnn_superres;general;opencv_dpm;general;opencv_face;general;opencv_freetype;general;opencv_fuzzy;general;opencv_hdf;general;opencv_hfs;general;opencv_img_hash;general;opencv_intensity_transform;general;opencv_line_descriptor;general;opencv_mcc;general;opencv_optflow;general;opencv_phase_unwrapping;general;opencv_plot;general;opencv_quality;general;opencv_rapid;general;opencv_reg;general;opencv_rgbd;general;opencv_saliency;general;opencv_shape;general;opencv_stereo;general;opencv_structured_light;general;opencv_superres;general;opencv_surface_matching;general;opencv_text;general;opencv_tracking;general;opencv_videostab;general;opencv_viz;general;opencv_wechat_qrcode;general;opencv_ximgproc;general;opencv_xobjdetect;general;opencv_xphoto;general;pcl_common;general;pcl_kdtree;general;pcl_octree;general;pcl_search;general;pcl_sample_consensus;general;pcl_filters;general;pcl_io;general;pcl_features;general;pcl_ml;general;pcl_segmentation;general;pcl_visualization;general;pcl_surface;general;pcl_registration;general;pcl_keypoints;general;pcl_tracking;general;pcl_recognition;general;pcl_stereo;general;pcl_apps;general;pcl_outofcore;general;pcl_people;general;Boost::system;general;Boost::filesystem;general;Boost::date_time;general;Boost::iostreams;general;Boost::serialization;general;/usr/lib/libOpenNI.so;general;libusb::libusb;general;/usr/lib/x86_64-linux-gnu/libOpenNI2.so;general;libusb::libusb;general;VTK::ChartsCore;general;VTK::CommonColor;general;VTK::CommonComputationalGeometry;general;VTK::CommonCore;general;VTK::CommonDataModel;general;VTK::CommonExecutionModel;general;VTK::CommonMath;general;VTK::CommonMisc;general;VTK::CommonTransforms;general;VTK::FiltersCore;general;VTK::FiltersExtraction;general;VTK::FiltersGeneral;general;VTK::FiltersGeometry;general;VTK::FiltersModeling;general;VTK::FiltersSources;general;VTK::ImagingCore;general;VTK::ImagingSources;general;VTK::InteractionImage;general;VTK::InteractionStyle;general;VTK::InteractionWidgets;general;VTK::IOCore;general;VTK::IOGeometry;general;VTK::IOImage;general;VTK::IOLegacy;general;VTK::IOPLY;general;VTK::RenderingAnnotation;general;VTK::RenderingCore;general;VTK::RenderingContext2D;general;VTK::RenderingLOD;general;VTK::RenderingFreeType;general;VTK::ViewsCore;general;VTK::ViewsContext2D;general;VTK::RenderingOpenGL2;general;VTK::GUISupportQt;general;FLANN::FLANN;general;/usr/lib/x86_64-linux-gnu/libgsl.so;general;/usr/lib/x86_64-linux-gnu/libcblas.so;
 
 //Value Computed by CMake
 jmh_utils_SOURCE_DIR:STATIC=/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/jmh_utils
@@ -929,6 +958,15 @@ libusb_INCLUDE_DIR:PATH=/usr/include
 
 //Path to a library.
 libusb_LIBRARIES:FILEPATH=/usr/lib/x86_64-linux-gnu/libusb-1.0.so
+
+//Path to a library.
+pkgcfg_lib_GSL_gsl:FILEPATH=/usr/lib/x86_64-linux-gnu/libgsl.so
+
+//Path to a library.
+pkgcfg_lib_GSL_gslcblas:FILEPATH=/usr/lib/x86_64-linux-gnu/libgslcblas.so
+
+//Path to a library.
+pkgcfg_lib_GSL_m:FILEPATH=/usr/lib/x86_64-linux-gnu/libm.so
 
 //Path to a library.
 pkgcfg_lib_PC_EXPAT_expat:FILEPATH=/usr/lib/x86_64-linux-gnu/libexpat.so
@@ -1165,6 +1203,8 @@ FIND_PACKAGE_MESSAGE_DETAILS_FLANN:INTERNAL=[/usr/lib/x86_64-linux-gnu/libflann_
 FIND_PACKAGE_MESSAGE_DETAILS_Freetype:INTERNAL=[/usr/lib/x86_64-linux-gnu/libfreetype.so][/usr/include/freetype2][v2.11.1()]
 //Details about finding GLEW
 FIND_PACKAGE_MESSAGE_DETAILS_GLEW:INTERNAL=[/usr/lib/x86_64-linux-gnu/libGLEW.so][/usr/include][v()]
+//Details about finding GSL
+FIND_PACKAGE_MESSAGE_DETAILS_GSL:INTERNAL=[/usr/include][/usr/lib/x86_64-linux-gnu/libgsl.so][/usr/lib/x86_64-linux-gnu/libcblas.so][v2.7.1()]
 //Details about finding JPEG
 FIND_PACKAGE_MESSAGE_DETAILS_JPEG:INTERNAL=[/usr/lib/x86_64-linux-gnu/libjpeg.so][/usr/include][v80()]
 //Details about finding JsonCpp
@@ -1235,6 +1275,8 @@ FIND_PACKAGE_MESSAGE_DETAILS_PCL_TRACKING:INTERNAL=[/usr/lib/x86_64-linux-gnu/li
 FIND_PACKAGE_MESSAGE_DETAILS_PCL_VISUALIZATION:INTERNAL=[/usr/lib/x86_64-linux-gnu/libpcl_visualization.so][/usr/include/pcl-1.12][v()]
 //Details about finding PNG
 FIND_PACKAGE_MESSAGE_DETAILS_PNG:INTERNAL=[/usr/lib/x86_64-linux-gnu/libpng.so][/usr/include][v1.6.37()]
+//Details about finding PkgConfig
+FIND_PACKAGE_MESSAGE_DETAILS_PkgConfig:INTERNAL=[/usr/bin/pkg-config][v0.29.2()]
 //Details about finding TIFF
 FIND_PACKAGE_MESSAGE_DETAILS_TIFF:INTERNAL=[/usr/lib/x86_64-linux-gnu/libtiff.so][/usr/include/x86_64-linux-gnu][c ][v4.3.0()]
 //Details about finding Threads
@@ -1265,6 +1307,55 @@ Fontconfig_LIBRARY-ADVANCED:INTERNAL=1
 GLEW_INCLUDE_DIR-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: GLEW_LIBRARY
 GLEW_LIBRARY-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: GSL_CBLAS_LIBRARY
+GSL_CBLAS_LIBRARY-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: GSL_CBLAS_LIBRARY_DEBUG
+GSL_CBLAS_LIBRARY_DEBUG-ADVANCED:INTERNAL=1
+GSL_CFLAGS:INTERNAL=
+GSL_CFLAGS_I:INTERNAL=
+GSL_CFLAGS_OTHER:INTERNAL=
+GSL_FOUND:INTERNAL=1
+GSL_INCLUDEDIR:INTERNAL=/usr/include
+//ADVANCED property for variable: GSL_INCLUDE_DIR
+GSL_INCLUDE_DIR-ADVANCED:INTERNAL=1
+GSL_INCLUDE_DIRS:INTERNAL=
+GSL_LDFLAGS:INTERNAL=-L/usr/lib/x86_64-linux-gnu;-lgsl;-lgslcblas;-lm
+GSL_LDFLAGS_OTHER:INTERNAL=
+GSL_LIBDIR:INTERNAL=/usr/lib/x86_64-linux-gnu
+GSL_LIBRARIES:INTERNAL=gsl;gslcblas;m
+//ADVANCED property for variable: GSL_LIBRARY
+GSL_LIBRARY-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: GSL_LIBRARY_DEBUG
+GSL_LIBRARY_DEBUG-ADVANCED:INTERNAL=1
+GSL_LIBRARY_DIRS:INTERNAL=/usr/lib/x86_64-linux-gnu
+GSL_LIBS:INTERNAL=
+GSL_LIBS_L:INTERNAL=
+GSL_LIBS_OTHER:INTERNAL=
+GSL_LIBS_PATHS:INTERNAL=
+GSL_MODULE_NAME:INTERNAL=gsl
+GSL_PREFIX:INTERNAL=/usr
+//ADVANCED property for variable: GSL_ROOT_DIR
+GSL_ROOT_DIR-ADVANCED:INTERNAL=1
+GSL_STATIC_CFLAGS:INTERNAL=
+GSL_STATIC_CFLAGS_I:INTERNAL=
+GSL_STATIC_CFLAGS_OTHER:INTERNAL=
+GSL_STATIC_INCLUDE_DIRS:INTERNAL=
+GSL_STATIC_LDFLAGS:INTERNAL=-L/usr/lib/x86_64-linux-gnu;-lgsl;-lgslcblas;-lm
+GSL_STATIC_LDFLAGS_OTHER:INTERNAL=
+GSL_STATIC_LIBDIR:INTERNAL=
+GSL_STATIC_LIBRARIES:INTERNAL=gsl;gslcblas;m
+GSL_STATIC_LIBRARY_DIRS:INTERNAL=/usr/lib/x86_64-linux-gnu
+GSL_STATIC_LIBS:INTERNAL=
+GSL_STATIC_LIBS_L:INTERNAL=
+GSL_STATIC_LIBS_OTHER:INTERNAL=
+GSL_STATIC_LIBS_PATHS:INTERNAL=
+//ADVANCED property for variable: GSL_VERSION
+GSL_VERSION-ADVANCED:INTERNAL=1
+GSL_VERSION:INTERNAL=2.7.1
+GSL_gsl_INCLUDEDIR:INTERNAL=
+GSL_gsl_LIBDIR:INTERNAL=
+GSL_gsl_PREFIX:INTERNAL=
+GSL_gsl_VERSION:INTERNAL=
 //ADVANCED property for variable: JPEG_INCLUDE_DIR
 JPEG_INCLUDE_DIR-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: JPEG_LIBRARY_DEBUG
@@ -1864,6 +1955,7 @@ ZLIB_LIBRARY_DEBUG-ADVANCED:INTERNAL=1
 ZLIB_LIBRARY_RELEASE-ADVANCED:INTERNAL=1
 //CMAKE_INSTALL_PREFIX during last run
 _GNUInstallDirs_LAST_CMAKE_INSTALL_PREFIX:INTERNAL=/usr/local
+__pkg_config_arguments_GSL:INTERNAL=QUIET;gsl
 __pkg_config_arguments_PC_EIGEN:INTERNAL=eigen3
 __pkg_config_arguments_PC_EXPAT:INTERNAL=QUIET;expat
 __pkg_config_arguments_PC_FLANN:INTERNAL=flann
@@ -1871,6 +1963,7 @@ __pkg_config_arguments_PC_OPENNI:INTERNAL=QUIET;libopenni
 __pkg_config_arguments_PC_OPENNI2:INTERNAL=QUIET;libopenni2
 __pkg_config_arguments_PC_libusb:INTERNAL=libusb-1.0
 __pkg_config_arguments_PKG_FONTCONFIG:INTERNAL=QUIET;fontconfig
+__pkg_config_checked_GSL:INTERNAL=1
 __pkg_config_checked_PC_EIGEN:INTERNAL=1
 __pkg_config_checked_PC_EXPAT:INTERNAL=1
 __pkg_config_checked_PC_FLANN:INTERNAL=1
@@ -1896,6 +1989,12 @@ double-conversion_INCLUDE_DIR-ADVANCED:INTERNAL=1
 double-conversion_LIBRARY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: libusb_LIBRARIES
 libusb_LIBRARIES-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: pkgcfg_lib_GSL_gsl
+pkgcfg_lib_GSL_gsl-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: pkgcfg_lib_GSL_gslcblas
+pkgcfg_lib_GSL_gslcblas-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: pkgcfg_lib_GSL_m
+pkgcfg_lib_GSL_m-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: pkgcfg_lib_PC_EXPAT_expat
 pkgcfg_lib_PC_EXPAT_expat-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: pkgcfg_lib_PC_EXPAT_m
@@ -1916,7 +2015,7 @@ pkgcfg_lib_PC_libusb_usb-1.0-ADVANCED:INTERNAL=1
 pkgcfg_lib_PKG_FONTCONFIG_fontconfig-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: pkgcfg_lib_PKG_FONTCONFIG_freetype
 pkgcfg_lib_PKG_FONTCONFIG_freetype-ADVANCED:INTERNAL=1
-prefix_result:INTERNAL=/usr/lib
+prefix_result:INTERNAL=/usr/lib/x86_64-linux-gnu
 //ADVANCED property for variable: utf8cpp_INCLUDE_DIR
 utf8cpp_INCLUDE_DIR-ADVANCED:INTERNAL=1
 

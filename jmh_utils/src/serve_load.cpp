@@ -44,6 +44,7 @@ namespace jmh_utils
         }
 
         std::sort(files.begin(), files.end(), sortingLowestNumber);
+        std::cout << "Load [ " << files.size() << " ] " << extension << " files." << std::endl;
 
         return files;
     }

@@ -1325,6 +1325,73 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
   /usr/include/x86_64-linux-gnu/c++/11/bits/opt_random.h \
   /usr/include/c++/11/bits/random.tcc \
   /usr/include/eigen3/Eigen/Eigenvalues \
+  /usr/local/include/ceres/ceres.h \
+  /usr/local/include/ceres/autodiff_cost_function.h \
+  /usr/local/include/ceres/internal/autodiff.h \
+  /usr/local/include/ceres/internal/array_selector.h \
+  /usr/local/include/ceres/internal/fixed_array.h \
+  /usr/local/include/ceres/internal/memory.h \
+  /usr/include/glog/logging.h \
+  /usr/include/inttypes.h \
+  /usr/include/gflags/gflags.h \
+  /usr/include/gflags/gflags_declare.h \
+  /usr/include/gflags/gflags_gflags.h \
+  /usr/include/glog/log_severity.h \
+  /usr/include/glog/vlog_is_on.h \
+  /usr/local/include/ceres/types.h \
+  /usr/local/include/ceres/internal/disable_warnings.h \
+  /usr/local/include/ceres/internal/export.h \
+  /usr/local/include/ceres/internal/reenable_warnings.h \
+  /usr/local/include/ceres/internal/eigen.h \
+  /usr/local/include/ceres/internal/parameter_dims.h \
+  /usr/local/include/ceres/internal/integer_sequence_algorithm.h \
+  /usr/local/include/ceres/jet_fwd.h \
+  /usr/local/include/ceres/internal/variadic_evaluate.h \
+  /usr/local/include/ceres/cost_function.h \
+  /usr/local/include/ceres/jet.h \
+  /usr/local/include/ceres/internal/jet_traits.h \
+  /usr/local/include/ceres/internal/port.h \
+  /usr/local/include/ceres/sized_cost_function.h \
+  /usr/local/include/ceres/internal/parameter_dims.h \
+  /usr/local/include/ceres/autodiff_first_order_function.h \
+  /usr/local/include/ceres/first_order_function.h \
+  /usr/local/include/ceres/autodiff_manifold.h \
+  /usr/local/include/ceres/manifold.h \
+  /usr/local/include/ceres/conditioned_cost_function.h \
+  /usr/local/include/ceres/constants.h \
+  /usr/local/include/ceres/context.h \
+  /usr/local/include/ceres/cost_function_to_functor.h \
+  /usr/local/include/ceres/dynamic_cost_function_to_functor.h \
+  /usr/local/include/ceres/dynamic_cost_function.h \
+  /usr/local/include/ceres/covariance.h \
+  /usr/local/include/ceres/internal/config.h \
+  /usr/local/include/ceres/crs_matrix.h \
+  /usr/local/include/ceres/dynamic_autodiff_cost_function.h \
+  /usr/local/include/ceres/dynamic_numeric_diff_cost_function.h \
+  /usr/local/include/ceres/internal/numeric_diff.h \
+  /usr/local/include/ceres/numeric_diff_options.h \
+  /usr/local/include/ceres/evaluation_callback.h \
+  /usr/local/include/ceres/gradient_checker.h \
+  /usr/local/include/ceres/gradient_problem.h \
+  /usr/local/include/ceres/gradient_problem_solver.h \
+  /usr/local/include/ceres/iteration_callback.h \
+  /usr/local/include/ceres/line_manifold.h \
+  /usr/local/include/ceres/internal/householder_vector.h \
+  /usr/local/include/ceres/internal/sphere_manifold_functions.h \
+  /usr/local/include/ceres/loss_function.h \
+  /usr/local/include/ceres/numeric_diff_cost_function.h \
+  /usr/local/include/ceres/numeric_diff_first_order_function.h \
+  /usr/local/include/ceres/ordered_groups.h \
+  /usr/local/include/ceres/problem.h \
+  /usr/local/include/ceres/product_manifold.h \
+  /usr/local/include/ceres/solver.h \
+  /usr/include/c++/11/unordered_set \
+  /usr/include/c++/11/bits/unordered_set.h \
+  /usr/local/include/ceres/sphere_manifold.h \
+  /usr/local/include/ceres/version.h \
+  /usr/local/include/ceres/rotation.h \
+  /usr/local/include/ceres/internal/euler_angles.h \
+  ../include/jmh_utils/calc_compute.hpp \
   ../include/jmh_utils/main_ndt_transformation.hpp \
   /usr/include/pcl-1.12/pcl/filters/voxel_grid.h \
   /usr/include/pcl-1.12/pcl/registration/ndt.h \
@@ -1641,12 +1708,9 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
   /usr/include/eigen3/unsupported/Eigen/src/NonLinearOptimization/LevenbergMarquardt.h \
   /usr/include/pcl-1.12/pcl/registration/impl/ndt.hpp \
   ../include/jmh_utils/main_fusion_visualization.hpp \
-  ../include/jmh_utils/calc_compute.hpp \
   ../include/jmh_utils/serve_save.hpp \
   ../include/jmh_utils/serve_keyboard.hpp
 
-
-../include/jmh_utils/calc_compute.hpp:
 
 ../include/jmh_utils/main_fusion_visualization.hpp:
 
@@ -1788,8 +1852,6 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 
 /usr/include/boost/fusion/container/list/detail/reverse_cons.hpp:
 
-/usr/include/boost/fusion/algorithm/transformation/push_front.hpp:
-
 /usr/include/boost/fusion/view/single_view/detail/at_impl.hpp:
 
 /usr/include/boost/fusion/view/single_view/detail/deref_impl.hpp:
@@ -1811,8 +1873,6 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 /usr/include/boost/fusion/view/joint_view/detail/key_of_impl.hpp:
 
 /usr/include/boost/fusion/view/joint_view/detail/value_of_data_impl.hpp:
-
-/usr/include/boost/fusion/iterator/detail/adapt_value_traits.hpp:
 
 /usr/include/boost/fusion/view/joint_view/detail/value_of_impl.hpp:
 
@@ -1858,8 +1918,6 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 
 /usr/include/boost/preprocessor/facilities/intercept.hpp:
 
-/usr/include/boost/preprocessor/slot/detail/def.hpp:
-
 /usr/include/boost/preprocessor/iteration/iterate.hpp:
 
 /usr/include/boost/utility/result_of.hpp:
@@ -1881,8 +1939,6 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 /usr/include/boost/fusion/iterator/deref_data.hpp:
 
 /usr/include/boost/fusion/iterator/segmented_iterator.hpp:
-
-/usr/include/boost/fusion/sequence/intrinsic/detail/segmented_end.hpp:
 
 /usr/include/boost/fusion/support/is_segmented.hpp:
 
@@ -1962,8 +2018,6 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 
 /usr/include/boost/fusion/support/config.hpp:
 
-/usr/include/boost/mpl/iterator_range.hpp:
-
 /usr/include/pcl-1.12/pcl/impl/cloud_iterator.hpp:
 
 /usr/include/boost/fusion/algorithm/query/detail/segmented_find.hpp:
@@ -1986,8 +2040,6 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 
 /usr/include/pcl-1.12/pcl/correspondence.h:
 
-/usr/include/pcl-1.12/pcl/registration/correspondence_types.h:
-
 /usr/include/pcl-1.12/pcl/registration/correspondence_estimation.h:
 
 /usr/include/flann/defines.h:
@@ -2005,6 +2057,94 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 /usr/include/boost/fusion/algorithm/transformation/erase.hpp:
 
 /usr/include/pcl-1.12/pcl/filters/voxel_grid.h:
+
+../include/jmh_utils/calc_compute.hpp:
+
+/usr/local/include/ceres/version.h:
+
+/usr/include/c++/11/bits/unordered_set.h:
+
+/usr/include/c++/11/unordered_set:
+
+/usr/local/include/ceres/solver.h:
+
+/usr/include/boost/fusion/algorithm/transformation/push_front.hpp:
+
+/usr/local/include/ceres/product_manifold.h:
+
+/usr/include/boost/fusion/iterator/detail/adapt_value_traits.hpp:
+
+/usr/local/include/ceres/ordered_groups.h:
+
+/usr/local/include/ceres/numeric_diff_first_order_function.h:
+
+/usr/local/include/ceres/loss_function.h:
+
+/usr/include/boost/preprocessor/slot/detail/def.hpp:
+
+/usr/local/include/ceres/internal/sphere_manifold_functions.h:
+
+/usr/local/include/ceres/internal/householder_vector.h:
+
+/usr/local/include/ceres/iteration_callback.h:
+
+/usr/local/include/ceres/gradient_problem_solver.h:
+
+/usr/local/include/ceres/numeric_diff_options.h:
+
+/usr/local/include/ceres/internal/numeric_diff.h:
+
+/usr/local/include/ceres/dynamic_numeric_diff_cost_function.h:
+
+/usr/local/include/ceres/crs_matrix.h:
+
+/usr/local/include/ceres/dynamic_cost_function.h:
+
+/usr/local/include/ceres/context.h:
+
+/usr/local/include/ceres/manifold.h:
+
+/usr/local/include/ceres/autodiff_manifold.h:
+
+/usr/local/include/ceres/first_order_function.h:
+
+/usr/local/include/ceres/autodiff_first_order_function.h:
+
+/usr/include/boost/mpl/iterator_range.hpp:
+
+/usr/local/include/ceres/sized_cost_function.h:
+
+/usr/local/include/ceres/jet.h:
+
+/usr/local/include/ceres/internal/integer_sequence_algorithm.h:
+
+/usr/local/include/ceres/internal/eigen.h:
+
+/usr/local/include/ceres/types.h:
+
+/usr/include/glog/log_severity.h:
+
+/usr/include/gflags/gflags_gflags.h:
+
+/usr/include/gflags/gflags.h:
+
+/usr/include/inttypes.h:
+
+/usr/include/glog/logging.h:
+
+/usr/include/boost/fusion/sequence/intrinsic/detail/segmented_end.hpp:
+
+/usr/local/include/ceres/internal/memory.h:
+
+/usr/include/pcl-1.12/pcl/registration/correspondence_types.h:
+
+/usr/local/include/ceres/internal/fixed_array.h:
+
+/usr/local/include/ceres/internal/array_selector.h:
+
+/usr/local/include/ceres/internal/autodiff.h:
+
+/usr/local/include/ceres/ceres.h:
 
 /usr/include/boost/fusion/algorithm/transformation/insert.hpp:
 
@@ -2058,6 +2198,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 
 /usr/include/boost/random/detail/ptr_helper.hpp:
 
+/usr/local/include/ceres/numeric_diff_cost_function.h:
+
 /usr/include/boost/random/detail/config.hpp:
 
 /usr/include/eigen3/unsupported/Eigen/src/NonLinearOptimization/covar.h:
@@ -2088,6 +2230,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 
 /usr/include/x86_64-linux-gnu/bits/mman-map-flags-generic.h:
 
+/usr/local/include/ceres/internal/disable_warnings.h:
+
 /usr/include/x86_64-linux-gnu/bits/mman.h:
 
 /usr/include/pcl-1.12/pcl/common/concatenate.h:
@@ -2095,6 +2239,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 /usr/include/boost/fusion/sequence/intrinsic/has_key.hpp:
 
 /usr/include/pcl-1.12/pcl/Vertices.h:
+
+/usr/local/include/ceres/internal/reenable_warnings.h:
 
 /usr/include/pcl-1.12/pcl/PointIndices.h:
 
@@ -2208,6 +2354,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 
 /usr/include/boost/smart_ptr/detail/sp_typeinfo_.hpp:
 
+/usr/local/include/ceres/sphere_manifold.h:
+
 /usr/include/boost/smart_ptr/detail/sp_counted_base_gcc_atomic.hpp:
 
 /usr/include/boost/fusion/view/joint_view/joint_view.hpp:
@@ -2227,6 +2375,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 /usr/include/boost/smart_ptr/shared_ptr.hpp:
 
 /usr/include/boost/date_time/microsec_time_clock.hpp:
+
+/usr/local/include/ceres/dynamic_cost_function_to_functor.h:
 
 /usr/include/boost/interprocess/detail/posix_time_types_wrk.hpp:
 
@@ -2418,6 +2568,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 
 /usr/include/boost/preprocessor/seq/seq.hpp:
 
+/usr/local/include/ceres/internal/export.h:
+
 /usr/include/eigen3/Eigen/src/Core/ArithmeticSequence.h:
 
 /usr/include/eigen3/Eigen/src/Core/SelfCwiseBinaryOp.h:
@@ -2564,6 +2716,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 
 /usr/include/opencv4/opencv2/objdetect/face.hpp:
 
+/usr/local/include/ceres/internal/port.h:
+
 /usr/include/opencv4/opencv2/objdetect/detection_based_tracker.hpp:
 
 /usr/include/c++/11/bits/stl_queue.h:
@@ -2587,6 +2741,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 /usr/include/eigen3/Eigen/Eigenvalues:
 
 /usr/include/eigen3/Eigen/src/Core/Matrix.h:
+
+/usr/local/include/ceres/dynamic_autodiff_cost_function.h:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/apply_wrap.hpp:
 
@@ -2724,6 +2880,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 
 /usr/include/math.h:
 
+/usr/local/include/ceres/jet_fwd.h:
+
 /usr/include/boost/mpl/void_fwd.hpp:
 
 /usr/include/opencv4/opencv2/flann.hpp:
@@ -2812,7 +2970,11 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 
 /usr/include/pcl-1.12/pcl/types.h:
 
+/usr/local/include/ceres/internal/jet_traits.h:
+
 /usr/include/eigen3/Eigen/src/Core/util/ForwardDeclarations.h:
+
+/usr/include/gflags/gflags_declare.h:
 
 /usr/include/eigen3/Eigen/src/Core/Array.h:
 
@@ -2825,6 +2987,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 /usr/include/c++/11/ext/aligned_buffer.h:
 
 /usr/include/c++/11/bits/locale_classes.h:
+
+/usr/local/include/ceres/covariance.h:
 
 /usr/include/opencv4/opencv2/stitching/detail/camera.hpp:
 
@@ -2918,6 +3082,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 
 /usr/include/boost/mpl/aux_/contains_impl.hpp:
 
+/usr/local/include/ceres/conditioned_cost_function.h:
+
 /usr/include/eigen3/Eigen/src/Core/arch/Default/ConjHelper.h:
 
 /usr/include/x86_64-linux-gnu/bits/local_lim.h:
@@ -2997,6 +3163,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 /usr/include/eigen3/Eigen/src/Core/BandMatrix.h:
 
 /usr/include/boost/mpl/size_t_fwd.hpp:
+
+/usr/local/include/ceres/gradient_problem.h:
 
 /usr/include/c++/11/bits/hash_bytes.h:
 
@@ -3426,6 +3594,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 
 /usr/include/opencv4/opencv2/stitching/warpers.hpp:
 
+/usr/local/include/ceres/cost_function.h:
+
 /usr/include/x86_64-linux-gnu/bits/floatn-common.h:
 
 /usr/include/boost/mpl/aux_/static_cast.hpp:
@@ -3493,6 +3663,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 /usr/include/linux/limits.h:
 
 /usr/include/c++/11/bits/allocator.h:
+
+/usr/local/include/ceres/evaluation_callback.h:
 
 /usr/include/c++/11/cmath:
 
@@ -3586,6 +3758,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 
 /usr/include/boost/mpl/aux_/reverse_fold_impl.hpp:
 
+/usr/local/include/ceres/internal/variadic_evaluate.h:
+
 /usr/include/x86_64-linux-gnu/bits/types/__locale_t.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/__FILE.h:
@@ -3666,6 +3840,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 
 /usr/include/boost/mpl/aux_/config/lambda.hpp:
 
+/usr/include/glog/vlog_is_on.h:
+
 /usr/include/boost/date_time/int_adapter.hpp:
 
 /usr/include/boost/type_traits/is_same.hpp:
@@ -3684,11 +3860,15 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 
 /usr/include/boost/mpl/vector/vector20.hpp:
 
+/usr/local/include/ceres/internal/euler_angles.h:
+
 /usr/include/c++/11/bits/stl_bvector.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct___jmp_buf_tag.h:
 
 /usr/include/pcl-1.12/pcl/register_point_struct.h:
+
+/usr/local/include/ceres/cost_function_to_functor.h:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/atomic_word.h:
 
@@ -3731,6 +3911,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 /usr/include/boost/preprocessor/list/adt.hpp:
 
 /usr/include/boost/mpl/aux_/type_wrapper.hpp:
+
+/usr/local/include/ceres/line_manifold.h:
 
 /usr/include/boost/range/iterator.hpp:
 
@@ -4014,6 +4196,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 
 /usr/include/boost/config/compiler/gcc.hpp:
 
+/usr/local/include/ceres/problem.h:
+
 /usr/include/eigen3/Eigen/src/misc/RealSvd2x2.h:
 
 /usr/include/boost/iterator/interoperable.hpp:
@@ -4143,6 +4327,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 /usr/include/boost/preprocessor/repeat.hpp:
 
 /usr/include/boost/preprocessor/debug/error.hpp:
+
+/usr/local/include/ceres/autodiff_cost_function.h:
 
 /usr/include/boost/preprocessor/tuple/eat.hpp:
 
@@ -4538,6 +4724,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 
 /usr/include/boost/mpl/filter_view.hpp:
 
+/usr/local/include/ceres/internal/parameter_dims.h:
+
 /usr/include/boost/mpl/remove_if.hpp:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/apply.hpp:
@@ -4563,6 +4751,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 /usr/include/c++/11/bits/move.h:
 
 /usr/include/boost/mpl/aux_/fold_impl.hpp:
+
+/usr/local/include/ceres/gradient_checker.h:
 
 /usr/include/pcl-1.12/pcl/exceptions.h:
 
@@ -4732,6 +4922,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 
 /usr/include/boost/type_traits/is_member_pointer.hpp:
 
+/usr/local/include/ceres/internal/config.h:
+
 /usr/include/boost/type_traits/add_const.hpp:
 
 /usr/include/boost/utility/enable_if.hpp:
@@ -4834,6 +5026,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 
 /usr/include/boost/range/has_range_iterator.hpp:
 
+/usr/local/include/ceres/constants.h:
+
 /usr/include/boost/core/enable_if.hpp:
 
 /usr/include/boost/range/concepts.hpp:
@@ -4841,6 +5035,8 @@ CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.o: ../examples/fusion_ou
 /usr/include/boost/preprocessor/seq/for_each_i.hpp:
 
 /usr/include/boost/concept/detail/concept_undef.hpp:
+
+/usr/local/include/ceres/rotation.h:
 
 /usr/include/pcl-1.12/pcl/type_traits.h:
 

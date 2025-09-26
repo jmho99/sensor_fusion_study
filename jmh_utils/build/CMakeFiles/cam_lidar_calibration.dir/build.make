@@ -225,6 +225,16 @@ cam_lidar_calibration: /usr/lib/x86_64-linux-gnu/libtbb.so.12.5
 cam_lidar_calibration: /usr/lib/x86_64-linux-gnu/libvtksys-9.1.so.9.1.0
 cam_lidar_calibration: /usr/lib/x86_64-linux-gnu/libflann_cpp.so
 cam_lidar_calibration: /usr/lib/x86_64-linux-gnu/libqhull_r.so.8.0.2
+cam_lidar_calibration: /usr/lib/x86_64-linux-gnu/libgsl.so
+cam_lidar_calibration: /usr/lib/x86_64-linux-gnu/libcblas.so
+cam_lidar_calibration: /usr/local/lib/libceres.a
+cam_lidar_calibration: /usr/lib/x86_64-linux-gnu/libglog.so.0.4.0
+cam_lidar_calibration: /usr/lib/x86_64-linux-gnu/libunwind.so
+cam_lidar_calibration: /usr/lib/x86_64-linux-gnu/libgflags.so.2.2.2
+cam_lidar_calibration: /usr/lib/x86_64-linux-gnu/liblapack.so
+cam_lidar_calibration: /usr/lib/x86_64-linux-gnu/libblas.so
+cam_lidar_calibration: /usr/lib/x86_64-linux-gnu/libf77blas.so
+cam_lidar_calibration: /usr/lib/x86_64-linux-gnu/libatlas.so
 cam_lidar_calibration: CMakeFiles/cam_lidar_calibration.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/jmh_utils/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX executable cam_lidar_calibration"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/cam_lidar_calibration.dir/link.txt --verbose=$(VERBOSE)

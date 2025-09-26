@@ -1,4 +1,5 @@
 #include "jmh_utils/main_intensity_lidar_corner_detection.hpp"
+#include "jmh_utils/calc_compute.hpp"
 
 #include <iostream>
 #include <sstream>
@@ -11,6 +12,9 @@
 
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
+
+#include <ceres/ceres.h>
+#include <ceres/rotation.h>
 
 namespace jmh_utils
 {
@@ -390,14 +394,10 @@ namespace jmh_utils
         return out;
     }
 
-    // 메인 함수: 논문 방식의 코너 추정 함수 (외부에서 호출됨)
-    std::vector<Eigen::Vector4d> estimateChessboardCornersPaperMethod(
-        const std::vector<Eigen::Vector4d> &lidar_points_full_vec,
-        int internal_corners_x, int internal_corners_y, double checker_size_m)
+    std::vector<Eigen::Vector4d> estimateChessboardCornersPaperMethod(const std::vector<Eigen::Vector4d> &lidar_points_full_vec, int internal_corners_x, int internal_corners_y, double checker_size_m)
     {
         cout << "[estimateChessboardCornersPaperMethod] start. Npoints=" << lidar_points_full_vec.size() << endl;
         std::vector<Eigen::Vector4d> out_corners;
-
         if (lidar_points_full_vec.empty())
         {
             cerr << "[estimateChessboardCornersPaperMethod] empty input" << endl;
@@ -408,14 +408,12 @@ namespace jmh_utils
             cerr << "[estimateChessboardCornersPaperMethod] invalid checker size" << endl;
             return out_corners;
         }
-
         std::vector<jmh_utils::DoubleXYZI> all_lidar_points_vec;
-        all_lidar_points_vec.resize(lidar_points_full_vec.size());
+        all_lidar_points_vec.reserve(lidar_points_full_vec.size());
         for (const auto &v : lidar_points_full_vec)
         {
-            all_lidar_points_vec.emplace_back(jmh_utils::DoubleXYZI{ v(0), v(1), v(2), v(3) });
+            all_lidar_points_vec.emplace_back(jmh_utils::DoubleXYZI{v(0), v(1), v(2), v(3)});
         }
-
         int N = static_cast<int>(all_lidar_points_vec.size());
         Eigen::MatrixXd pts3d(N, 3);
         Eigen::VectorXd intens(N);
@@ -425,61 +423,41 @@ namespace jmh_utils
             pts3d(i, 1) = all_lidar_points_vec[i].y;
             pts3d(i, 2) = all_lidar_points_vec[i].z;
             intens(i) = all_lidar_points_vec[i].intensity;
-        }
-
-        // Centroid 계산
-        Eigen::Vector3d centroid = pts3d.colwise().mean().transpose();
-
-        // Covariance Matrix 계산
+        } // Centroid 계산
+        Eigen::Vector3d centroid = pts3d.colwise().mean().transpose(); // Covariance Matrix 계산
         Eigen::MatrixXd centered = pts3d.rowwise() - centroid.transpose();
-        Eigen::Matrix3d cov = (centered.transpose() * centered) / double(std::max(1, N - 1));
-
-        // PCA를 위한 고유값/고유벡터 계산
+        Eigen::Matrix3d cov = (centered.transpose() * centered) / double(std::max(1, N - 1)); // PCA를 위한 고유값/고유벡터 계산
         Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> es(cov);
         Eigen::Vector3d eigvals = es.eigenvalues();
         Eigen::Matrix3d eigvecs = es.eigenvectors();
-
         std::vector<std::pair<double, Eigen::Vector3d>> pairs;
         for (int i = 0; i < 3; ++i)
             pairs.emplace_back(eigvals(i), eigvecs.col(i));
         std::sort(pairs.begin(), pairs.end(), [](auto &a, auto &b)
                   { return a.first > b.first; });
-
         Eigen::Matrix3d pcs;
         for (int i = 0; i < 3; ++i)
-            pcs.col(i) = pairs[i].second;
-
-        // -----------------------------------------------------------
-        // PCA 축 안정화를 위한 보정 로직
-        // -----------------------------------------------------------
+            pcs.col(i) = pairs[i].second; // ----------------------------------------------------------- // PCA 축 안정화를 위한 보정 로직 // -----------------------------------------------------------
         Eigen::Vector3d v_z = pcs.col(2);
         Eigen::Vector3d v_y_temp = pcs.col(1);
-        Eigen::Vector3d v_x_temp = pcs.col(0);
-
-        // 이전에 선언되지 않아 오류가 발생했던 v_x와 v_y를 여기서 선언합니다.
+        Eigen::Vector3d v_x_temp = pcs.col(0); // 이전에 선언되지 않아 오류가 발생했던 v_x와 v_y를 여기서 선언합니다.
         Eigen::Vector3d v_x;
         Eigen::Vector3d v_y;
-
         // 1. 법선 벡터(v_z) 방향 고정 (사용자분께서 유지하길 원하는 로직)
         // LiDAR 원점에서 평면 중심까지의 벡터와 v_z의 내적을 이용해 방향을 고정합니다.
         if (v_z.dot(-centroid) < 0)
         {
             v_z = -v_z;
         }
-
         // 2. PCA의 두 주축(v_x, v_y)이 체커보드의 가로/세로 방향과 일치하도록 정렬
         // 여기에서 오류가 발생했던 코드를 수정합니다.
         Eigen::VectorXd projections_x = centered * v_x_temp;
         Eigen::VectorXd projections_y = centered * v_y_temp;
-
         double pca_len_x = projections_x.maxCoeff() - projections_x.minCoeff();
         double pca_len_y = projections_y.maxCoeff() - projections_y.minCoeff();
-
         double model_len_x = (internal_corners_x)*checker_size_m;
         double model_len_y = (internal_corners_y)*checker_size_m;
-
-        if ((pca_len_x > pca_len_y && model_len_x > model_len_y) ||
-            (pca_len_y > pca_len_x && model_len_y > model_len_x))
+        if ((pca_len_x > pca_len_y && model_len_x > model_len_y) || (pca_len_y > pca_len_x && model_len_y > model_len_x))
         {
             v_x = v_x_temp;
             v_y = v_y_temp;
@@ -489,7 +467,6 @@ namespace jmh_utils
             v_x = v_y_temp;
             v_y = v_x_temp;
         }
-
         // 3. X, Y축의 방향성을 더 안정적인 기준으로 고정
         // 기존의 LiDAR Y축 대신, 체커보드의 수직축(v_y)이 LiDAR Z축과 같은 방향을 향하도록 합니다.
         Eigen::Vector3d lidar_z_axis(0.0, 0.0, 1.0);
@@ -497,24 +474,18 @@ namespace jmh_utils
         {
             v_y = -v_y;
         }
-
         // 4. 오른손 좌표계 규칙을 강제하기 위해 v_x를 재계산
         v_x = v_y.cross(v_z);
-
         v_z.normalize();
         v_x.normalize();
         v_y.normalize();
-
         // -----------------------------------------------------------
-
         Eigen::Matrix3d Rpcs;
         Rpcs.col(0) = v_x;
         Rpcs.col(1) = v_y;
         Rpcs.col(2) = v_z;
-
         Eigen::MatrixXd pts_pca = (centered * Rpcs).eval();
         Eigen::MatrixXd pts_pca_2d = pts_pca.leftCols(2);
-
         double min_x = pts_pca_2d.col(0).minCoeff();
         double max_x = pts_pca_2d.col(0).maxCoeff();
         double min_y = pts_pca_2d.col(1).minCoeff();
@@ -522,7 +493,6 @@ namespace jmh_utils
         double margin = std::max(checker_size_m * 0.05, 0.01);
         double min_x_c = min_x - margin, max_x_c = max_x + margin;
         double min_y_c = min_y - margin, max_y_c = max_y + margin;
-
         std::vector<int> keep_idx;
         keep_idx.reserve(N);
         for (int i = 0; i < pts_pca_2d.rows(); ++i)
@@ -536,7 +506,6 @@ namespace jmh_utils
             cerr << "[estimateChessboardCornersPaperMethod] no points remain after crop\n";
             return out_corners;
         }
-
         Eigen::MatrixXd pts_opt(keep_idx.size(), 2);
         Eigen::VectorXd intens_opt(keep_idx.size());
         for (size_t i = 0; i < keep_idx.size(); ++i)
@@ -544,45 +513,34 @@ namespace jmh_utils
             pts_opt.row(i) = pts_pca_2d.row(keep_idx[i]);
             intens_opt(i) = intens(keep_idx[i]);
         }
-
         Eigen::VectorXi classified;
         double tau_l = 0.0, tau_h = 0.0;
         std::tie(classified, tau_l, tau_h) = classifyIntensityColor(intens_opt, 2.0);
-
         int num_squares_x = internal_corners_x + 1;
         int num_squares_y = internal_corners_y + 1;
-
         Eigen::Vector3d refined = refineOrientationAndCenter(pts_opt, intens_opt, checker_size_m, num_squares_x, num_squares_y);
         std::vector<double> theta_guesses = {refined[2] - M_PI / 2.0, refined[2], refined[2] + M_PI / 2.0, refined[2] + M_PI};
 
+#define GPT
+
+#ifdef GPT
         double lambda_center = 10.0;
         double best_cost = std::numeric_limits<double>::infinity();
         Eigen::Vector3d best_params = refined;
-
         for (double tg : theta_guesses)
         {
             Eigen::Vector3d params(refined[0], refined[1], tg);
-            double current_cost = costFunction(params, pts_opt, classified, num_squares_x, num_squares_y, checker_size_m,
-                                               Eigen::Vector2d(refined[0], refined[1]), lambda_center);
-
+            double current_cost = costFunction(params, pts_opt, classified, num_squares_x, num_squares_y, checker_size_m, Eigen::Vector2d(refined[0], refined[1]), lambda_center);
             double tx_step = std::max(checker_size_m * 0.5, 0.05);
             double ty_step = tx_step;
             double th_step = M_PI / 8.0;
             for (int iter = 0; iter < 6; ++iter)
             {
                 bool improved = false;
-                std::vector<Eigen::Vector3d> tries = {
-                    params,
-                    params + Eigen::Vector3d(tx_step, 0, 0),
-                    params + Eigen::Vector3d(-tx_step, 0, 0),
-                    params + Eigen::Vector3d(0, ty_step, 0),
-                    params + Eigen::Vector3d(0, -ty_step, 0),
-                    params + Eigen::Vector3d(0, 0, th_step),
-                    params + Eigen::Vector3d(0, 0, -th_step)};
+                std::vector<Eigen::Vector3d> tries = {params, params + Eigen::Vector3d(tx_step, 0, 0), params + Eigen::Vector3d(-tx_step, 0, 0), params + Eigen::Vector3d(0, ty_step, 0), params + Eigen::Vector3d(0, -ty_step, 0), params + Eigen::Vector3d(0, 0, th_step), params + Eigen::Vector3d(0, 0, -th_step)};
                 for (auto &t : tries)
                 {
-                    double c = costFunction(t, pts_opt, classified, num_squares_x, num_squares_y, checker_size_m,
-                                            Eigen::Vector2d(refined[0], refined[1]), lambda_center);
+                    double c = costFunction(t, pts_opt, classified, num_squares_x, num_squares_y, checker_size_m, Eigen::Vector2d(refined[0], refined[1]), lambda_center);
                     if (c + 1e-9 < current_cost)
                     {
                         current_cost = c;
@@ -603,7 +561,6 @@ namespace jmh_utils
                 best_params = params;
             }
         }
-
         {
             Eigen::Vector3d base = best_params;
             double base_cost = best_cost;
@@ -615,18 +572,11 @@ namespace jmh_utils
                 for (int it = 0; it < 8; ++it)
                 {
                     bool local_imp = false;
-                    std::vector<Eigen::Vector3d> tries = {
-                        cand,
-                        cand + Eigen::Vector3d(step, 0, 0),
-                        cand + Eigen::Vector3d(-step, 0, 0),
-                        cand + Eigen::Vector3d(0, step, 0),
-                        cand + Eigen::Vector3d(0, -step, 0)};
-                    double best_local_c = costFunction(cand, pts_opt, classified, num_squares_x, num_squares_y, checker_size_m,
-                                                       Eigen::Vector2d(refined[0], refined[1]), lambda_center);
+                    std::vector<Eigen::Vector3d> tries = {cand, cand + Eigen::Vector3d(step, 0, 0), cand + Eigen::Vector3d(-step, 0, 0), cand + Eigen::Vector3d(0, step, 0), cand + Eigen::Vector3d(0, -step, 0)};
+                    double best_local_c = costFunction(cand, pts_opt, classified, num_squares_x, num_squares_y, checker_size_m, Eigen::Vector2d(refined[0], refined[1]), lambda_center);
                     for (auto &t : tries)
                     {
-                        double c = costFunction(t, pts_opt, classified, num_squares_x, num_squares_y, checker_size_m,
-                                                Eigen::Vector2d(refined[0], refined[1]), lambda_center);
+                        double c = costFunction(t, pts_opt, classified, num_squares_x, num_squares_y, checker_size_m, Eigen::Vector2d(refined[0], refined[1]), lambda_center);
                         if (c + 1e-9 < best_local_c)
                         {
                             best_local_c = c;
@@ -637,8 +587,7 @@ namespace jmh_utils
                     if (!local_imp)
                         step *= 0.5;
                 }
-                double cand_cost = costFunction(cand, pts_opt, classified, num_squares_x, num_squares_y, checker_size_m,
-                                                Eigen::Vector2d(refined[0], refined[1]), lambda_center);
+                double cand_cost = costFunction(cand, pts_opt, classified, num_squares_x, num_squares_y, checker_size_m, Eigen::Vector2d(refined[0], refined[1]), lambda_center);
                 if (cand_cost < base_cost)
                 {
                     base_cost = cand_cost;
@@ -648,21 +597,238 @@ namespace jmh_utils
             best_params = base;
             best_cost = base_cost;
         }
+        cout << "[estimateChessboardCornersPaperMethod] best_params tx,ty,theta(deg)=(" << best_params[0] << ", " << best_params[1] << ", " << best_params[2] * 180.0 / M_PI << ") cost=" << best_cost << endl;
+#endif
+#ifdef CERES
+        //----------------------변경 부분
+        // 1) 공통 입력 패키징
+        SolveIn sin;
+        sin.gx = num_squares_x;
+        sin.gy = num_squares_y;
+        sin.s = checker_size_m;
+        sin.gate_default = 1.0;
+        sin.lambda_center = 10.0; // 기존 lambda_center
+        sin.center_reg = Eigen::Vector2d(refined[0], refined[1]);
+
+        sin.pts2d.reserve(pts_opt.rows());
+        sin.colors.reserve(pts_opt.rows());
+        for (int i = 0; i < pts_opt.rows(); ++i)
+        {
+            sin.pts2d.emplace_back(pts_opt(i, 0), pts_opt(i, 1));
+            sin.colors.push_back(classified(i)); // 0/1 or -1
+        }
+
+        // 2) Powell 때와 동일하게, theta 후보들 중에서 "빠른 스칼라 비용"으로 베스트 초기 각도 고르기
+        auto wrapAngle = [](double th) -> double
+        {
+            return std::atan2(std::sin(th), std::cos(th));
+        };
+
+        Eigen::Vector3d best_init(refined[0], refined[1], refined[2]);
+        double best_init_cost = std::numeric_limits<double>::infinity();
+        for (double tg : theta_guesses)
+        {
+            Eigen::Vector3d p(refined[0], refined[1], wrapAngle(tg));
+            double c = costFunction(
+                p,                                       // [tx,ty,theta]
+                pts_opt,                                 // points_in_pca_plane_2d
+                classified,                              // classified_colors
+                num_squares_x,                           // grid_size_x_squares
+                num_squares_y,                           // grid_size_y_squares
+                checker_size_m,                          // checker_size_m
+                Eigen::Vector2d(refined[0], refined[1]), // center_reg
+                10.0                                     // lambda_center (필요 없으면 0.0)
+            );
+            if (c < best_init_cost)
+            {
+                best_init_cost = c;
+                best_init = p;
+            }
+        }
+
+        // 3) Ceres 옵션
+        SolveOpts sopts;
+        sopts.use_huber = false; // 동일 비용 비교 위해 일단 off(원하면 true)
+        sopts.huber_delta = std::max(0.25 * checker_size_m, 0.01);
+        sopts.max_iters = 300;
+        sopts.f_tol = 1e-10;
+        sopts.g_tol = 1e-10;
+        sopts.p_tol = 1e-12;
+
+        // 4) (권장) 멀티-런: theta_guesses 각각을 씨앗으로 Ceres를 돌려 최선 해 선택
+        auto run_once = [&](double th0) -> SolveOut
+        {
+            SolveIn tmp = sin;
+            tmp.tx0 = refined[0];
+            tmp.ty0 = refined[1];
+            tmp.th0 = wrapAngle(th0);
+            SolveOut so = SolveBoardPoseDogleg(tmp, sopts);
+            // 각도 정리
+            so.th = wrapAngle(so.th);
+            return so;
+        };
+
+        SolveOut best_so{};
+        best_so.ok = false;
+        best_so.final_cost = std::numeric_limits<double>::infinity();
+
+        for (double tg : theta_guesses)
+        {
+            SolveOut so = run_once(tg);
+            if (!best_so.ok || (so.ok && so.final_cost < best_so.final_cost))
+            {
+                best_so = so;
+            }
+        }
+
+        // 5) 모두 실패하면, 비용만으로 고른 best_init로 한 번 더 시도(세이프가드)
+        if (!best_so.ok)
+        {
+            SolveOut so = run_once(best_init[2]);
+            if (so.ok && so.final_cost < best_so.final_cost)
+                best_so = so;
+            // 그래도 실패면 초기 평가값 사용
+            if (!so.ok)
+            {
+                best_so.tx = best_init[0];
+                best_so.ty = best_init[1];
+                best_so.th = best_init[2];
+                best_so.final_cost = best_init_cost;
+                best_so.ok = true;
+            }
+        }
+
+        // 6) 결과 반영
+        Eigen::Vector3d best_params(best_so.tx, best_so.ty, wrapAngle(best_so.th));
+        double best_cost = best_so.final_cost;
+
+        std::cout << "[Ceres+preproc] ok=" << best_so.ok
+                  << " it=" << best_so.iters
+                  << " cost=" << best_cost
+                  << "  (tx,ty,th)=(" << best_params[0] << ", "
+                  << best_params[1] << ", "
+                  << best_params[2] * 180.0 / M_PI << " deg)\n";
 
         cout << "[estimateChessboardCornersPaperMethod] best_params tx,ty,theta(deg)=("
-             << best_params[0] << ", " << best_params[1] << ", " << best_params[2] * 180.0 / M_PI << ") cost=" << best_cost << endl;
+             << best_params[0] << ", " << best_params[1] << ", "
+             << best_params[2] * 180.0 / M_PI << ") cost=" << best_cost << endl;
+
+#endif
+
+#ifdef POWELL
+        // --- Powell 적용: costFunction 래핑해서 computePowell 호출 ---
+
+        using Eigen::VectorXd;
+        using jmh_utils::PowellOptions;
+        using jmh_utils::PowellResult;
+
+        // auto wrapAngle = [](double th) -> double
+        //{
+        //     return std::atan2(std::sin(th), std::cos(th));
+        // };
+
+        // 0) 멀티 스타트 초기값 선정: theta_guesses 전부 빠르게 평가해서 best x0 고름
+        Eigen::Vector3d best_init = refined; // [tx, ty, th]
+        double best_init_cost = std::numeric_limits<double>::infinity();
+        for (double tg : theta_guesses)
+        {
+            Eigen::Vector3d p(refined[0], refined[1], tg);
+            double c = costFunction(
+                p,                                       // [tx,ty,theta]
+                pts_opt,                                 // points_in_pca_plane_2d
+                classified,                              // classified_colors
+                num_squares_x,                           // grid_size_x_squares
+                num_squares_y,                           // grid_size_y_squares
+                checker_size_m,                          // checker_size_m
+                Eigen::Vector2d(refined[0], refined[1]), // center_reg
+                10.0                                     // lambda_center (필요 없으면 0.0)
+            );
+            if (c < best_init_cost)
+            {
+                best_init_cost = c;
+                best_init = p;
+            }
+        }
+
+        // 1) Powell 옵션: 스케일을 checker_size_m 기준으로 조정
+        PowellOptions popt;
+        popt.xtol = std::max(1e-4, 0.02 * checker_size_m);         // 위치 tol: 칸크기 2% 수준
+        popt.ftol = 1e-8;                                          // 비용 tol
+        popt.maxiter = 200;                                        // 외부 반복
+        popt.maxfev = 20000;                                       // 함수 평가 한도
+        popt.bracket_step = std::max(0.25 * checker_size_m, 0.01); // 1D 브래킷 시작 스텝
+        popt.expand = 1.6180339887498948;                          // golden ratio
+        popt.brent_tol = std::max(1e-6, 1e-3 * checker_size_m);    // 1D tol: 문제 스케일 반영
+        popt.verbose = false;
+
+        // 2) 비용 람다: 각도는 항상 wrap
+        auto f_cost = [&](const VectorXd &x) -> double
+        {
+            Eigen::Vector3d params(x[0], x[1], x[2]);
+            return costFunction(
+                params,
+                pts_opt,
+                classified,
+                num_squares_x,
+                num_squares_y,
+                checker_size_m,
+                Eigen::Vector2d(refined[0], refined[1]),
+                10.0);
+        };
+
+        // 3) 멀티 스타트 Powell: theta_guesses 각각을 시작점으로 돌려 최적 결과 선택
+        Eigen::Vector3d best_params = best_init;
+        double best_cost = std::numeric_limits<double>::infinity();
+        bool any_success = false;
+
+        for (double tg : theta_guesses)
+        {
+            VectorXd x0(3);
+            x0 << refined[0], refined[1], tg;
+
+            PowellResult pres = jmh_utils::computePowell(f_cost, x0, popt);
+
+            // Powell 내부에서 angle wrap을 했으므로 최종도 wrap
+            Eigen::Vector3d cand(pres.x[0], pres.x[1], pres.x[2]);
+            double cand_cost = pres.fval;
+
+            if (pres.success || !any_success)
+            {
+                if (cand_cost < best_cost)
+                {
+                    best_cost = cand_cost;
+                    best_params = cand;
+                    any_success = any_success || pres.success;
+                }
+            }
+        }
+
+        // 4) 안전장치: 모두 실패한 경우라도 best_init로 평가한 결과를 사용
+        if (!any_success && !(best_cost < std::numeric_limits<double>::infinity()))
+        {
+            best_params = best_init;
+            best_cost = best_init_cost;
+        }
+
+        // 5) 로그
+        std::cout << "[Powell] ok=" << any_success
+                  << " cost=" << best_cost
+                  << " (tx,ty,th)=(" << best_params[0] << ", "
+                  << best_params[1] << ", "
+                  << best_params[2] * 180.0 / M_PI << " deg)\n";
+
+        cout << "[estimateChessboardCornersPaperMethod] best_params tx,ty,theta(deg)=(" << best_params[0] << ", " << best_params[1] << ", " << best_params[2] * 180.0 / M_PI << ") cost=" << best_cost << endl;
+#endif
 
         std::vector<Eigen::Vector3d> lidar_pts_world;
         lidar_pts_world.reserve(N);
         for (const auto &p : all_lidar_points_vec)
             lidar_pts_world.emplace_back(Eigen::Vector3d(p.x, p.y, p.z));
-
         std::vector<Eigen::Vector2d> model_internal_corners_2d;
         double half_w = (internal_corners_x - 1) * checker_size_m / 2.0;
         double half_h = (internal_corners_y - 1) * checker_size_m / 2.0;
         double start_x = -half_w;
         double start_y = -half_h;
-
         for (int r = 0; r < internal_corners_y; ++r)
         {
             for (int c = 0; c < internal_corners_x; ++c)
@@ -672,11 +838,9 @@ namespace jmh_utils
                 model_internal_corners_2d.emplace_back(cx, cy);
             }
         }
-
         Eigen::Matrix2d Rz_best;
         double ct = std::cos(best_params[2]), st = std::sin(best_params[2]);
         Rz_best << ct, -st, st, ct;
-
         double max_corner_dist = checker_size_m * 0.6;
         struct CornerData
         {
@@ -684,13 +848,11 @@ namespace jmh_utils
             Eigen::Vector2d pca_point;
         };
         std::vector<CornerData> corners_data;
-
         for (const auto &mc : model_internal_corners_2d)
         {
             Eigen::Vector2d p_pca2 = Rz_best * mc + Eigen::Vector2d(best_params[0], best_params[1]);
             Eigen::Vector3d p_pca3(p_pca2[0], p_pca2[1], 0.0);
             Eigen::Vector3d p_world = Rpcs * p_pca3 + centroid;
-
             bool has_nearby = false;
             for (const auto &lp : lidar_pts_world)
             {
@@ -712,32 +874,28 @@ namespace jmh_utils
                 corners_data.push_back(cd);
             }
         }
-
         cout << "[estimateChessboardCornersPaperMethod] detected corners (nearby-filtered): " << corners_data.size() << endl;
-
         if (!corners_data.empty())
         {
             std::sort(corners_data.begin(), corners_data.end(), [&](const CornerData &a, const CornerData &b)
-                      {
-            Eigen::Vector3d a_vec(a.world_point.x, a.world_point.y, a.world_point.z);
-            Eigen::Vector3d b_vec(b.world_point.x, b.world_point.y, b.world_point.z);
-            if (std::abs(a_vec.dot(v_y) - b_vec.dot(v_y)) < checker_size_m * 0.5) {
-                return a_vec.dot(v_x) < b_vec.dot(v_x);
-            }
-            return a_vec.dot(v_y) > b_vec.dot(v_y); });
+                      { Eigen::Vector3d a_vec(a.world_point.x, a.world_point.y, a.world_point.z); 
+                        Eigen::Vector3d b_vec(b.world_point.x, b.world_point.y, b.world_point.z); 
+                        if (std::abs(a_vec.dot(v_y) - b_vec.dot(v_y)) < checker_size_m * 0.5) 
+                        { 
+                            return a_vec.dot(v_x) < b_vec.dot(v_x); 
+                        } 
+                        return a_vec.dot(v_y) > b_vec.dot(v_y); });
         }
-
         for (const auto &cd : corners_data)
         {
-            out_corners.emplace_back(cd.world_point.x,cd.world_point.y, cd.world_point.z, cd.world_point.intensity);
+            out_corners.emplace_back(cd.world_point.x, cd.world_point.y, cd.world_point.z, cd.world_point.intensity);
         }
-
         if (!out_corners.empty())
         {
             out_corners[0](3) = 255.0;
         }
-
         cout << "[estimateChessboardCornersPaperMethod] detected corners (sorted): " << out_corners.size() << endl;
         return out_corners;
     }
+
 }

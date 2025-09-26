@@ -10,7 +10,6 @@ namespace jmh_utils
 {
     cv::Mat vector2Mat(const std::vector<std::vector<double>> &input)
     {
-        std::cout << "convert vector<vector> to cv::Mat" << std::endl;
         std::size_t columns = input.front().size();
         std::size_t rows = input.size();
 
@@ -22,12 +21,12 @@ namespace jmh_utils
                 output.at<double>(i, j) = input[i][j];
             }
         }
+        std::cout << "convert vector<vector> to cv::Mat." << std::endl;
         return output;
     }
 
     cv::Mat vector2Mat(const std::vector<double> &input)
     {
-        std::cout << "convert vector to cv::Mat" << std::endl;
         std::size_t nums = input.size();
 
         cv::Mat output(nums, 1, CV_64F);
@@ -36,7 +35,7 @@ namespace jmh_utils
         {
             output.at<double>(j, 0) = input[j];
         }
-
+        std::cout << "convert vector to cv::Mat." << std::endl;
         return output;
     }
 
@@ -48,6 +47,7 @@ namespace jmh_utils
         {
             point_vector.push_back(Eigen::Vector4d(p.x, p.y, p.z, p.intensity));
         }
+        std::cout << "convert pointcloud to vector<eigen::vector4d>." << std::endl;
         return point_vector;
     }
 }

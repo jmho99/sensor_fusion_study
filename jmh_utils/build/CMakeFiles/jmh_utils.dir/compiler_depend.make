@@ -4,8 +4,11 @@
 CMakeFiles/jmh_utils.dir/src/calc_compute.cpp.o: ../src/calc_compute.cpp \
   /usr/include/stdc-predef.h \
   ../include/jmh_utils/calc_compute.hpp \
-  /usr/include/c++/11/vector \
-  /usr/include/c++/11/bits/stl_algobase.h \
+  /usr/include/eigen3/Eigen/Dense \
+  /usr/include/eigen3/Eigen/Core \
+  /usr/include/eigen3/Eigen/src/Core/util/DisableStupidWarnings.h \
+  /usr/include/eigen3/Eigen/src/Core/util/Macros.h \
+  /usr/include/c++/11/cmath \
   /usr/include/x86_64-linux-gnu/c++/11/bits/c++config.h \
   /usr/include/x86_64-linux-gnu/c++/11/bits/os_defines.h \
   /usr/include/features.h \
@@ -18,44 +21,8 @@ CMakeFiles/jmh_utils.dir/src/calc_compute.cpp.o: ../src/calc_compute.cpp \
   /usr/include/x86_64-linux-gnu/gnu/stubs-64.h \
   /usr/include/x86_64-linux-gnu/c++/11/bits/cpu_defines.h \
   /usr/include/c++/11/pstl/pstl_config.h \
-  /usr/include/c++/11/bits/functexcept.h \
-  /usr/include/c++/11/bits/exception_defines.h \
   /usr/include/c++/11/bits/cpp_type_traits.h \
   /usr/include/c++/11/ext/type_traits.h \
-  /usr/include/c++/11/ext/numeric_traits.h \
-  /usr/include/c++/11/bits/stl_pair.h \
-  /usr/include/c++/11/bits/move.h \
-  /usr/include/c++/11/type_traits \
-  /usr/include/c++/11/bits/stl_iterator_base_types.h \
-  /usr/include/c++/11/bits/stl_iterator_base_funcs.h \
-  /usr/include/c++/11/bits/concept_check.h \
-  /usr/include/c++/11/debug/assertions.h \
-  /usr/include/c++/11/bits/stl_iterator.h \
-  /usr/include/c++/11/bits/ptr_traits.h \
-  /usr/include/c++/11/debug/debug.h \
-  /usr/include/c++/11/bits/predefined_ops.h \
-  /usr/include/c++/11/bits/allocator.h \
-  /usr/include/x86_64-linux-gnu/c++/11/bits/c++allocator.h \
-  /usr/include/c++/11/ext/new_allocator.h \
-  /usr/include/c++/11/new \
-  /usr/include/c++/11/bits/exception.h \
-  /usr/include/c++/11/bits/memoryfwd.h \
-  /usr/include/c++/11/bits/stl_construct.h \
-  /usr/include/c++/11/bits/stl_uninitialized.h \
-  /usr/include/c++/11/ext/alloc_traits.h \
-  /usr/include/c++/11/bits/alloc_traits.h \
-  /usr/include/c++/11/bits/stl_vector.h \
-  /usr/include/c++/11/initializer_list \
-  /usr/include/c++/11/bits/stl_bvector.h \
-  /usr/include/c++/11/bits/functional_hash.h \
-  /usr/include/c++/11/bits/hash_bytes.h \
-  /usr/include/c++/11/bits/range_access.h \
-  /usr/include/c++/11/bits/vector.tcc \
-  /usr/include/eigen3/Eigen/Dense \
-  /usr/include/eigen3/Eigen/Core \
-  /usr/include/eigen3/Eigen/src/Core/util/DisableStupidWarnings.h \
-  /usr/include/eigen3/Eigen/src/Core/util/Macros.h \
-  /usr/include/c++/11/cmath \
   /usr/include/math.h \
   /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \
   /usr/include/x86_64-linux-gnu/bits/types.h \
@@ -105,6 +72,21 @@ CMakeFiles/jmh_utils.dir/src/calc_compute.cpp.o: ../src/calc_compute.cpp \
   /usr/include/alloca.h \
   /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
   /usr/include/c++/11/bits/specfun.h \
+  /usr/include/c++/11/bits/stl_algobase.h \
+  /usr/include/c++/11/bits/functexcept.h \
+  /usr/include/c++/11/bits/exception_defines.h \
+  /usr/include/c++/11/ext/numeric_traits.h \
+  /usr/include/c++/11/bits/stl_pair.h \
+  /usr/include/c++/11/bits/move.h \
+  /usr/include/c++/11/type_traits \
+  /usr/include/c++/11/bits/stl_iterator_base_types.h \
+  /usr/include/c++/11/bits/stl_iterator_base_funcs.h \
+  /usr/include/c++/11/bits/concept_check.h \
+  /usr/include/c++/11/debug/assertions.h \
+  /usr/include/c++/11/bits/stl_iterator.h \
+  /usr/include/c++/11/bits/ptr_traits.h \
+  /usr/include/c++/11/debug/debug.h \
+  /usr/include/c++/11/bits/predefined_ops.h \
   /usr/include/c++/11/limits \
   /usr/include/c++/11/tr1/gamma.tcc \
   /usr/include/c++/11/tr1/special_function_util.h \
@@ -125,12 +107,15 @@ CMakeFiles/jmh_utils.dir/src/calc_compute.cpp.o: ../src/calc_compute.cpp \
   /usr/lib/gcc/x86_64-linux-gnu/11/include/mm_malloc.h \
   /usr/include/c++/11/stdlib.h \
   /usr/include/c++/11/cstdlib \
+  /usr/include/c++/11/new \
+  /usr/include/c++/11/bits/exception.h \
   /usr/include/c++/11/complex \
   /usr/include/c++/11/sstream \
   /usr/include/c++/11/istream \
   /usr/include/c++/11/ios \
   /usr/include/c++/11/iosfwd \
   /usr/include/c++/11/bits/stringfwd.h \
+  /usr/include/c++/11/bits/memoryfwd.h \
   /usr/include/c++/11/bits/postypes.h \
   /usr/include/c++/11/cwchar \
   /usr/include/wchar.h \
@@ -145,6 +130,7 @@ CMakeFiles/jmh_utils.dir/src/calc_compute.cpp.o: ../src/calc_compute.cpp \
   /usr/include/c++/11/bits/exception_ptr.h \
   /usr/include/c++/11/bits/cxxabi_init_exception.h \
   /usr/include/c++/11/typeinfo \
+  /usr/include/c++/11/bits/hash_bytes.h \
   /usr/include/c++/11/bits/nested_exception.h \
   /usr/include/c++/11/bits/char_traits.h \
   /usr/include/c++/11/cstdint \
@@ -179,12 +165,21 @@ CMakeFiles/jmh_utils.dir/src/calc_compute.cpp.o: ../src/calc_compute.cpp \
   /usr/include/x86_64-linux-gnu/sys/single_threaded.h \
   /usr/include/c++/11/bits/locale_classes.h \
   /usr/include/c++/11/string \
+  /usr/include/c++/11/bits/allocator.h \
+  /usr/include/x86_64-linux-gnu/c++/11/bits/c++allocator.h \
+  /usr/include/c++/11/ext/new_allocator.h \
   /usr/include/c++/11/bits/ostream_insert.h \
   /usr/include/c++/11/bits/cxxabi_forced.h \
   /usr/include/c++/11/bits/stl_function.h \
   /usr/include/c++/11/backward/binders.h \
+  /usr/include/c++/11/bits/range_access.h \
+  /usr/include/c++/11/initializer_list \
   /usr/include/c++/11/bits/basic_string.h \
+  /usr/include/c++/11/ext/alloc_traits.h \
+  /usr/include/c++/11/bits/alloc_traits.h \
+  /usr/include/c++/11/bits/stl_construct.h \
   /usr/include/c++/11/string_view \
+  /usr/include/c++/11/bits/functional_hash.h \
   /usr/include/c++/11/bits/string_view.tcc \
   /usr/include/c++/11/ext/string_conversions.h \
   /usr/include/c++/11/cstdio \
@@ -245,6 +240,11 @@ CMakeFiles/jmh_utils.dir/src/calc_compute.cpp.o: ../src/calc_compute.cpp \
   /usr/include/c++/11/bits/node_handle.h \
   /usr/include/c++/11/bits/unordered_map.h \
   /usr/include/c++/11/bits/erase_if.h \
+  /usr/include/c++/11/vector \
+  /usr/include/c++/11/bits/stl_uninitialized.h \
+  /usr/include/c++/11/bits/stl_vector.h \
+  /usr/include/c++/11/bits/stl_bvector.h \
+  /usr/include/c++/11/bits/vector.tcc \
   /usr/include/c++/11/bits/stl_algo.h \
   /usr/include/c++/11/bits/algorithmfwd.h \
   /usr/include/c++/11/bits/stl_heap.h \
@@ -452,7 +452,8 @@ CMakeFiles/jmh_utils.dir/src/calc_compute.cpp.o: ../src/calc_compute.cpp \
   /usr/include/eigen3/Eigen/src/Eigenvalues/RealQZ.h \
   /usr/include/eigen3/Eigen/src/Eigenvalues/GeneralizedEigenSolver.h \
   /usr/include/eigen3/Eigen/src/Eigenvalues/RealQZ.h \
-  /usr/include/eigen3/Eigen/src/Eigenvalues/MatrixBaseEigenvalues.h
+  /usr/include/eigen3/Eigen/src/Eigenvalues/MatrixBaseEigenvalues.h \
+  /usr/include/c++/11/iostream
 
 CMakeFiles/jmh_utils.dir/src/calc_convert.cpp.o: ../src/calc_convert.cpp \
   /usr/include/stdc-predef.h \
@@ -3311,7 +3312,104 @@ CMakeFiles/jmh_utils.dir/src/main_intensity_lidar_corner_detection.cpp.o: ../src
   /usr/include/eigen3/Eigen/src/Eigenvalues/GeneralizedEigenSolver.h \
   /usr/include/eigen3/Eigen/src/Eigenvalues/RealQZ.h \
   /usr/include/eigen3/Eigen/src/Eigenvalues/MatrixBaseEigenvalues.h \
-  /usr/include/eigen3/Eigen/Eigenvalues
+  /usr/include/eigen3/Eigen/Eigenvalues \
+  /usr/local/include/ceres/ceres.h \
+  /usr/local/include/ceres/autodiff_cost_function.h \
+  /usr/include/c++/11/memory \
+  /usr/include/c++/11/bits/stl_raw_storage_iter.h \
+  /usr/include/c++/11/bits/align.h \
+  /usr/include/c++/11/bits/unique_ptr.h \
+  /usr/include/c++/11/bits/shared_ptr.h \
+  /usr/include/c++/11/bits/shared_ptr_base.h \
+  /usr/include/c++/11/bits/allocated_ptr.h \
+  /usr/include/c++/11/ext/concurrence.h \
+  /usr/include/c++/11/bits/shared_ptr_atomic.h \
+  /usr/include/c++/11/backward/auto_ptr.h \
+  /usr/include/c++/11/pstl/glue_memory_defs.h \
+  /usr/local/include/ceres/internal/autodiff.h \
+  /usr/local/include/ceres/internal/array_selector.h \
+  /usr/local/include/ceres/internal/fixed_array.h \
+  /usr/include/eigen3/Eigen/Core \
+  /usr/local/include/ceres/internal/memory.h \
+  /usr/include/glog/logging.h \
+  /usr/include/unistd.h \
+  /usr/include/x86_64-linux-gnu/bits/posix_opt.h \
+  /usr/include/x86_64-linux-gnu/bits/environments.h \
+  /usr/include/x86_64-linux-gnu/bits/confname.h \
+  /usr/include/x86_64-linux-gnu/bits/getopt_posix.h \
+  /usr/include/x86_64-linux-gnu/bits/getopt_core.h \
+  /usr/include/x86_64-linux-gnu/bits/unistd_ext.h \
+  /usr/include/linux/close_range.h \
+  /usr/include/inttypes.h \
+  /usr/include/gflags/gflags.h \
+  /usr/include/gflags/gflags_declare.h \
+  /usr/include/gflags/gflags_gflags.h \
+  /usr/include/glog/log_severity.h \
+  /usr/include/glog/vlog_is_on.h \
+  /usr/local/include/ceres/types.h \
+  /usr/local/include/ceres/internal/disable_warnings.h \
+  /usr/local/include/ceres/internal/export.h \
+  /usr/local/include/ceres/internal/reenable_warnings.h \
+  /usr/local/include/ceres/internal/eigen.h \
+  /usr/local/include/ceres/internal/parameter_dims.h \
+  /usr/local/include/ceres/internal/integer_sequence_algorithm.h \
+  /usr/local/include/ceres/jet_fwd.h \
+  /usr/local/include/ceres/internal/variadic_evaluate.h \
+  /usr/local/include/ceres/cost_function.h \
+  /usr/local/include/ceres/jet.h \
+  /usr/local/include/ceres/internal/jet_traits.h \
+  /usr/local/include/ceres/internal/port.h \
+  /usr/local/include/ceres/sized_cost_function.h \
+  /usr/local/include/ceres/internal/parameter_dims.h \
+  /usr/local/include/ceres/autodiff_first_order_function.h \
+  /usr/local/include/ceres/first_order_function.h \
+  /usr/local/include/ceres/autodiff_manifold.h \
+  /usr/local/include/ceres/manifold.h \
+  /usr/local/include/ceres/conditioned_cost_function.h \
+  /usr/local/include/ceres/constants.h \
+  /usr/local/include/ceres/context.h \
+  /usr/local/include/ceres/cost_function_to_functor.h \
+  /usr/local/include/ceres/dynamic_cost_function_to_functor.h \
+  /usr/local/include/ceres/dynamic_cost_function.h \
+  /usr/local/include/ceres/covariance.h \
+  /usr/local/include/ceres/internal/config.h \
+  /usr/local/include/ceres/crs_matrix.h \
+  /usr/local/include/ceres/dynamic_autodiff_cost_function.h \
+  /usr/local/include/ceres/dynamic_numeric_diff_cost_function.h \
+  /usr/local/include/ceres/internal/numeric_diff.h \
+  /usr/include/eigen3/Eigen/StdVector \
+  /usr/include/eigen3/Eigen/src/StlSupport/StdVector.h \
+  /usr/include/eigen3/Eigen/src/StlSupport/details.h \
+  /usr/local/include/ceres/numeric_diff_options.h \
+  /usr/local/include/ceres/evaluation_callback.h \
+  /usr/local/include/ceres/gradient_checker.h \
+  /usr/local/include/ceres/gradient_problem.h \
+  /usr/local/include/ceres/gradient_problem_solver.h \
+  /usr/local/include/ceres/iteration_callback.h \
+  /usr/local/include/ceres/line_manifold.h \
+  /usr/local/include/ceres/internal/householder_vector.h \
+  /usr/local/include/ceres/internal/sphere_manifold_functions.h \
+  /usr/local/include/ceres/loss_function.h \
+  /usr/local/include/ceres/numeric_diff_cost_function.h \
+  /usr/local/include/ceres/numeric_diff_first_order_function.h \
+  /usr/local/include/ceres/ordered_groups.h \
+  /usr/include/c++/11/map \
+  /usr/include/c++/11/bits/stl_tree.h \
+  /usr/include/c++/11/bits/stl_map.h \
+  /usr/include/c++/11/bits/stl_multimap.h \
+  /usr/include/c++/11/set \
+  /usr/include/c++/11/bits/stl_set.h \
+  /usr/include/c++/11/bits/stl_multiset.h \
+  /usr/local/include/ceres/problem.h \
+  /usr/local/include/ceres/product_manifold.h \
+  /usr/local/include/ceres/solver.h \
+  /usr/include/c++/11/unordered_set \
+  /usr/include/c++/11/bits/unordered_set.h \
+  /usr/local/include/ceres/sphere_manifold.h \
+  /usr/local/include/ceres/version.h \
+  /usr/local/include/ceres/rotation.h \
+  /usr/local/include/ceres/internal/euler_angles.h \
+  ../include/jmh_utils/calc_compute.hpp
 
 CMakeFiles/jmh_utils.dir/src/main_lidar_calib.cpp.o: ../src/main_lidar_calib.cpp \
   /usr/include/stdc-predef.h \
@@ -7529,8 +7627,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/fusion/container/list/detail/reverse_cons.hpp:
 
-/usr/include/boost/fusion/algorithm/transformation/push_front.hpp:
-
 /usr/include/boost/fusion/view/single_view/detail/at_impl.hpp:
 
 /usr/include/boost/fusion/view/single_view/detail/deref_impl.hpp:
@@ -7552,8 +7648,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/boost/fusion/view/joint_view/detail/key_of_impl.hpp:
 
 /usr/include/boost/fusion/view/joint_view/detail/value_of_data_impl.hpp:
-
-/usr/include/boost/fusion/iterator/detail/adapt_value_traits.hpp:
 
 /usr/include/boost/fusion/view/joint_view/detail/value_of_impl.hpp:
 
@@ -7599,8 +7693,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/preprocessor/facilities/intercept.hpp:
 
-/usr/include/boost/preprocessor/slot/detail/def.hpp:
-
 /usr/include/boost/preprocessor/iteration/iterate.hpp:
 
 /usr/include/boost/utility/result_of.hpp:
@@ -7622,8 +7714,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/boost/fusion/iterator/deref_data.hpp:
 
 /usr/include/boost/fusion/iterator/segmented_iterator.hpp:
-
-/usr/include/boost/fusion/sequence/intrinsic/detail/segmented_end.hpp:
 
 /usr/include/boost/fusion/support/is_segmented.hpp:
 
@@ -7703,8 +7793,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/fusion/support/config.hpp:
 
-/usr/include/boost/mpl/iterator_range.hpp:
-
 /usr/include/pcl-1.12/pcl/impl/cloud_iterator.hpp:
 
 /usr/include/boost/fusion/algorithm/query/detail/segmented_find.hpp:
@@ -7726,8 +7814,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/pcl-1.12/pcl/registration/impl/correspondence_types.hpp:
 
 /usr/include/pcl-1.12/pcl/correspondence.h:
-
-/usr/include/pcl-1.12/pcl/registration/correspondence_types.h:
 
 /usr/include/pcl-1.12/pcl/registration/correspondence_estimation.h:
 
@@ -7791,8 +7877,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/random/detail/ptr_helper.hpp:
 
-/usr/include/boost/random/detail/config.hpp:
-
 /usr/include/eigen3/unsupported/Eigen/src/NonLinearOptimization/covar.h:
 
 /usr/include/boost/integer_traits.hpp:
@@ -7817,15 +7901,11 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/x86_64-linux-gnu/bits/mman-map-flags-generic.h:
 
-/usr/include/x86_64-linux-gnu/bits/mman.h:
-
 /usr/include/pcl-1.12/pcl/common/concatenate.h:
 
 /usr/include/boost/fusion/sequence/intrinsic/has_key.hpp:
 
 /usr/include/pcl-1.12/pcl/Vertices.h:
-
-/usr/include/pcl-1.12/pcl/PointIndices.h:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/c++io.h:
 
@@ -7935,8 +8015,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/smart_ptr/detail/sp_typeinfo_.hpp:
 
-/usr/include/boost/smart_ptr/detail/sp_counted_base_gcc_atomic.hpp:
-
 /usr/include/boost/fusion/view/joint_view/joint_view.hpp:
 
 /usr/include/boost/fusion/sequence/intrinsic/segments.hpp:
@@ -7954,8 +8032,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/boost/smart_ptr/shared_ptr.hpp:
 
 /usr/include/boost/date_time/microsec_time_clock.hpp:
-
-/usr/include/boost/interprocess/detail/posix_time_types_wrk.hpp:
 
 /usr/include/boost/interprocess/streams/bufferstream.hpp:
 
@@ -8051,6 +8127,112 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/type_traits/detail/has_binary_operator.hpp:
 
+/usr/include/boost/range/detail/safe_bool.hpp:
+
+/usr/include/boost/range/algorithm/equal.hpp:
+
+/usr/include/boost/range/empty.hpp:
+
+/usr/include/pcl-1.12/pcl/kdtree/kdtree_flann.h:
+
+/usr/include/boost/iterator/distance.hpp:
+
+/usr/include/boost/range/distance.hpp:
+
+/usr/include/boost/smart_ptr/detail/shared_count.hpp:
+
+/usr/include/boost/core/checked_delete.hpp:
+
+/usr/include/boost/type_traits/function_traits.hpp:
+
+/usr/include/boost/utility/identity_type.hpp:
+
+/usr/include/boost/preprocessor/seq/cat.hpp:
+
+/usr/include/boost/preprocessor/control/deduce_d.hpp:
+
+/usr/include/boost/utility/binary.hpp:
+
+/usr/include/boost/preprocessor/repetition/repeat_from_to.hpp:
+
+/usr/include/boost/preprocessor/repetition/enum_binary_params.hpp:
+
+/usr/include/boost/fusion/mpl/empty.hpp:
+
+/usr/include/boost/utility/base_from_member.hpp:
+
+/usr/include/boost/fusion/view/iterator_range.hpp:
+
+/usr/include/boost/range/detail/has_member_size.hpp:
+
+/usr/include/boost/fusion/iterator/advance.hpp:
+
+/usr/include/boost/type_traits/is_signed.hpp:
+
+/usr/include/boost/type_traits/make_unsigned.hpp:
+
+/usr/include/boost/iterator/iterator_concepts.hpp:
+
+/usr/include/boost/concept/detail/concept_undef.hpp:
+
+/usr/include/boost/preprocessor/seq/for_each_i.hpp:
+
+/usr/include/pcl-1.12/pcl/common/utils.h:
+
+/usr/include/boost/concept/detail/concept_def.hpp:
+
+/usr/include/boost/concept/usage.hpp:
+
+/usr/include/boost/type_traits/conversion_traits.hpp:
+
+/usr/include/boost/type_traits/conditional.hpp:
+
+/usr/include/boost/concept/detail/backward_compatibility.hpp:
+
+/usr/include/boost/concept/assert.hpp:
+
+/usr/include/boost/integer/integer_mask.hpp:
+
+/usr/include/boost/concept_check.hpp:
+
+/usr/include/boost/range/concepts.hpp:
+
+/usr/include/boost/utility/enable_if.hpp:
+
+/usr/include/boost/range/difference_type.hpp:
+
+/usr/include/boost/range/size_type.hpp:
+
+/usr/include/boost/range/functions.hpp:
+
+/usr/include/boost/assert.hpp:
+
+/usr/include/boost/date_time/posix_time/ptime.hpp:
+
+/usr/include/boost/range/iterator_range.hpp:
+
+/usr/include/boost/algorithm/string/config.hpp:
+
+/usr/include/boost/algorithm/string/predicate.hpp:
+
+/usr/include/boost/numeric/conversion/detail/preprocessed/numeric_cast_traits_common.hpp:
+
+/usr/include/boost/numeric/conversion/detail/numeric_cast_traits.hpp:
+
+/usr/include/boost/numeric/conversion/numeric_cast_traits.hpp:
+
+/usr/include/boost/mpl/aux_/empty_impl.hpp:
+
+/usr/include/boost/numeric/conversion/detail/bounds.hpp:
+
+/usr/include/boost/exception/exception.hpp:
+
+/usr/include/boost/config/no_tr1/cmath.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/less.hpp:
+
+/usr/include/boost/mpl/less.hpp:
+
 /usr/include/opencv4/opencv2/flann/hierarchical_clustering_index.h:
 
 /usr/include/boost/mpl/fold.hpp:
@@ -8071,9 +8253,15 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/opencv4/opencv2/flann/dynamic_bitset.h:
 
+/usr/include/pcl-1.12/pcl/registration/correspondence_types.h:
+
+/usr/local/include/ceres/internal/fixed_array.h:
+
 /usr/include/boost/type_traits/is_rvalue_reference.hpp:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/ctype_base.h:
+
+/usr/local/include/ceres/crs_matrix.h:
 
 /usr/include/opencv4/opencv2/flann/any.h:
 
@@ -8113,6 +8301,8 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/opencv4/opencv2/dnn/version.hpp:
 
+/usr/local/include/ceres/solver.h:
+
 /usr/include/boost/type_traits/add_pointer.hpp:
 
 /usr/include/opencv4/opencv2/dnn.hpp:
@@ -8149,17 +8339,13 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/opencv4/opencv2/core/neon_utils.hpp:
 
-/usr/include/boost/assert.hpp:
-
 /usr/include/c++/11/ext/concurrence.h:
 
 /usr/include/boost/mpl/aux_/config/lambda.hpp:
 
-/usr/include/boost/date_time/int_adapter.hpp:
-
-/usr/include/boost/type_traits/is_same.hpp:
-
 /usr/include/c++/11/bits/unique_ptr.h:
+
+/usr/local/include/ceres/internal/array_selector.h:
 
 /usr/include/c++/11/bit:
 
@@ -8211,8 +8397,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
 
-/usr/include/boost/numeric/conversion/detail/numeric_cast_traits.hpp:
-
 /usr/include/c++/11/cstdio:
 
 /usr/include/opencv4/opencv2/stitching/detail/warpers.hpp:
@@ -8229,6 +8413,8 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/opencv4/opencv2/core/cvstd.hpp:
 
+/usr/local/include/ceres/manifold.h:
+
 /usr/include/eigen3/Eigen/src/Geometry/ParametrizedLine.h:
 
 /usr/include/c++/11/cstring:
@@ -8242,6 +8428,12 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/c++/11/codecvt:
 
 /usr/include/opencv4/opencv2/core/matx.hpp:
+
+/usr/include/boost/fusion/view/single_view/detail/next_impl.hpp:
+
+/usr/include/boost/assert/source_location.hpp:
+
+/usr/include/boost/type_traits/add_lvalue_reference.hpp:
 
 /usr/include/c++/11/bits/codecvt.h:
 
@@ -8317,6 +8509,8 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/preprocessor/repetition/enum_params.hpp:
 
+/usr/local/include/ceres/iteration_callback.h:
+
 /usr/include/boost/date_time/compiler_config.hpp:
 
 /usr/include/boost/mpl/begin_end.hpp:
@@ -8337,13 +8531,15 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/eigen3/Eigen/src/Geometry/Rotation2D.h:
 
-/usr/include/boost/fusion/mpl/empty.hpp:
-
-/usr/include/boost/utility/base_from_member.hpp:
-
 /usr/include/boost/move/detail/config_begin.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/products/TriangularSolverVector.h:
+
+/usr/include/boost/fusion/sequence/intrinsic/empty.hpp:
+
+/usr/include/boost/range/detail/misc_concept.hpp:
+
+/usr/include/stdc-predef.h:
 
 /usr/lib/gcc/x86_64-linux-gnu/11/include/float.h:
 
@@ -8354,12 +8550,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/opencv4/opencv2/core/check.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/__sigset_t.h:
-
-/usr/include/boost/fusion/sequence/intrinsic/empty.hpp:
-
-/usr/include/stdc-predef.h:
-
-/usr/include/boost/range/detail/misc_concept.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/products/SelfadjointMatrixMatrix.h:
 
@@ -8373,15 +8563,17 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/eigen3/Eigen/src/Core/products/GeneralMatrixMatrix.h:
 
+/usr/local/include/ceres/ceres.h:
+
 /usr/include/boost/range/range_fwd.hpp:
 
 /usr/include/boost/numeric/conversion/detail/int_float_mixture.hpp:
 
 /usr/include/eigen3/Eigen/src/SVD/JacobiSVD.h:
 
-/usr/include/x86_64-linux-gnu/bits/types/timer_t.h:
-
 /usr/include/c++/11/bits/std_function.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/timer_t.h:
 
 /usr/include/eigen3/Eigen/Cholesky:
 
@@ -8390,6 +8582,8 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/eigen3/Eigen/src/SVD/UpperBidiagonalization.h:
 
 /usr/include/eigen3/Eigen/src/Core/ProductEvaluators.h:
+
+/usr/include/c++/11/unordered_set:
 
 /usr/include/c++/11/bits/atomic_lockfree_defines.h:
 
@@ -8451,13 +8645,21 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/iterator/iterator_traits.hpp:
 
-/usr/include/boost/range/empty.hpp:
+/usr/include/boost/random/variate_generator.hpp:
+
+/usr/include/boost/utility.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/Map.h:
 
 /usr/include/boost/predef/os/bsd/net.h:
 
 /usr/include/eigen3/Eigen/src/Core/Dot.h:
 
 /usr/include/x86_64-linux-gnu/bits/cpu-set.h:
+
+/usr/include/boost/concept/detail/general.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/SelfCwiseBinaryOp.h:
 
 /usr/include/eigen3/Eigen/src/Core/CwiseNullaryOp.h:
 
@@ -8474,6 +8676,10 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/c++/11/bits/algorithmfwd.h:
 
 /usr/include/opencv4/opencv2/flann/all_indices.h:
+
+/usr/include/boost/fusion/algorithm/transformation/push_front.hpp:
+
+/usr/local/include/ceres/product_manifold.h:
 
 /usr/include/eigen3/Eigen/src/Core/CwiseBinaryOp.h:
 
@@ -8517,6 +8723,8 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/eigen3/Eigen/src/Core/Matrix.h:
 
+/usr/local/include/ceres/dynamic_autodiff_cost_function.h:
+
 /usr/include/boost/mpl/aux_/preprocessed/gcc/apply_wrap.hpp:
 
 /usr/include/boost/fusion/container/vector/detail/begin_impl.hpp:
@@ -8531,6 +8739,8 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/c++/11/bits/stl_iterator_base_types.h:
 
+/usr/local/include/ceres/jet_fwd.h:
+
 /usr/include/opencv4/opencv2/flann.hpp:
 
 /usr/include/boost/mpl/void_fwd.hpp:
@@ -8543,8 +8753,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/preprocessor/seq/seq.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/ArithmeticSequence.h:
-
 /usr/include/x86_64-linux-gnu/bits/stat.h:
 
 /usr/include/opencv4/opencv2/flann/result_set.h:
@@ -8554,10 +8762,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/x86_64-linux-gnu/bits/time.h:
 
 /usr/include/eigen3/Eigen/src/Core/util/IndexedViewHelper.h:
-
-/usr/include/eigen3/Eigen/src/Core/SelfCwiseBinaryOp.h:
-
-/usr/include/boost/concept/detail/general.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/functors/AssignmentFunctors.h:
 
@@ -8584,6 +8788,10 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/eigen3/Eigen/src/Core/arch/Default/GenericPacketMathFunctions.h:
 
 /usr/include/eigen3/Eigen/src/Core/arch/SSE/PacketMath.h:
+
+/usr/include/boost/range/has_range_iterator.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/Visitor.h:
 
 /usr/include/boost/fusion/adapted/mpl/detail/category_of_impl.hpp:
 
@@ -8635,6 +8843,8 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/eigen3/Eigen/src/plugins/CommonCwiseUnaryOps.h:
 
+/usr/include/glog/log_severity.h:
+
 /usr/include/boost/type_traits/has_minus.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/SolverBase.h:
@@ -8656,6 +8866,8 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/eigen3/Eigen/src/Core/PartialReduxEvaluator.h:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/plus.hpp:
+
+/usr/local/include/ceres/internal/jet_traits.h:
 
 /usr/include/eigen3/Eigen/src/Core/util/ForwardDeclarations.h:
 
@@ -8681,17 +8893,61 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/mpl/aux_/contains_impl.hpp:
 
+/usr/local/include/ceres/internal/autodiff.h:
+
 /usr/include/x86_64-linux-gnu/bits/xopen_lim.h:
+
+/usr/include/gflags/gflags.h:
 
 /usr/include/x86_64-linux-gnu/bits/posix2_lim.h:
 
 /usr/include/eigen3/Eigen/src/Core/arch/Default/ConjHelper.h:
 
+/usr/local/include/ceres/conditioned_cost_function.h:
+
 /usr/include/x86_64-linux-gnu/bits/local_lim.h:
 
 /usr/include/boost/mpl/aux_/lambda_arity_param.hpp:
 
+/usr/include/c++/11/exception:
+
+/usr/include/x86_64-linux-gnu/bits/types/mbstate_t.h:
+
+/usr/include/boost/fusion/view/single_view/detail/prior_impl.hpp:
+
+/usr/include/opencv4/opencv2/flann/logger.h:
+
+/usr/include/boost/fusion/algorithm/iteration/for_each_fwd.hpp:
+
+/usr/include/opencv4/opencv2/stitching/warpers.hpp:
+
+/usr/include/wchar.h:
+
+/usr/include/boost/algorithm/string/detail/predicate.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
+
+/usr/include/c++/11/bits/stl_algobase.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/11/include/stdint.h:
+
+/usr/include/pcl-1.12/pcl/io/file_io.h:
+
+/usr/include/c++/11/tr1/special_function_util.h:
+
+/usr/include/eigen3/Eigen/src/Geometry/Umeyama.h:
+
+/usr/include/c++/11/bits/stringfwd.h:
+
+/usr/include/boost/mpl/aux_/has_type.hpp:
+
 /usr/include/c++/11/istream:
+
+/usr/local/include/ceres/internal/numeric_diff.h:
+
+/usr/include/boost/preprocessor/repetition/enum_shifted_params.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/wchar.h:
 
 /usr/include/eigen3/Eigen/src/Core/CwiseUnaryView.h:
 
@@ -8702,6 +8958,14 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/lib/gcc/x86_64-linux-gnu/11/include/mmintrin.h:
 
 /usr/include/c++/11/list:
+
+/usr/include/eigen3/unsupported/Eigen/src/NonLinearOptimization/HybridNonLinearSolver.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/time_t.h:
+
+/usr/include/eigen3/Eigen/src/Core/BandMatrix.h:
+
+/usr/include/c++/11/bits/locale_facets.h:
 
 /usr/include/eigen3/Eigen/src/QR/ColPivHouseholderQR.h:
 
@@ -8727,8 +8991,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/mpl/vector/aux_/include_preprocessed.hpp:
 
-/usr/include/boost/range/distance.hpp:
-
 /usr/include/c++/11/array:
 
 /usr/include/eigen3/Eigen/src/Geometry/RotationBase.h:
@@ -8748,6 +9010,38 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/c++/11/pstl/glue_memory_defs.h:
 
 /usr/include/boost/type_traits/is_base_and_derived.hpp:
+
+/usr/include/c++/11/tuple:
+
+/usr/include/eigen3/Eigen/src/LU/PartialPivLU.h:
+
+/usr/include/opencv4/opencv2/flann/composite_index.h:
+
+/usr/include/eigen3/Eigen/src/Jacobi/Jacobi.h:
+
+/usr/include/boost/mpl/apply.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/products/TriangularMatrixMatrix.h:
+
+/usr/include/c++/11/tr1/exp_integral.tcc:
+
+/usr/include/boost/mpl/limits/vector.hpp:
+
+/usr/include/c++/11/bits/exception.h:
+
+/usr/include/x86_64-linux-gnu/bits/atomic_wide_counter.h:
+
+/usr/include/boost/preprocessor/array/elem.hpp:
+
+/usr/include/c++/11/bits/stl_pair.h:
+
+/usr/include/boost/config/no_tr1/utility.hpp:
+
+/usr/include/assert.h:
+
+/usr/include/opencv4/opencv2/core/affine.hpp:
+
+/usr/include/boost/mpl/aux_/config/has_xxx.hpp:
 
 /usr/include/eigen3/Eigen/src/Eigenvalues/GeneralizedSelfAdjointEigenSolver.h:
 
@@ -8775,65 +9069,51 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/eigen3/Eigen/src/Core/Assign.h:
 
-/usr/include/boost/fusion/container/list/detail/empty_impl.hpp:
+/usr/include/x86_64-linux-gnu/bits/math-vector.h:
 
-/usr/include/opencv4/opencv2/dnn/dnn.inl.hpp:
+/usr/include/c++/11/complex:
+
+/usr/include/boost/mpl/aux_/preprocessed/gcc/reverse_fold_impl.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/BooleanRedux.h:
+
+/usr/include/boost/fusion/algorithm/transformation/insert_range.hpp:
+
+/usr/include/boost/range/size.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/NestByValue.h:
+
+/usr/include/boost/preprocessor/facilities/identity.hpp:
+
+/usr/include/boost/date_time/date.hpp:
+
+/usr/include/c++/11/bits/stl_algo.h:
 
 /usr/include/x86_64-linux-gnu/sys/select.h:
 
-/usr/include/opencv4/opencv2/core/ovx.hpp:
+/usr/include/boost/mpl/aux_/back_impl.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/mathcalls.h:
+/usr/include/c++/11/bits/predefined_ops.h:
 
-/usr/include/opencv4/opencv2/core/types.hpp:
+/usr/include/x86_64-linux-gnu/bits/typesizes.h:
 
-/usr/include/eigen3/Eigen/src/plugins/IndexedViewMethods.h:
+/usr/include/boost/fusion/sequence/intrinsic/detail/segmented_end_impl.hpp:
 
-/usr/include/c++/11/bits/basic_string.h:
+/usr/include/boost/numeric/conversion/detail/udt_builtin_mixture.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/Redux.h:
+/usr/include/boost/fusion/support/detail/is_native_fusion_sequence.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/stdint-intn.h:
+/usr/include/eigen3/Eigen/src/Core/DiagonalMatrix.h:
 
-/usr/include/c++/11/bits/range_access.h:
+/usr/include/boost/mpl/not.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/types.h:
+/usr/include/c++/11/ext/type_traits.h:
 
-/usr/include/boost/iterator/detail/config_undef.hpp:
+../include/jmh_utils/calc_compute.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/types/clock_t.h:
+/usr/local/include/ceres/internal/eigen.h:
 
-/usr/include/c++/11/ext/aligned_buffer.h:
-
-/usr/include/x86_64-linux-gnu/sys/types.h:
-
-/usr/include/c++/11/tr1/special_function_util.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/__FILE.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/__locale_t.h:
-
-/usr/include/boost/concept/usage.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/util/ConfigureVectorization.h:
-
-/usr/include/boost/mpl/contains.hpp:
-
-/usr/include/c++/11/system_error:
-
-/usr/include/features-time64.h:
-
-/usr/include/x86_64-linux-gnu/bits/waitflags.h:
-
-/usr/include/eigen3/unsupported/Eigen/src/NonLinearOptimization/HybridNonLinearSolver.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/time_t.h:
-
-/usr/include/stdlib.h:
-
-/usr/include/boost/type_traits/remove_pointer.hpp:
-
-/usr/include/opencv4/opencv2/flann/saving.h:
+/usr/include/x86_64-linux-gnu/c++/11/bits/os_defines.h:
 
 /usr/include/x86_64-linux-gnu/bits/struct_rwlock.h:
 
@@ -8843,53 +9123,115 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h:
 
-/usr/lib/gcc/x86_64-linux-gnu/11/include/xmmintrin.h:
+/usr/include/opencv4/opencv2/core/ovx.hpp:
 
-/usr/include/boost/mpl/at_fwd.hpp:
+/usr/include/x86_64-linux-gnu/bits/mathcalls.h:
 
-/usr/include/boost/mpl/has_xxx.hpp:
+/usr/include/opencv4/opencv2/core/types.hpp:
 
-/usr/include/boost/preprocessor/list/adt.hpp:
+/usr/include/eigen3/Eigen/src/plugins/IndexedViewMethods.h:
 
-/usr/include/boost/mpl/aux_/type_wrapper.hpp:
+/usr/include/boost/type_traits/is_unsigned.hpp:
 
-/usr/include/pcl-1.12/pcl/registration/transformation_estimation.h:
+/usr/include/c++/11/bits/shared_ptr_base.h:
 
-/usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h:
+/usr/local/include/ceres/internal/integer_sequence_algorithm.h:
 
-/usr/include/eigen3/Eigen/Eigenvalues:
+/usr/include/c++/11/bits/basic_string.h:
 
-/usr/include/c++/11/math.h:
+/usr/include/x86_64-linux-gnu/bits/types.h:
 
-/usr/include/x86_64-linux-gnu/bits/types/error_t.h:
+/usr/include/eigen3/Eigen/src/Core/Redux.h:
 
-/usr/include/eigen3/Eigen/SVD:
+/usr/include/x86_64-linux-gnu/bits/stdint-intn.h:
 
-/usr/include/c++/11/bits/locale_classes.h:
+/usr/include/c++/11/bits/range_access.h:
 
-/usr/include/opencv4/opencv2/stitching/detail/camera.hpp:
+/usr/include/c++/11/limits:
 
-/usr/include/x86_64-linux-gnu/bits/flt-eval-method.h:
+/usr/include/boost/fusion/mpl/begin.hpp:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/cpu_defines.h:
+
+/usr/include/eigen3/Eigen/src/Core/Solve.h:
+
+/usr/include/boost/current_function.hpp:
+
+/usr/include/boost/smart_ptr/detail/spinlock.hpp:
+
+/usr/include/boost/move/detail/config_end.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/byteswap.h:
+
+/usr/include/libintl.h:
+
+/usr/include/x86_64-linux-gnu/bits/long-double.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct_timeval.h:
+
+/usr/include/x86_64-linux-gnu/asm/errno.h:
+
+/usr/include/eigen3/Eigen/src/Core/PlainObjectBase.h:
+
+/usr/include/eigen3/Eigen/src/Core/DiagonalProduct.h:
+
+/usr/include/boost/mpl/aux_/iter_fold_if_impl.hpp:
+
+/usr/include/pcl-1.12/pcl/sample_consensus/model_types.h:
+
+/usr/include/boost/foreach.hpp:
+
+/usr/include/boost/fusion/container/vector/detail/prior_impl.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/DenseBase.h:
+
+/usr/include/x86_64-linux-gnu/sys/cdefs.h:
+
+/usr/include/boost/mpl/aux_/arity.hpp:
+
+/usr/local/include/ceres/numeric_diff_first_order_function.h:
+
+/usr/include/boost/iterator/detail/config_undef.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/types/clock_t.h:
+
+/usr/include/boost/mpl/vector/aux_/iterator.hpp:
+
+/usr/include/eigen3/Eigen/src/Eigenvalues/SelfAdjointEigenSolver.h:
+
+../src/calc_compute.cpp:
+
+/usr/include/eigen3/Eigen/src/plugins/ArrayCwiseBinaryOps.h:
+
+/usr/include/c++/11/bits/refwrap.h:
+
+/usr/include/boost/interprocess/detail/std_fwd.hpp:
+
+/usr/include/eigen3/Eigen/src/misc/Image.h:
+
+/usr/include/eigen3/Eigen/src/Core/StlIterators.h:
+
+/usr/include/boost/mpl/aux_/template_arity_fwd.hpp:
+
+/usr/include/boost/date_time/period.hpp:
+
+/usr/include/pthread.h:
+
+/usr/include/boost/move/detail/std_ns_end.hpp:
+
+/usr/include/pcl-1.12/pcl/memory.h:
+
+/usr/include/eigen3/Eigen/src/plugins/CommonCwiseBinaryOps.h:
+
+/usr/include/boost/fusion/mpl/insert.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/uintn-identity.h:
 
 /usr/include/eigen3/Eigen/src/Core/util/ReshapedHelper.h:
 
 /usr/include/c++/11/tr1/bessel_function.tcc:
 
 /usr/include/boost/type_traits/declval.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/products/GeneralMatrixVector.h:
-
-/usr/include/opencv4/opencv2/flann/kmeans_index.h:
-
-/usr/include/boost/mpl/arg_fwd.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/SolveTriangular.h:
-
-/usr/include/c++/11/bits/functexcept.h:
-
-/usr/include/x86_64-linux-gnu/bits/getopt_core.h:
-
-/usr/include/c++/11/streambuf:
 
 /usr/include/eigen3/Eigen/src/Eigenvalues/HessenbergDecomposition.h:
 
@@ -8901,93 +9243,33 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/lib/gcc/x86_64-linux-gnu/11/include/mm_malloc.h:
 
-/usr/include/c++/11/bits/char_traits.h:
+/usr/include/eigen3/Eigen/src/Core/products/GeneralMatrixVector.h:
 
-/usr/include/eigen3/Eigen/src/Core/CwiseTernaryOp.h:
+/usr/include/opencv4/opencv2/flann/kmeans_index.h:
 
-/usr/include/c++/11/bits/concept_check.h:
+/usr/include/boost/mpl/arg_fwd.hpp:
 
-/usr/include/boost/preprocessor/array/elem.hpp:
+/usr/include/x86_64-linux-gnu/bits/getopt_core.h:
 
-/usr/include/c++/11/bits/stl_pair.h:
+/usr/include/c++/11/streambuf:
 
-/usr/include/boost/config/no_tr1/utility.hpp:
+/usr/include/eigen3/Eigen/src/Core/arch/SSE/Complex.h:
 
-/usr/include/assert.h:
+/usr/include/eigen3/Eigen/src/LU/FullPivLU.h:
 
-/usr/include/opencv4/opencv2/core/affine.hpp:
+/usr/include/eigen3/Eigen/src/Core/CommaInitializer.h:
 
-/usr/include/boost/mpl/aux_/config/has_xxx.hpp:
+/usr/include/c++/11/type_traits:
 
-/usr/include/eigen3/Eigen/src/Householder/BlockHouseholder.h:
+/usr/include/boost/mpl/vector/aux_/tag.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/util/IntegralConstant.h:
+/usr/include/pcl-1.12/pcl/registration/impl/registration.hpp:
 
-/usr/include/boost/algorithm/string/detail/predicate.hpp:
+/usr/include/linux/limits.h:
 
-/usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
+/usr/include/c++/11/bits/allocator.h:
 
-/usr/include/wchar.h:
-
-/usr/include/eigen3/Eigen/src/plugins/CommonCwiseBinaryOps.h:
-
-/usr/include/boost/fusion/mpl/insert.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/uintn-identity.h:
-
-/usr/include/c++/11/ext/type_traits.h:
-
-../include/jmh_utils/calc_compute.hpp:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/os_defines.h:
-
-/usr/include/eigen3/Eigen/src/LU/PartialPivLU.h:
-
-/usr/include/opencv4/opencv2/flann/composite_index.h:
-
-/usr/include/eigen3/Eigen/src/Jacobi/Jacobi.h:
-
-/usr/include/boost/mpl/apply.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/products/TriangularMatrixMatrix.h:
-
-/usr/include/c++/11/tr1/exp_integral.tcc:
-
-/usr/include/boost/mpl/limits/vector.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/floatn-common.h:
-
-/usr/include/boost/fusion/algorithm/iteration/for_each_fwd.hpp:
-
-/usr/include/opencv4/opencv2/stitching/warpers.hpp:
-
-/usr/include/boost/fusion/view/single_view/detail/prior_impl.hpp:
-
-/usr/include/opencv4/opencv2/flann/logger.h:
-
-/usr/include/boost/fusion/sequence/intrinsic/begin.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/struct_mutex.h:
-
-/usr/include/c++/11/ext/atomicity.h:
-
-/usr/include/c++/11/bits/stl_iterator.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdint-uintn.h:
-
-/usr/include/boost/preprocessor/arithmetic/inc.hpp:
-
-/usr/include/c++/11/chrono:
-
-/usr/include/boost/mpl/protect.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/wordsize.h:
-
-/usr/include/c++/11/tuple:
-
-/usr/include/eigen3/Eigen/src/Core/IO.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h:
+/usr/include/c++/11/bits/stl_tempbuf.h:
 
 /usr/include/errno.h:
 
@@ -8995,21 +9277,9 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/c++/11/bits/alloc_traits.h:
 
-/usr/include/x86_64-linux-gnu/bits/types/struct_timespec.h:
-
-/usr/include/eigen3/Eigen/src/Core/util/Macros.h:
-
-/usr/include/boost/preprocessor/logical/compl.hpp:
-
 /usr/include/boost/mpl/aux_/config/preprocessor.hpp:
 
 /usr/include/c++/11/ext/numeric_traits.h:
-
-/usr/include/boost/algorithm/string/predicate.hpp:
-
-/usr/include/c++/11/bits/vector.tcc:
-
-/usr/include/boost/concept/assert.hpp:
 
 /usr/include/eigen3/Eigen/src/Core/ReturnByValue.h:
 
@@ -9039,186 +9309,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/mpl/vector/aux_/O1_size.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/Solve.h:
-
-/usr/include/boost/current_function.hpp:
-
-/usr/include/c++/11/complex:
-
-/usr/include/x86_64-linux-gnu/bits/math-vector.h:
-
-/usr/include/boost/mpl/aux_/preprocessed/gcc/reverse_fold_impl.hpp:
-
-/usr/include/boost/numeric/conversion/numeric_cast_traits.hpp:
-
-/usr/include/boost/fusion/mpl/begin.hpp:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/cpu_defines.h:
-
-/usr/include/boost/mpl/vector/aux_/iterator.hpp:
-
-/usr/include/eigen3/Eigen/src/Eigenvalues/SelfAdjointEigenSolver.h:
-
-../src/calc_compute.cpp:
-
-/usr/include/eigen3/Eigen/src/plugins/ArrayCwiseBinaryOps.h:
-
-/usr/include/c++/11/bits/refwrap.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/struct_timeval.h:
-
-/usr/include/x86_64-linux-gnu/asm/errno.h:
-
-/usr/include/boost/mpl/aux_/iter_fold_if_impl.hpp:
-
-/usr/include/pcl-1.12/pcl/sample_consensus/model_types.h:
-
-/usr/include/boost/foreach.hpp:
-
-/usr/include/boost/fusion/container/vector/detail/prior_impl.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/DenseBase.h:
-
-/usr/include/x86_64-linux-gnu/sys/cdefs.h:
-
-/usr/include/boost/mpl/aux_/arity.hpp:
-
-/usr/include/boost/iterator/iterator_concepts.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/arch/SSE/Complex.h:
-
-/usr/include/eigen3/Eigen/src/LU/FullPivLU.h:
-
-/usr/include/eigen3/Eigen/src/Core/CommaInitializer.h:
-
-/usr/include/c++/11/type_traits:
-
-/usr/include/boost/mpl/vector/aux_/tag.hpp:
-
-/usr/include/boost/type_traits/conversion_traits.hpp:
-
-/usr/include/c++/11/limits:
-
-/usr/include/c++/11/bits/functional_hash.h:
-
-/usr/include/boost/integer/integer_mask.hpp:
-
-/usr/include/boost/concept_check.hpp:
-
-/usr/include/boost/fusion/algorithm/transformation/insert_range.hpp:
-
-/usr/include/boost/range/size.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/NestByValue.h:
-
-/usr/include/boost/preprocessor/facilities/identity.hpp:
-
-/usr/include/boost/smart_ptr/detail/spinlock.hpp:
-
-/usr/include/boost/move/detail/config_end.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/byteswap.h:
-
-/usr/include/libintl.h:
-
-/usr/include/x86_64-linux-gnu/bits/long-double.h:
-
-/usr/include/boost/fusion/support/detail/is_native_fusion_sequence.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/DiagonalMatrix.h:
-
-/usr/include/boost/mpl/not.hpp:
-
-/usr/include/pcl-1.12/pcl/registration/impl/registration.hpp:
-
-/usr/include/linux/limits.h:
-
-/usr/include/c++/11/bits/allocator.h:
-
-/usr/include/c++/11/cmath:
-
-/usr/include/eigen3/Eigen/src/Geometry/Umeyama.h:
-
-/usr/include/c++/11/bits/stringfwd.h:
-
-/usr/include/boost/mpl/aux_/has_type.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/fp-logb.h:
-
-/usr/include/c++/11/bits/ios_base.h:
-
-/usr/include/boost/mpl/vector/aux_/size.hpp:
-
-/usr/include/boost/ref.hpp:
-
-/usr/include/opencv4/opencv2/dnn/dnn.hpp:
-
-/usr/include/opencv4/opencv2/dnn/layer.hpp:
-
-/usr/include/boost/config/detail/suffix.hpp:
-
-/usr/include/c++/11/bits/stl_uninitialized.h:
-
-/usr/include/boost/mpl/aux_/reverse_fold_impl.hpp:
-
-/usr/include/pcl-1.12/pcl/PCLPointCloud2.h:
-
-/usr/include/c++/11/cassert:
-
-/usr/include/eigen3/Eigen/src/Core/BooleanRedux.h:
-
-/usr/include/boost/date_time/date.hpp:
-
-/usr/include/c++/11/bits/stl_algo.h:
-
-/usr/include/c++/11/bits/stl_algobase.h:
-
-/usr/lib/gcc/x86_64-linux-gnu/11/include/stdint.h:
-
-/usr/include/pcl-1.12/pcl/io/file_io.h:
-
-/usr/include/c++/11/tr1/gamma.tcc:
-
-/usr/include/boost/mpl/size_t_fwd.hpp:
-
-/usr/include/c++/11/bits/hash_bytes.h:
-
-/usr/include/c++/11/bits/locale_facets.h:
-
-/usr/include/x86_64-linux-gnu/bits/atomic_wide_counter.h:
-
-/usr/include/c++/11/bits/exception.h:
-
-/usr/include/eigen3/Eigen/src/Core/BandMatrix.h:
-
-/usr/include/x86_64-linux-gnu/bits/floatn.h:
-
-/usr/include/boost/mpl/begin_end_fwd.hpp:
-
-/usr/include/boost/mpl/aux_/filter_iter.hpp:
-
-/usr/include/c++/11/bits/stl_vector.h:
-
-/usr/include/c++/11/cstddef:
-
-/usr/include/opencv4/opencv2/flann/lsh_table.h:
-
-/usr/include/eigen3/Eigen/src/Core/products/SelfadjointRank2Update.h:
-
-/usr/include/eigen3/Eigen/src/Core/util/DisableStupidWarnings.h:
-
-/usr/include/asm-generic/errno-base.h:
-
-/usr/include/boost/mpl/aux_/back_impl.hpp:
-
-/usr/include/c++/11/bits/predefined_ops.h:
-
-/usr/include/x86_64-linux-gnu/bits/typesizes.h:
-
-/usr/include/boost/fusion/sequence/intrinsic/detail/segmented_end_impl.hpp:
-
-/usr/include/boost/numeric/conversion/detail/udt_builtin_mixture.hpp:
-
 /usr/include/boost/fusion/iterator/detail/segmented_iterator.hpp:
 
 /usr/include/boost/mpl/contains_fwd.hpp:
@@ -9231,55 +9321,83 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/preprocessor/control/if.hpp:
 
-/usr/include/boost/interprocess/detail/std_fwd.hpp:
+/usr/include/x86_64-linux-gnu/bits/fp-logb.h:
 
-/usr/include/eigen3/Eigen/src/misc/Image.h:
+/usr/include/c++/11/bits/ios_base.h:
 
-/usr/include/eigen3/Eigen/src/Core/StlIterators.h:
+/usr/include/boost/mpl/vector/aux_/size.hpp:
 
-/usr/include/boost/mpl/aux_/template_arity_fwd.hpp:
-
-/usr/include/boost/date_time/period.hpp:
-
-/usr/include/pthread.h:
-
-/usr/include/x86_64-linux-gnu/bits/setjmp.h:
-
-/usr/include/x86_64-linux-gnu/bits/libc-header-start.h:
-
-/usr/include/boost/move/detail/std_ns_end.hpp:
-
-/usr/include/pcl-1.12/pcl/memory.h:
-
-/usr/include/c++/11/initializer_list:
-
-/usr/include/c++/11/iosfwd:
-
-/usr/include/opencv4/opencv2/stitching/detail/util_inl.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/DiagonalProduct.h:
-
-/usr/include/eigen3/Eigen/src/Core/PlainObjectBase.h:
-
-/usr/include/c++/11/bits/locale_classes.tcc:
-
-/usr/include/c++/11/bits/cxxabi_init_exception.h:
+/usr/include/boost/ref.hpp:
 
 /usr/include/c++/11/debug/assertions.h:
 
-/usr/include/boost/preprocessor/repetition/enum_shifted_params.hpp:
+/usr/include/opencv4/opencv2/flann/lsh_table.h:
 
-/usr/include/x86_64-linux-gnu/bits/wchar.h:
+/usr/include/eigen3/Eigen/src/Core/products/SelfadjointRank2Update.h:
 
-/usr/include/x86_64-linux-gnu/bits/types/mbstate_t.h:
+/usr/include/eigen3/Eigen/src/Core/util/DisableStupidWarnings.h:
 
-/usr/include/boost/type_traits/conditional.hpp:
+/usr/include/asm-generic/errno-base.h:
 
-/usr/include/c++/11/bits/stl_multiset.h:
+/usr/include/glog/logging.h:
 
-/usr/include/x86_64-linux-gnu/gnu/stubs.h:
+/usr/include/eigen3/Eigen/src/Core/util/Macros.h:
 
-/usr/include/x86_64-linux-gnu/bits/fp-fast.h:
+/usr/include/boost/preprocessor/logical/compl.hpp:
+
+/usr/include/c++/11/chrono:
+
+/usr/include/boost/mpl/protect.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/wordsize.h:
+
+/usr/include/c++/11/cassert:
+
+/usr/include/pcl-1.12/pcl/PCLPointCloud2.h:
+
+/usr/include/stdlib.h:
+
+/usr/include/boost/type_traits/remove_pointer.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/util/ConfigureVectorization.h:
+
+/usr/include/boost/mpl/contains.hpp:
+
+/usr/include/c++/11/system_error:
+
+/usr/include/features-time64.h:
+
+/usr/include/eigen3/Eigen/src/Core/IO.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h:
+
+/usr/include/c++/11/ext/atomicity.h:
+
+/usr/include/c++/11/bits/stl_iterator.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdint-uintn.h:
+
+/usr/include/boost/preprocessor/arithmetic/inc.hpp:
+
+/usr/include/boost/fusion/sequence/intrinsic/begin.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/struct_mutex.h:
+
+/usr/include/opencv4/opencv2/flann/saving.h:
+
+/usr/include/c++/11/tr1/gamma.tcc:
+
+/usr/include/eigen3/Eigen/SVD:
+
+/usr/include/c++/11/bits/locale_classes.h:
+
+/usr/include/x86_64-linux-gnu/bits/flt-eval-method.h:
+
+/usr/include/c++/11/bits/char_traits.h:
+
+/usr/include/eigen3/Eigen/src/Core/CwiseTernaryOp.h:
+
+/usr/include/c++/11/bits/concept_check.h:
 
 /usr/include/c++/11/bits/node_handle.h:
 
@@ -9287,9 +9405,71 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/opencv4/opencv2/objdetect.hpp:
 
-/usr/include/c++/11/bits/stl_tempbuf.h:
+/usr/include/c++/11/bits/stl_multiset.h:
 
-/usr/include/c++/11/exception:
+/usr/include/x86_64-linux-gnu/gnu/stubs.h:
+
+/usr/include/x86_64-linux-gnu/bits/fp-fast.h:
+
+/usr/include/c++/11/bits/cxxabi_init_exception.h:
+
+/usr/include/c++/11/bits/locale_classes.tcc:
+
+/usr/include/c++/11/ext/aligned_buffer.h:
+
+/usr/lib/gcc/x86_64-linux-gnu/11/include/xmmintrin.h:
+
+/usr/include/boost/mpl/at_fwd.hpp:
+
+/usr/include/boost/mpl/has_xxx.hpp:
+
+/usr/include/boost/preprocessor/list/adt.hpp:
+
+/usr/include/boost/mpl/aux_/type_wrapper.hpp:
+
+/usr/include/pcl-1.12/pcl/registration/transformation_estimation.h:
+
+/usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h:
+
+/usr/include/boost/date_time/int_adapter.hpp:
+
+/usr/include/boost/type_traits/is_same.hpp:
+
+/usr/include/glog/vlog_is_on.h:
+
+/usr/include/eigen3/Eigen/Eigenvalues:
+
+/usr/include/c++/11/math.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/error_t.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct_timespec.h:
+
+/usr/include/x86_64-linux-gnu/bits/waitflags.h:
+
+/usr/include/x86_64-linux-gnu/bits/libc-header-start.h:
+
+/usr/include/x86_64-linux-gnu/bits/setjmp.h:
+
+/usr/local/include/ceres/jet.h:
+
+/usr/include/c++/11/bits/functexcept.h:
+
+/usr/include/eigen3/Eigen/src/Core/SolveTriangular.h:
+
+/usr/include/x86_64-linux-gnu/sys/types.h:
+
+/usr/include/eigen3/Eigen/src/Householder/BlockHouseholder.h:
+
+/usr/include/eigen3/Eigen/src/Core/util/IntegralConstant.h:
+
+/usr/include/boost/throw_exception.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/select.h:
+
+/usr/include/boost/fusion/container/list/detail/empty_impl.hpp:
+
+/usr/include/opencv4/opencv2/dnn/dnn.inl.hpp:
 
 /usr/include/c++/11/typeinfo:
 
@@ -9321,8 +9501,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/pcl-1.12/pcl/impl/point_types.hpp:
 
-/usr/include/eigen3/Eigen/src/Core/Array.h:
-
 /usr/include/boost/random/uniform_int_distribution.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/locale.h:
@@ -9347,8 +9525,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/c++/11/cctype:
 
-/usr/include/boost/range/algorithm/equal.hpp:
-
 /usr/include/c++/11/unordered_map:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/gthr.h:
@@ -9356,16 +9532,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/x86_64-linux-gnu/bits/timesize.h:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/gthr-default.h:
-
-/usr/include/boost/utility/binary.hpp:
-
-/usr/include/boost/numeric/conversion/detail/is_subranged.hpp:
-
-/usr/include/c++/11/ext/alloc_traits.h:
-
-/usr/include/opencv4/opencv2/flann/miniflann.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/sched.h:
 
 /usr/include/eigen3/Eigen/Dense:
 
@@ -9395,14 +9561,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/mpl/vector/vector20.hpp:
 
-/usr/include/c++/11/bits/stl_bvector.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/struct___jmp_buf_tag.h:
-
-/usr/include/pcl-1.12/pcl/register_point_struct.h:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/atomic_word.h:
-
 /usr/include/boost/type_traits/is_pod.hpp:
 
 /usr/include/c++/11/string:
@@ -9413,11 +9571,31 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/x86_64-linux-gnu/bits/types/__fpos_t.h:
 
+/usr/include/x86_64-linux-gnu/bits/sched.h:
+
+/usr/include/boost/numeric/conversion/detail/is_subranged.hpp:
+
+/usr/include/c++/11/ext/alloc_traits.h:
+
+/usr/include/opencv4/opencv2/flann/miniflann.hpp:
+
+/usr/local/include/ceres/autodiff_manifold.h:
+
 /usr/include/c++/11/tr1/poly_hermite.tcc:
 
 /usr/include/c++/11/bits/memoryfwd.h:
 
 /usr/include/c++/11/bits/stl_function.h:
+
+/usr/include/x86_64-linux-gnu/bits/floatn.h:
+
+/usr/include/boost/mpl/begin_end_fwd.hpp:
+
+/usr/include/c++/11/iosfwd:
+
+/usr/include/opencv4/opencv2/stitching/detail/util_inl.hpp:
+
+/usr/include/c++/11/initializer_list:
 
 /usr/include/eigen3/Eigen/src/LU/Determinant.h:
 
@@ -9440,6 +9618,8 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/boost/mpl/aux_/lambda_spec.hpp:
 
 /usr/include/boost/type_traits/is_complete.hpp:
+
+/usr/include/c++/11/bits/functional_hash.h:
 
 /usr/include/stdio.h:
 
@@ -9465,6 +9645,14 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/eigen3/Eigen/src/Core/StableNorm.h:
 
+/usr/include/c++/11/cstddef:
+
+/usr/include/boost/mpl/aux_/filter_iter.hpp:
+
+/usr/include/c++/11/bits/stl_vector.h:
+
+/usr/include/c++/11/bits/unordered_set.h:
+
 /usr/include/c++/11/ios:
 
 /usr/include/c++/11/utility:
@@ -9474,6 +9662,8 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/boost/range/end.hpp:
 
 /usr/include/c++/11/cwctype:
+
+/usr/local/include/ceres/version.h:
 
 /usr/include/c++/11/bits/streambuf_iterator.h:
 
@@ -9523,11 +9713,11 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/c++/11/tr1/beta_function.tcc:
 
+/usr/include/c++/11/new:
+
 /usr/include/opencv4/opencv2/core/cvdef.h:
 
 /usr/include/boost/mpl/aux_/value_wknd.hpp:
-
-/usr/include/c++/11/new:
 
 /usr/include/c++/11/climits:
 
@@ -9538,10 +9728,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/c++/11/bits/hashtable.h:
 
 /usr/include/pcl-1.12/pcl/point_struct_traits.h:
-
-/usr/include/boost/smart_ptr/detail/shared_count.hpp:
-
-/usr/include/boost/core/checked_delete.hpp:
 
 /usr/include/c++/11/bits/hashtable_policy.h:
 
@@ -9565,6 +9751,26 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/c++/11/bits/erase_if.h:
 
+/usr/include/boost/interprocess/detail/posix_time_types_wrk.hpp:
+
+/usr/local/include/ceres/dynamic_cost_function_to_functor.h:
+
+/usr/include/opencv4/opencv2/dnn/dnn.hpp:
+
+/usr/include/opencv4/opencv2/dnn/layer.hpp:
+
+/usr/include/boost/config/detail/suffix.hpp:
+
+/usr/include/c++/11/bits/stl_uninitialized.h:
+
+/usr/include/boost/mpl/aux_/reverse_fold_impl.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct___jmp_buf_tag.h:
+
+/usr/include/pcl-1.12/pcl/register_point_struct.h:
+
+/usr/include/c++/11/bits/vector.tcc:
+
 /usr/include/c++/11/pstl/execution_defs.h:
 
 /usr/include/boost/mpl/vector/aux_/back.hpp:
@@ -9580,6 +9786,10 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/string.h:
 
 /usr/lib/gcc/x86_64-linux-gnu/11/include/limits.h:
+
+/usr/include/boost/fusion/iterator/detail/adapt_value_traits.hpp:
+
+/usr/local/include/ceres/ordered_groups.h:
 
 /usr/include/c++/11/bits/shared_ptr_atomic.h:
 
@@ -9629,10 +9839,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/preprocessor/list/fold_right.hpp:
 
-/usr/include/pcl-1.12/pcl/point_cloud.h:
-
-/usr/include/boost/range/iterator.hpp:
-
 /usr/include/boost/random/detail/disable_warnings.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/uio_lim.h:
@@ -9644,6 +9850,8 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/stdint.h:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/vector.hpp:
+
+/usr/local/include/ceres/internal/port.h:
 
 /usr/include/opencv4/opencv2/objdetect/detection_based_tracker.hpp:
 
@@ -9713,9 +9921,9 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/mpl/aux_/config/msvc_typename.hpp:
 
-/usr/include/opencv4/opencv2/stitching/detail/exposure_compensate.hpp:
+/usr/local/include/ceres/internal/householder_vector.h:
 
-/usr/include/boost/type_traits/function_traits.hpp:
+/usr/include/opencv4/opencv2/stitching/detail/exposure_compensate.hpp:
 
 /usr/include/pcl-1.12/pcl/common/impl/transforms.hpp:
 
@@ -9734,6 +9942,12 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/pcl-1.12/pcl/point_types.h:
 
 /usr/include/c++/11/bitset:
+
+/usr/include/boost/range/value_type.hpp:
+
+/usr/local/include/ceres/rotation.h:
+
+/usr/include/pcl-1.12/pcl/type_traits.h:
 
 /usr/include/boost/preprocessor/arithmetic/detail/div_base.hpp:
 
@@ -9757,10 +9971,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/config/compiler/gcc.hpp:
 
-/usr/include/eigen3/Eigen/src/misc/RealSvd2x2.h:
-
-/usr/include/boost/iterator/interoperable.hpp:
-
 /usr/include/boost/mpl/aux_/advance_backward.hpp:
 
 /usr/include/boost/config/detail/select_stdlib_config.hpp:
@@ -9781,8 +9991,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/unistd.h:
 
-/usr/include/boost/exception/exception.hpp:
-
 /usr/include/x86_64-linux-gnu/bits/posix_opt.h:
 
 /usr/include/boost/fusion/support/is_view.hpp:
@@ -9790,6 +9998,16 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/boost/preprocessor/seq/fold_left.hpp:
 
 /usr/include/boost/predef/os/ios.h:
+
+/usr/include/boost/numeric/conversion/converter_policies.hpp:
+
+/usr/include/opencv4/opencv2/flann/random.h:
+
+/usr/include/x86_64-linux-gnu/bits/confname.h:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/atomic_word.h:
+
+/usr/local/include/ceres/cost_function_to_functor.h:
 
 /usr/include/x86_64-linux-gnu/bits/getopt_posix.h:
 
@@ -9825,6 +10043,14 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/mpl/aux_/clear_impl.hpp:
 
+/usr/include/boost/fusion/container/vector/detail/value_at_impl.hpp:
+
+/usr/include/boost/numeric/conversion/bounds.hpp:
+
+/usr/include/eigen3/Eigen/src/Geometry/Translation.h:
+
+/usr/include/boost/mpl/aux_/config/gcc.hpp:
+
 /usr/include/boost/mpl/aux_/preprocessor/enum.hpp:
 
 /usr/include/boost/config/workaround.hpp:
@@ -9848,6 +10074,8 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/boost/mpl/aux_/na_spec.hpp:
 
 /usr/include/boost/mpl/lambda_fwd.hpp:
+
+/usr/include/inttypes.h:
 
 /usr/include/boost/mpl/aux_/na.hpp:
 
@@ -9893,7 +10121,7 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/preprocessor/debug/error.hpp:
 
-/usr/include/boost/preprocessor/tuple/eat.hpp:
+/usr/local/include/ceres/numeric_diff_options.h:
 
 /usr/include/boost/mpl/aux_/preprocessor/def_params_tail.hpp:
 
@@ -9959,6 +10187,12 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/preprocessor/variadic/elem.hpp:
 
+/usr/include/boost/mpl/size_t_fwd.hpp:
+
+/usr/include/c++/11/bits/hash_bytes.h:
+
+/usr/local/include/ceres/gradient_problem.h:
+
 /usr/include/boost/preprocessor/arithmetic/sub.hpp:
 
 /usr/include/boost/mpl/aux_/config/overload_resolution.hpp:
@@ -9995,6 +10229,14 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/numeric/conversion/detail/conversion_traits.hpp:
 
+/usr/include/boost/fusion/algorithm/query/find_fwd.hpp:
+
+/usr/include/boost/cstdint.hpp:
+
+../include/jmh_utils/main_camera_calib.hpp:
+
+/usr/include/boost/preprocessor/stringize.hpp:
+
 /usr/include/boost/mpl/vector/aux_/push_back.hpp:
 
 /usr/include/boost/mpl/next.hpp:
@@ -10013,6 +10255,8 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/mpl/void.hpp:
 
+/usr/local/include/ceres/loss_function.h:
+
 /usr/include/c++/11/backward/auto_ptr.h:
 
 /usr/include/opencv4/opencv2/dnn/utils/inference_engine.hpp:
@@ -10020,8 +10264,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/boost/mpl/front_fwd.hpp:
 
 /usr/include/boost/mpl/vector/aux_/push_front.hpp:
-
-/usr/include/boost/mpl/less.hpp:
 
 /usr/include/boost/preprocessor/variadic/size.hpp:
 
@@ -10061,12 +10303,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/mpl/iterator_tags.hpp:
 
-/usr/include/boost/random/variate_generator.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/Map.h:
-
-/usr/include/boost/utility.hpp:
-
 /usr/include/boost/mpl/plus.hpp:
 
 /usr/include/boost/fusion/include/as_vector.hpp:
@@ -10076,6 +10312,10 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/boost/mpl/aux_/preprocessor/params.hpp:
 
 /usr/include/boost/mpl/aux_/arithmetic_op.hpp:
+
+/usr/include/boost/numeric/conversion/detail/converter.hpp:
+
+/usr/include/boost/type_traits/is_const.hpp:
 
 /usr/include/c++/11/pstl/pstl_config.h:
 
@@ -10125,6 +10365,10 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/mpl/aux_/numeric_cast_utils.hpp:
 
+/usr/include/boost/core/enable_if.hpp:
+
+/usr/local/include/ceres/constants.h:
+
 /usr/include/boost/fusion/support/detail/and.hpp:
 
 /usr/include/boost/fusion/view/single_view/detail/size_impl.hpp:
@@ -10162,8 +10406,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/boost/fusion/algorithm/query/find_if_fwd.hpp:
 
 /usr/include/boost/mpl/vector/aux_/empty.hpp:
-
-/usr/include/boost/concept/detail/backward_compatibility.hpp:
 
 /usr/include/boost/random/detail/generator_seed_seq.hpp:
 
@@ -10215,9 +10457,7 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/mpl/sequence_tag.hpp:
 
-/usr/include/pcl-1.12/pcl/common/utils.h:
-
-/usr/include/boost/concept/detail/concept_def.hpp:
+/usr/local/include/ceres/gradient_problem_solver.h:
 
 /usr/include/eigen3/Eigen/src/Core/GenericPacketMath.h:
 
@@ -10235,17 +10475,9 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/mpl/find.hpp:
 
-/usr/include/boost/utility/identity_type.hpp:
-
 /usr/include/eigen3/Eigen/src/Core/Product.h:
 
 /usr/include/boost/mpl/find_if.hpp:
-
-/usr/include/opencv4/opencv2/flann/random.h:
-
-/usr/include/x86_64-linux-gnu/bits/confname.h:
-
-/usr/include/boost/numeric/conversion/converter_policies.hpp:
 
 /usr/include/boost/mpl/aux_/iter_apply.hpp:
 
@@ -10289,10 +10521,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/template_arity.hpp:
 
-/usr/include/boost/mpl/filter_view.hpp:
-
-/usr/include/boost/mpl/remove_if.hpp:
-
 /usr/include/boost/mpl/aux_/preprocessed/gcc/apply.hpp:
 
 /usr/include/boost/mpl/aux_/msvc_type.hpp:
@@ -10309,6 +10537,14 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/or.hpp:
 
+/usr/include/boost/range/iterator_range_core.hpp:
+
+/usr/include/boost/mpl/aux_/preprocessor/default_params.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/ArithmeticSequence.h:
+
+/usr/local/include/ceres/internal/export.h:
+
 /usr/include/boost/mpl/aux_/preprocessed/gcc/iter_fold_if_impl.hpp:
 
 /usr/include/boost/mpl/aux_/has_size.hpp:
@@ -10316,8 +10552,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/c++/11/bits/move.h:
 
 /usr/include/boost/mpl/aux_/fold_impl.hpp:
-
-/usr/include/pcl-1.12/pcl/exceptions.h:
 
 /usr/include/pcl-1.12/pcl/console/print.h:
 
@@ -10344,6 +10578,112 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/eigen3/Eigen/src/Core/arch/Default/Settings.h:
 
 /usr/include/c++/11/numeric:
+
+/usr/include/boost/preprocessor/tuple/eat.hpp:
+
+/usr/local/include/ceres/autodiff_cost_function.h:
+
+/usr/include/boost/fusion/sequence/intrinsic/detail/segmented_end.hpp:
+
+/usr/local/include/ceres/internal/memory.h:
+
+/usr/include/boost/range/detail/msvc_has_iterator_workaround.hpp:
+
+/usr/include/eigen3/Eigen/src/Core/Array.h:
+
+/usr/include/gflags/gflags_declare.h:
+
+/usr/include/gflags/gflags_gflags.h:
+
+/usr/include/boost/type_traits/is_abstract.hpp:
+
+/usr/local/include/ceres/types.h:
+
+/usr/include/x86_64-linux-gnu/bits/mman.h:
+
+/usr/local/include/ceres/internal/disable_warnings.h:
+
+/usr/include/pcl-1.12/pcl/PointIndices.h:
+
+/usr/local/include/ceres/internal/reenable_warnings.h:
+
+/usr/local/include/ceres/dynamic_numeric_diff_cost_function.h:
+
+/usr/include/boost/mpl/filter_view.hpp:
+
+/usr/include/boost/mpl/remove_if.hpp:
+
+/usr/local/include/ceres/internal/parameter_dims.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/__FILE.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/__locale_t.h:
+
+/usr/local/include/ceres/internal/variadic_evaluate.h:
+
+/usr/include/x86_64-linux-gnu/bits/endian.h:
+
+/usr/include/boost/numeric/conversion/sign_mixture_enum.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/floatn-common.h:
+
+/usr/local/include/ceres/cost_function.h:
+
+/usr/include/boost/mpl/iterator_range.hpp:
+
+/usr/local/include/ceres/sized_cost_function.h:
+
+/usr/local/include/ceres/autodiff_first_order_function.h:
+
+/usr/local/include/ceres/first_order_function.h:
+
+/usr/local/include/ceres/context.h:
+
+/usr/local/include/ceres/dynamic_cost_function.h:
+
+/usr/include/opencv4/opencv2/stitching/detail/camera.hpp:
+
+/usr/local/include/ceres/covariance.h:
+
+/usr/include/c++/11/cmath:
+
+/usr/local/include/ceres/evaluation_callback.h:
+
+/usr/include/boost/type_traits/is_volatile.hpp:
+
+/usr/include/pcl-1.12/pcl/exceptions.h:
+
+/usr/local/include/ceres/gradient_checker.h:
+
+/usr/include/pcl-1.12/pcl/point_cloud.h:
+
+/usr/include/boost/range/iterator.hpp:
+
+/usr/local/include/ceres/line_manifold.h:
+
+/usr/include/boost/preprocessor/slot/detail/def.hpp:
+
+/usr/local/include/ceres/internal/sphere_manifold_functions.h:
+
+/usr/include/boost/random/detail/config.hpp:
+
+/usr/local/include/ceres/numeric_diff_cost_function.h:
+
+/usr/include/eigen3/Eigen/src/misc/RealSvd2x2.h:
+
+/usr/include/boost/iterator/interoperable.hpp:
+
+/usr/local/include/ceres/problem.h:
+
+/usr/include/boost/mpl/push_front.hpp:
+
+/usr/include/boost/smart_ptr/detail/sp_counted_base_gcc_atomic.hpp:
+
+/usr/local/include/ceres/sphere_manifold.h:
+
+/usr/include/c++/11/bits/stl_bvector.h:
+
+/usr/local/include/ceres/internal/euler_angles.h:
 
 ../src/main_lidar_calib.cpp:
 
@@ -10375,6 +10715,10 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/predef/os/bsd/dragonfly.h:
 
+/usr/include/boost/type_traits/add_volatile.hpp:
+
+/usr/include/boost/predef/os/bsd/open.h:
+
 /usr/include/x86_64-linux-gnu/bits/types/struct_statx.h:
 
 /usr/include/pcl-1.12/pcl/for_each_type.h:
@@ -10393,8 +10737,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/mpl/front_inserter.hpp:
 
-/usr/include/boost/mpl/push_front.hpp:
-
 /usr/include/eigen3/Eigen/src/Core/AssignEvaluator.h:
 
 /usr/include/boost/mpl/aux_/push_front_impl.hpp:
@@ -10404,8 +10746,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/boost/mpl/clear.hpp:
 
 /usr/include/boost/mpl/aux_/unwrap.hpp:
-
-/usr/include/boost/algorithm/string/config.hpp:
 
 /usr/lib/gcc/x86_64-linux-gnu/11/include/stdarg.h:
 
@@ -10444,12 +10784,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/boost/type_traits/is_void.hpp:
 
 /usr/include/boost/range/mutable_iterator.hpp:
-
-/usr/include/boost/range/detail/msvc_has_iterator_workaround.hpp:
-
-/usr/include/boost/type_traits/is_const.hpp:
-
-/usr/include/boost/numeric/conversion/detail/converter.hpp:
 
 /usr/include/boost/fusion/container/list/detail/begin_impl.hpp:
 
@@ -10491,8 +10825,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/type_traits/is_integral.hpp:
 
-/usr/include/boost/type_traits/is_abstract.hpp:
-
 /usr/include/boost/iterator/detail/facade_iterator_category.hpp:
 
 /usr/include/boost/numeric/conversion/detail/sign_mixture.hpp:
@@ -10501,17 +10833,15 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/type_traits/is_class.hpp:
 
-/usr/include/boost/type_traits/is_volatile.hpp:
-
 /usr/include/boost/type_traits/detail/is_member_function_pointer_cxx_11.hpp:
 
 /usr/include/opencv4/opencv2/flann/ground_truth.h:
 
 /usr/include/boost/type_traits/is_member_pointer.hpp:
 
-/usr/include/boost/type_traits/add_const.hpp:
+/usr/local/include/ceres/internal/config.h:
 
-/usr/include/boost/utility/enable_if.hpp:
+/usr/include/boost/type_traits/add_const.hpp:
 
 /usr/include/boost/type_traits/detail/config.hpp:
 
@@ -10541,10 +10871,6 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 
 /usr/include/boost/mpl/aux_/comparison_op.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/endian.h:
-
-/usr/include/boost/numeric/conversion/sign_mixture_enum.hpp:
-
 /usr/include/boost/mpl/multiplies.hpp:
 
 /usr/include/sched.h:
@@ -10552,101 +10878,3 @@ CMakeFiles/jmh_utils.dir/src/serve_save.cpp.o: ../src/serve_save.cpp \
 /usr/include/boost/mpl/times.hpp:
 
 /usr/include/boost/mpl/aux_/preprocessed/gcc/times.hpp:
-
-/usr/include/boost/mpl/aux_/preprocessed/gcc/less.hpp:
-
-/usr/include/boost/config/no_tr1/cmath.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/select.h:
-
-/usr/include/boost/throw_exception.hpp:
-
-/usr/include/boost/fusion/view/single_view/detail/next_impl.hpp:
-
-/usr/include/boost/type_traits/add_lvalue_reference.hpp:
-
-/usr/include/boost/assert/source_location.hpp:
-
-/usr/include/boost/fusion/algorithm/query/find_fwd.hpp:
-
-../include/jmh_utils/main_camera_calib.hpp:
-
-/usr/include/boost/preprocessor/stringize.hpp:
-
-/usr/include/boost/cstdint.hpp:
-
-/usr/include/boost/fusion/container/vector/detail/value_at_impl.hpp:
-
-/usr/include/eigen3/Eigen/src/Geometry/Translation.h:
-
-/usr/include/boost/mpl/aux_/config/gcc.hpp:
-
-/usr/include/boost/numeric/conversion/bounds.hpp:
-
-/usr/include/boost/mpl/aux_/empty_impl.hpp:
-
-/usr/include/boost/numeric/conversion/detail/bounds.hpp:
-
-/usr/include/boost/numeric/conversion/detail/preprocessed/numeric_cast_traits_common.hpp:
-
-/usr/include/boost/date_time/posix_time/ptime.hpp:
-
-/usr/include/boost/range/iterator_range.hpp:
-
-/usr/include/boost/range/functions.hpp:
-
-/usr/include/boost/mpl/aux_/preprocessor/default_params.hpp:
-
-/usr/include/boost/range/iterator_range_core.hpp:
-
-/usr/include/boost/range/size_type.hpp:
-
-/usr/include/boost/range/difference_type.hpp:
-
-/usr/include/eigen3/Eigen/src/Core/Visitor.h:
-
-/usr/include/boost/range/has_range_iterator.hpp:
-
-/usr/include/boost/core/enable_if.hpp:
-
-/usr/include/boost/range/concepts.hpp:
-
-/usr/include/boost/preprocessor/seq/for_each_i.hpp:
-
-/usr/include/boost/concept/detail/concept_undef.hpp:
-
-/usr/include/pcl-1.12/pcl/type_traits.h:
-
-/usr/include/boost/range/value_type.hpp:
-
-/usr/include/boost/type_traits/make_unsigned.hpp:
-
-/usr/include/boost/fusion/iterator/advance.hpp:
-
-/usr/include/boost/type_traits/is_signed.hpp:
-
-/usr/include/c++/11/bits/shared_ptr_base.h:
-
-/usr/include/boost/type_traits/is_unsigned.hpp:
-
-/usr/include/boost/predef/os/bsd/open.h:
-
-/usr/include/boost/type_traits/add_volatile.hpp:
-
-/usr/include/boost/fusion/view/iterator_range.hpp:
-
-/usr/include/boost/range/detail/has_member_size.hpp:
-
-/usr/include/boost/preprocessor/repetition/enum_binary_params.hpp:
-
-/usr/include/boost/preprocessor/repetition/repeat_from_to.hpp:
-
-/usr/include/boost/preprocessor/control/deduce_d.hpp:
-
-/usr/include/boost/preprocessor/seq/cat.hpp:
-
-/usr/include/pcl-1.12/pcl/kdtree/kdtree_flann.h:
-
-/usr/include/boost/iterator/distance.hpp:
-
-/usr/include/boost/range/detail/safe_bool.hpp:

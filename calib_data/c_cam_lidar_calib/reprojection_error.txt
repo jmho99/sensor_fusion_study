@@ -1,1 +1,1 @@
-Mean Reprojection Error (undistorted newK): 0.174786 pixels
+Mean Reprojection Error (undistorted newK): 0.570332 pixels

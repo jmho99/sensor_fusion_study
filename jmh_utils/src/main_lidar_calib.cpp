@@ -16,6 +16,7 @@ namespace jmh_utils
                                                                              const jmh_utils::ROI_PARAMS &ROI,
                                                                              const jmh_utils::RANSAC_PARAMS &RANSAC)
     {
+        std::cout << "Begin detecting checkerboard corners using intensity in the lidar pointclouds" << std::endl;
         std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> all_cloud_planes;
 
         for (int frame_index = 0; frame_index < all_pointclouds.size(); frame_index++)
@@ -89,9 +90,11 @@ namespace jmh_utils
             }
 
             all_cloud_planes.push_back(cloud_plane);
-            std::cout << "Detected [ " << cloud_plane->points.size() << " ] points in LiDAR plane." << std::endl;
+            std::cout << "Detected [ " << frame_num  << " ] [ " << cloud_plane->points.size() << " ] frames detecting planes" << std::endl;
         }
 
+        std::cout << "Succesed [ " << all_cloud_planes.size() << " ] frames detecting planes" << std::endl;
+        std::cout << "End detecting checkerboard corners using intensity in the lidar pointclouds" << std::endl;
         return all_cloud_planes;
     }
 }
