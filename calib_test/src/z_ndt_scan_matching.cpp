@@ -33,8 +33,8 @@ class NdtRotationNode : public rclcpp::Node
 public:
     NdtRotationNode()
         : Node("ndt_rotation_node"),
-          cloud_topic_("/sync_lidar"),
-          voxel_leaf_(0.4f),
+          cloud_topic_("/ouster/points"),
+          voxel_leaf_(0.6f),
           ndt_trans_eps_(0.01),
           ndt_step_size_(0.1),
           ndt_resolution_(1.0),
@@ -46,7 +46,7 @@ public:
 
         // QoS: LiDAR는 보통 Best Effort가 무난
         rclcpp::QoS qos(rclcpp::KeepLast(10));
-        qos.reliable();
+        qos.best_effort();
 
         sub_cloud_ = create_subscription<sensor_msgs::msg::PointCloud2>(
             cloud_topic_, qos,
@@ -73,7 +73,7 @@ private:
     {
         std::string home_dir = std::getenv("HOME");
         std::string file_dir = home_dir + "/sensor_fusion_study_ws/src/sensor_fusion_study/calib_test/data";
-        fs::path file_path = "/rotation.yaml";
+        fs::path file_path = file_dir + "/rotation.csv";
         fs::create_directories(file_path.parent_path());
 
         auto cloud_raw = std::make_shared<CloudT>();
@@ -109,7 +109,7 @@ private:
                     res_type.c_str(), res_xyz[0], res_xyz[1], res_xyz[2]);
 
         std::ofstream output(file_path, std::ios::out | std::ios::app);
-        output << std::fixed << std::setprecision(6) << res_xyz.transpose() << std::endl;
+        output << std::fixed << std::setprecision(6) << res_xyz[0] << "," << res_xyz[1] << "," << res_xyz[2] << std::endl;
 
         if (cloud_raw->empty())
         {
@@ -159,7 +159,7 @@ private:
         return Rn;
     }
 
-    Eigen::VectorXf solveRotation(CloudT::Ptr source, CloudT::Ptr target, std::string result = "d")
+    Eigen::VectorXf solveRotation(CloudT::Ptr source, CloudT::Ptr target, std::string result = "q")
     {
         Eigen::VectorXf res_xyz;
         std::string rot_type;

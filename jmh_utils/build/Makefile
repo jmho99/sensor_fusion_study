@@ -200,6 +200,19 @@ cam_lidar_calibration/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cam_lidar_calibration.dir/build.make CMakeFiles/cam_lidar_calibration.dir/build
 .PHONY : cam_lidar_calibration/fast
 
+#=============================================================================
+# Target rules for targets named lid_imu_init_rot_sol
+
+# Build rule for target.
+lid_imu_init_rot_sol: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 lid_imu_init_rot_sol
+.PHONY : lid_imu_init_rot_sol
+
+# fast build rule for target.
+lid_imu_init_rot_sol/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lid_imu_init_rot_sol.dir/build.make CMakeFiles/lid_imu_init_rot_sol.dir/build
+.PHONY : lid_imu_init_rot_sol/fast
+
 examples/cam_lidar_calibration.o: examples/cam_lidar_calibration.cpp.o
 .PHONY : examples/cam_lidar_calibration.o
 
@@ -247,6 +260,30 @@ examples/fusion_output.s: examples/fusion_output.cpp.s
 examples/fusion_output.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/fusion_output.dir/build.make CMakeFiles/fusion_output.dir/examples/fusion_output.cpp.s
 .PHONY : examples/fusion_output.cpp.s
+
+examples/lid_imu_init_rot_sol.o: examples/lid_imu_init_rot_sol.cpp.o
+.PHONY : examples/lid_imu_init_rot_sol.o
+
+# target to build an object file
+examples/lid_imu_init_rot_sol.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lid_imu_init_rot_sol.dir/build.make CMakeFiles/lid_imu_init_rot_sol.dir/examples/lid_imu_init_rot_sol.cpp.o
+.PHONY : examples/lid_imu_init_rot_sol.cpp.o
+
+examples/lid_imu_init_rot_sol.i: examples/lid_imu_init_rot_sol.cpp.i
+.PHONY : examples/lid_imu_init_rot_sol.i
+
+# target to preprocess a source file
+examples/lid_imu_init_rot_sol.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lid_imu_init_rot_sol.dir/build.make CMakeFiles/lid_imu_init_rot_sol.dir/examples/lid_imu_init_rot_sol.cpp.i
+.PHONY : examples/lid_imu_init_rot_sol.cpp.i
+
+examples/lid_imu_init_rot_sol.s: examples/lid_imu_init_rot_sol.cpp.s
+.PHONY : examples/lid_imu_init_rot_sol.s
+
+# target to generate assembly for a file
+examples/lid_imu_init_rot_sol.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lid_imu_init_rot_sol.dir/build.make CMakeFiles/lid_imu_init_rot_sol.dir/examples/lid_imu_init_rot_sol.cpp.s
+.PHONY : examples/lid_imu_init_rot_sol.cpp.s
 
 src/calc_compute.o: src/calc_compute.cpp.o
 .PHONY : src/calc_compute.o
@@ -503,12 +540,16 @@ help:
 	@echo "... cam_lidar_calibration"
 	@echo "... fusion_output"
 	@echo "... jmh_utils"
+	@echo "... lid_imu_init_rot_sol"
 	@echo "... examples/cam_lidar_calibration.o"
 	@echo "... examples/cam_lidar_calibration.i"
 	@echo "... examples/cam_lidar_calibration.s"
 	@echo "... examples/fusion_output.o"
 	@echo "... examples/fusion_output.i"
 	@echo "... examples/fusion_output.s"
+	@echo "... examples/lid_imu_init_rot_sol.o"
+	@echo "... examples/lid_imu_init_rot_sol.i"
+	@echo "... examples/lid_imu_init_rot_sol.s"
 	@echo "... src/calc_compute.o"
 	@echo "... src/calc_compute.i"
 	@echo "... src/calc_compute.s"

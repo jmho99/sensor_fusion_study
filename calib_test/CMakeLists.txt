@@ -124,11 +124,14 @@ ament_target_dependencies(
   "rclcpp"
   "std_msgs"
   "sensor_msgs"
-  "nav_msgs"
   "geometry_msgs"
-  "std_srvs"
-  "tf2"
-  "tf2_ros"
+  "Eigen"
+  "pcl_conversions"
+  "PCL"
+  "message_filters"
+)
+target_link_libraries(z_imu_trajectory
+  jmh_utils
 )
 target_include_directories(z_imu_trajectory PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

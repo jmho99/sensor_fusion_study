@@ -66,6 +66,7 @@ CMAKE_BINARY_DIR = /home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/j
 all: CMakeFiles/jmh_utils.dir/all
 all: CMakeFiles/fusion_output.dir/all
 all: CMakeFiles/cam_lidar_calibration.dir/all
+all: CMakeFiles/lid_imu_init_rot_sol.dir/all
 .PHONY : all
 
 # The main recursive "preinstall" target.
@@ -76,6 +77,7 @@ preinstall:
 clean: CMakeFiles/jmh_utils.dir/clean
 clean: CMakeFiles/fusion_output.dir/clean
 clean: CMakeFiles/cam_lidar_calibration.dir/clean
+clean: CMakeFiles/lid_imu_init_rot_sol.dir/clean
 .PHONY : clean
 
 #=============================================================================
@@ -155,6 +157,32 @@ cam_lidar_calibration: CMakeFiles/cam_lidar_calibration.dir/rule
 CMakeFiles/cam_lidar_calibration.dir/clean:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cam_lidar_calibration.dir/build.make CMakeFiles/cam_lidar_calibration.dir/clean
 .PHONY : CMakeFiles/cam_lidar_calibration.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/lid_imu_init_rot_sol.dir
+
+# All Build rule for target.
+CMakeFiles/lid_imu_init_rot_sol.dir/all: CMakeFiles/jmh_utils.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lid_imu_init_rot_sol.dir/build.make CMakeFiles/lid_imu_init_rot_sol.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lid_imu_init_rot_sol.dir/build.make CMakeFiles/lid_imu_init_rot_sol.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/jmh_utils/build/CMakeFiles --progress-num=16,17 "Built target lid_imu_init_rot_sol"
+.PHONY : CMakeFiles/lid_imu_init_rot_sol.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/lid_imu_init_rot_sol.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/jmh_utils/build/CMakeFiles 13
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/lid_imu_init_rot_sol.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/jmh_utils/build/CMakeFiles 0
+.PHONY : CMakeFiles/lid_imu_init_rot_sol.dir/rule
+
+# Convenience name for target.
+lid_imu_init_rot_sol: CMakeFiles/lid_imu_init_rot_sol.dir/rule
+.PHONY : lid_imu_init_rot_sol
+
+# clean rule for target.
+CMakeFiles/lid_imu_init_rot_sol.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lid_imu_init_rot_sol.dir/build.make CMakeFiles/lid_imu_init_rot_sol.dir/clean
+.PHONY : CMakeFiles/lid_imu_init_rot_sol.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

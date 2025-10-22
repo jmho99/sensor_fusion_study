@@ -22,17 +22,23 @@ namespace jmh_utils
     {
         double threshold;
         int iterations;
-
     };
 
     struct INTENSITY_PARAMS
     {
         double min_threshold;
         double max_threshold;
-
     };
 
-    std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> runIntensityLidarPlane(std::vector<std::string> all_pointclouds,
+    struct PLANE_RESULT
+    {
+        std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> all_cloud_planes;
+        std::vector<Eigen::Vector4d> lidar_plane_abcd;
+        std::vector<Eigen::Vector3d> lidar_plane_centroid;
+        std::vector<int> lidar_facing_flags;
+    };
+
+    jmh_utils::PLANE_RESULT runIntensityLidarPlane(std::vector<std::string> all_pointclouds,
                                                                              const jmh_utils::INTENSITY_PARAMS &intensity,
                                                                              const jmh_utils::ROI_PARAMS &ROI,
                                                                              const jmh_utils::RANSAC_PARAMS &RANSAC);

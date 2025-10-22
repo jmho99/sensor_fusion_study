@@ -11,13 +11,49 @@
 
 namespace jmh_utils
 {
-    std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> runIntensityLidarPlane(std::vector<std::string> all_pointclouds,
-                                                                             const jmh_utils::INTENSITY_PARAMS &intensity,
-                                                                             const jmh_utils::ROI_PARAMS &ROI,
-                                                                             const jmh_utils::RANSAC_PARAMS &RANSAC)
+    // === [ADD] 평면 법선 정규화 및 d 정규화 ===
+    // 입력: (a,b,c,d). 출력: 노멀=(a,b,c)를 단위화; d도 같은 비율로 나눔
+    static Eigen::Vector4d normalize_plane(const Eigen::Vector4d &abcd)
+    {
+        Eigen::Vector3d n = abcd.head<3>();
+        double nn = n.norm();
+        if (nn <= 1e-12)
+            return abcd;
+        Eigen::Vector4d out = abcd;
+        out.head<3>() /= nn;
+        out[3] /= nn;
+        return out;
+    }
+
+    // === [ADD] 평면이 원점을 향하는지 판정 ===
+    // 규칙: (centroid · n) < 0  → "원점을 향함(0)" / 그렇지 않으면 1
+    static int facing_origin_label(const Eigen::Vector3d &n_unit,
+                                          const Eigen::Vector3d &centroid)
+    {
+        return (centroid.dot(n_unit) < 0.0) ? 0 : 1;
+    }
+
+    static Eigen::Vector3d centroid_from_cloud(const pcl::PointCloud<pcl::PointXYZI>::Ptr &cloud)
+    {
+        if (!cloud || cloud->empty())
+            return Eigen::Vector3d(0, 0, 0);
+        Eigen::Vector3d c(0, 0, 0);
+        for (const auto &p : cloud->points)
+            c += Eigen::Vector3d(p.x, p.y, p.z);
+        c /= static_cast<double>(cloud->points.size());
+        return c;
+    }
+
+    jmh_utils::PLANE_RESULT runIntensityLidarPlane(std::vector<std::string> all_pointclouds,
+                                                   const jmh_utils::INTENSITY_PARAMS &intensity,
+                                                   const jmh_utils::ROI_PARAMS &ROI,
+                                                   const jmh_utils::RANSAC_PARAMS &RANSAC)
     {
         std::cout << "Begin detecting checkerboard corners using intensity in the lidar pointclouds" << std::endl;
         std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> all_cloud_planes;
+        std::vector<Eigen::Vector4d> lidar_plane_abcd;
+        std::vector<Eigen::Vector3d> lidar_plane_centroid;
+        std::vector<int> lidar_facing_flags;
 
         for (int frame_index = 0; frame_index < all_pointclouds.size(); frame_index++)
         {
@@ -89,12 +125,38 @@ namespace jmh_utils
                 continue;
             }
 
+            // (a,b,c,d) → 단위 노멀/정규화
+            Eigen::Vector4d plane_function(coefficients->values[0],
+                                           coefficients->values[1],
+                                           coefficients->values[2],
+                                           coefficients->values[3]);
+            plane_function = normalize_plane(plane_function);
+
+            // 인라이어 평면 포인트의 센트로이드
+            Eigen::Vector3d plane_centroid = centroid_from_cloud(cloud_plane);
+
+            // "원점 향함(0) / 아니면 1"
+            Eigen::Vector3d normal_vec_dir = plane_centroid.head<3>();
+            int lidar_label = facing_origin_label(normal_vec_dir, plane_centroid);
+
+            // 이번 프레임용 캐시(나중에 R,t 후 카메라 좌표계 라벨링에 사용)
+            lidar_plane_abcd.push_back(plane_function);
+            lidar_plane_centroid.push_back(plane_centroid);
+            lidar_facing_flags.push_back(lidar_label);
+
             all_cloud_planes.push_back(cloud_plane);
-            std::cout << "Detected [ " << frame_num  << " ] [ " << cloud_plane->points.size() << " ] frames detecting planes" << std::endl;
+            std::cout << "Detected [ " << frame_num << " ] [ " << cloud_plane->points.size() << " ] frames detecting planes" << std::endl;
         }
+
+
+        jmh_utils::PLANE_RESULT result;
+        result.all_cloud_planes = all_cloud_planes;
+        result.lidar_plane_abcd = lidar_plane_abcd;
+        result.lidar_plane_centroid = lidar_plane_centroid;
+        result.lidar_facing_flags = lidar_facing_flags;
 
         std::cout << "Succesed [ " << all_cloud_planes.size() << " ] frames detecting planes" << std::endl;
         std::cout << "End detecting checkerboard corners using intensity in the lidar pointclouds" << std::endl;
-        return all_cloud_planes;
+        return result;
     }
 }

@@ -53,6 +53,11 @@ add_executable(cam_lidar_calibration
 
 target_link_libraries(cam_lidar_calibration PRIVATE jmh_utils ceres)
 
+add_executable(lid_imu_init_rot_sol
+  examples/lid_imu_init_rot_sol.cpp
+)
+
+target_link_libraries(lid_imu_init_rot_sol PRIVATE jmh_utils ceres)
 
 
 include(GNUInstallDirs)
@@ -66,6 +71,7 @@ install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(TARGETS 
     fusion_output
     cam_lidar_calibration
+    lid_imu_init_rot_sol
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 

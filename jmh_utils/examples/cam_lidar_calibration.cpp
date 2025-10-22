@@ -82,7 +82,7 @@ bool optimizeRtWithCeres(
     ceres::Solver::Options opts;
     opts.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
     opts.linear_solver_type = ceres::DENSE_QR;
-    
+
     opts.max_num_iterations = 100;
     opts.function_tolerance = 1e-12;
     opts.gradient_tolerance = 1e-12;
@@ -139,21 +139,21 @@ int main(int argc, char **argv)
     board_params.columns = 5;
     board_params.rows = 7;
     board_params.square_size = 0.1;
-    board_params.frame_width = 1920;
-    board_params.frame_height = 1200;
-    std::vector<std::vector<double>> intrinsic = {{2.3531675448071378e+03, 0.0, 1.0273207575316267e+03},
-                                                  {0.0, 2.3586343982493358e+03, 7.6010058320781366e+02},
+    board_params.frame_width = 2048;
+    board_params.frame_height = 1536;
+    std::vector<std::vector<double>> intrinsic = {{2.3804861502329672e+03, 0.0, 1.0367861314361255e+03},
+                                                  {0.0, 2.3812829051328949e+03, 7.6724834534040474e+02},
                                                   {0.0, 0.0, 1.0}};
 
-    std::vector<double> distortion = {-1.1939616059985084e-01, 4.0157218609309486e-01, 1.0824710229080765e-03, -2.3984687380279165e-03, -1.0518135116602727e+00};
+    std::vector<double> distortion = {-9.5762145770576887e-02, 9.0701282160675162e-02, -1.6180890835518554e-03, -9.7839810350063222e-04, -4.2237016474371038e-02};
     cv::Mat intrinsic_matrix_ = jmh_utils::vector2Mat(intrinsic);
     cv::Mat distortion_coeffs_ = jmh_utils::vector2Mat(distortion);
 
     std::vector<std::vector<Eigen::Vector3d>> camera_3d_corners = jmh_utils::runCameraPlane(board_params, intrinsic_matrix_, distortion_coeffs_, all_images);
 
     jmh_utils::ROI_PARAMS roi;
-    roi.min_ROI = Eigen::Vector4f(-5.0, -1.1, -0.6, 1.0);
-    roi.max_ROI = Eigen::Vector4f(0.0, 0.6, 3.0, 1.0);
+    roi.min_ROI = Eigen::Vector4f(0.0,-1.0,-0.5, 1.0); //-5.0, -1.1, -0.6
+    roi.max_ROI = Eigen::Vector4f(15.0,1.0,1.0, 1.0); //0.0, 0.6, 3.0
 
     jmh_utils::RANSAC_PARAMS ransac;
     ransac.threshold = 0.02;
@@ -162,7 +162,10 @@ int main(int argc, char **argv)
     jmh_utils::INTENSITY_PARAMS intensity;
     intensity.min_threshold = 1.0;
     intensity.max_threshold = 100000;
-    std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> lidar_plane_pcds = jmh_utils::runIntensityLidarPlane(all_pcds, intensity, roi, ransac);
+
+    jmh_utils::runIntensityLidarPlane(all_pcds, intensity, roi, ransac);
+    jmh_utils::PLANE_RESULT plane_result;
+    std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> lidar_plane_pcds = plane_result.all_cloud_planes;
 
     std::vector<std::vector<Eigen::Vector3d>> lidar_3d_corners;
     for (int i = 0; i < lidar_plane_pcds.size(); i++)
@@ -194,6 +197,40 @@ int main(int argc, char **argv)
         Eigen::MatrixXd rotation;
         Eigen::VectorXd translation;
         jmh_utils::computeTransformSVD(lidar_3d_corners[i], camera_3d_corners[i], rotation, translation);
+
+        // LiDAR 평면을 카메라 좌표계로 변환
+        Eigen::Vector3d nL(plane_result.lidar_plane_abcd[i][0], plane_result.lidar_plane_abcd[i][1], plane_result.lidar_plane_abcd[i][2]);
+        Eigen::Vector3d nC = rotation * nL;
+        double dL = plane_result.lidar_plane_abcd[i][3];
+        double dC = dL - nC.dot(translation);
+
+        Eigen::Vector4d plane_camera = Eigen::Vector4d(nC.x(), nC.y(), nC.z(), dC);
+        Eigen::Vector3d normal_camera = plane_camera.head<3>();
+        // 센트로이드도 카메라 좌표계로 변환 (참고용)
+ 
+        Eigen::Vector3d centroid_camera = rotation * plane_result.lidar_plane_centroid[i] + translation;
+
+        // 카메라 좌표계 라벨: 원점(카메라 중심)을 향하면 0, 아니면 1
+        int cam_label = (centroid_camera.dot(normal_camera) < 0.0) ? 0 : 1;
+        std::cout << cam_label << std::endl;
+
+        // LiDAR 라벨과 비교 (가장 최근 프레임의 것과 비교)
+        int lidar_label = plane_result.lidar_facing_flags[i];
+        if (lidar_label != cam_label)
+        {
+            // 불일치 → 이번 프레임 결과 무시 (R,t push/pop 안 함)
+            std::cout << "[FrameGate] Direction mismatch: LiDAR= " 
+                        << lidar_label << "vs Camera= " << cam_label 
+                        << "This frame will be ignored" << std::endl;
+            // 이 프레임의 라벨/평면은 기록으로 남겨두되, extrinsic 누적은 하지 않고 이후 처리 중단
+            continue; // ← 이번 프레임의 후속 처리(포인트 변환/프로젝션 등) 스킵
+        }
+        else
+        {
+            std::cout << "[FrameGate] Direction matched: LiDAR=" 
+                        << lidar_label << "vs Camera= " << cam_label 
+                        << "Using this frame" << std::endl;
+        }
         all_rotation.push_back(rotation);
         all_translation.push_back(translation);
     }
