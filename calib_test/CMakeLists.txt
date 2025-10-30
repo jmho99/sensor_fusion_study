@@ -160,6 +160,23 @@ target_include_directories(z_cam_lidar_fusion PUBLIC
   $<INSTALL_INTERFACE:include>)
 target_compile_features(z_cam_lidar_fusion PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
 
+add_executable(z_check_protocol src/z_check_protocol.cpp)
+ament_target_dependencies(
+  z_check_protocol
+  "rclcpp"
+  "std_msgs"
+  "sensor_msgs"
+  "geometry_msgs"
+  "Eigen"
+  "pcl_conversions"
+  "PCL"
+  "message_filters"
+)
+target_include_directories(z_check_protocol PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(z_check_protocol PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17)
+
 install(TARGETS
   z_cv_random
   z_intensity
@@ -168,6 +185,7 @@ install(TARGETS
   z_ndt_scan_matching
   z_imu_trajectory
   z_cam_lidar_fusion
+  z_check_protocol
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY include/
@@ -179,6 +197,7 @@ install(DIRECTORY include/
 ament_python_install_package(${PROJECT_NAME})
 install (PROGRAMS
   scripts/intensity.py
+  scripts/z_topic_sync_test.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

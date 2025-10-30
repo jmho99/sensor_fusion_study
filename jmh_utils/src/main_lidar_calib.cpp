@@ -28,7 +28,7 @@ namespace jmh_utils
     // === [ADD] 평면이 원점을 향하는지 판정 ===
     // 규칙: (centroid · n) < 0  → "원점을 향함(0)" / 그렇지 않으면 1
     static int facing_origin_label(const Eigen::Vector3d &n_unit,
-                                          const Eigen::Vector3d &centroid)
+                                   const Eigen::Vector3d &centroid)
     {
         return (centroid.dot(n_unit) < 0.0) ? 0 : 1;
     }
@@ -63,24 +63,9 @@ namespace jmh_utils
             pcl::PointCloud<pcl::PointXYZI>::Ptr current_cloud(new pcl::PointCloud<pcl::PointXYZI>);
             pcl::io::loadPCDFile<pcl::PointXYZI>(frame_pcd, *current_cloud);
 
-            pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_filtered_intensity(new pcl::PointCloud<pcl::PointXYZI>);
-
-            pcl::PassThrough<pcl::PointXYZI> pass_intensity;
-            pass_intensity.setInputCloud(current_cloud);
-            pass_intensity.setFilterFieldName("intensity");
-            // threshold 설정
-            pass_intensity.setFilterLimits(intensity.min_threshold, intensity.max_threshold);
-            pass_intensity.filter(*cloud_filtered_intensity);
-
-            if (cloud_filtered_intensity->empty())
-            {
-                std::cout << "Cannot intensity filter [ " << frame_num << " ] pointcloud!!! Check file." << std::endl;
-                continue;
-            }
-
             pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_roi(new pcl::PointCloud<pcl::PointXYZI>);
             pcl::CropBox<pcl::PointXYZI> crop;
-            crop.setInputCloud(cloud_filtered_intensity);
+            crop.setInputCloud(current_cloud);
             // 파라미터로 설정된 ROI 제한 사용
             crop.setMin(ROI.min_ROI);
             crop.setMax(ROI.max_ROI);
@@ -89,6 +74,21 @@ namespace jmh_utils
             if (cloud_roi->empty())
             {
                 std::cout << "Cannot set ROI [ " << frame_num << " ] pointcloud!!! Check file." << std::endl;
+                continue;
+            }
+
+            pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_filtered_intensity(new pcl::PointCloud<pcl::PointXYZI>);
+
+            pcl::PassThrough<pcl::PointXYZI> pass_intensity;
+            pass_intensity.setInputCloud(cloud_roi);
+            pass_intensity.setFilterFieldName("intensity");
+            // threshold 설정
+            pass_intensity.setFilterLimits(intensity.min_threshold, intensity.max_threshold);
+            pass_intensity.filter(*cloud_filtered_intensity);
+
+            if (cloud_filtered_intensity->empty())
+            {
+                std::cout << "Cannot intensity filter [ " << frame_num << " ] pointcloud!!! Check file." << std::endl;
                 continue;
             }
 
@@ -103,7 +103,7 @@ namespace jmh_utils
             pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
             pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
 
-            seg.setInputCloud(cloud_roi);
+            seg.setInputCloud(cloud_filtered_intensity);
             seg.segment(*inliers, *coefficients);
 
             if (inliers->indices.empty())
@@ -114,7 +114,7 @@ namespace jmh_utils
 
             pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_plane(new pcl::PointCloud<pcl::PointXYZI>);
             pcl::ExtractIndices<pcl::PointXYZI> extract;
-            extract.setInputCloud(cloud_roi);
+            extract.setInputCloud(cloud_filtered_intensity);
             extract.setIndices(inliers);
             extract.setNegative(false);
             extract.filter(*cloud_plane);
@@ -147,7 +147,6 @@ namespace jmh_utils
             all_cloud_planes.push_back(cloud_plane);
             std::cout << "Detected [ " << frame_num << " ] [ " << cloud_plane->points.size() << " ] frames detecting planes" << std::endl;
         }
-
 
         jmh_utils::PLANE_RESULT result;
         result.all_cloud_planes = all_cloud_planes;

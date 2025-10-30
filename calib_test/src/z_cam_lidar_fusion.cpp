@@ -74,6 +74,17 @@ public:
         // std::cout << lidar2cam_R_ << std::endl;
         // std::cout << lidar2cam_t_ << std::endl;
 
+        Eigen::Matrix3d R_eig_m;
+        Eigen::Vector3d t_eig_v;
+        cv::cv2eigen(lidar2cam_R_, R_eig_m);
+        cv::cv2eigen(lidar2cam_t_, t_eig_v);
+        R_eig_ = R_eig_m.cast<float>();
+        t_eig_ = t_eig_v.cast<float>();
+
+        T_eig_ = Eigen::Matrix4f::Identity();
+        T_eig_.block<3, 3>(0, 0) = R_eig_;
+        T_eig_.block<3, 1>(0, 3) = t_eig_;
+
         std::string what = "hard";
         auto cam_qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable().durability_volatile();
         auto lid_qos = rclcpp::QoS(rclcpp::KeepLast(10)).best_effort().durability_volatile();
@@ -125,12 +136,12 @@ public:
                                                                           std::bind(&CamLidarFusionNode::imageCallback, this, std::placeholders::_1));
             lid_sub_ = this->create_subscription<sensor_msgs::msg::PointCloud2>("/ouster/points", lid_qos,
                                                                                 std::bind(&CamLidarFusionNode::lidarCallback, this, std::placeholders::_1));
-/*
-            // fusionOutput(current_frame_, current_cloud_);
-            fusion_timer_ = this->create_wall_timer(
-                std::chrono::milliseconds(50),
-                std::bind(&CamLidarFusionNode::fusionCallback, this));
-                */
+            /*
+                        // fusionOutput(current_frame_, current_cloud_);
+                        fusion_timer_ = this->create_wall_timer(
+                            std::chrono::milliseconds(50),
+                            std::bind(&CamLidarFusionNode::fusionCallback, this));
+                            */
         }
         fusion_pub_ = image_transport::create_publisher(this, "/calib/image");
         /*
@@ -167,6 +178,9 @@ private:
     pcl::PointCloud<pcl::PointXYZI>::Ptr current_cloud_{new pcl::PointCloud<pcl::PointXYZI>};
 
     cv::Mat lidar2cam_R_, lidar2cam_t_;
+    Eigen::Matrix3f R_eig_;
+    Eigen::Vector3f t_eig_;
+    Eigen::Matrix4f T_eig_;
 
     void imageCallback(const sensor_msgs::msg::Image::SharedPtr msg)
     {
@@ -178,29 +192,13 @@ private:
         pcl::fromROSMsg(*msg, *current_cloud_);
 
         RCLCPP_INFO(this->get_logger(), "cam and lidar");
-        /*
-
         pcl::PointCloud<pcl::PointXYZI>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZI>);
 
-        transformed_cloud->points.reserve(current_cloud_->points.size());
-
-        for (const auto &pt_lidar : current_cloud_->points)
-        {
-            cv::Mat pt_mat = (cv::Mat_<double>(3, 1) << pt_lidar.x, pt_lidar.y, pt_lidar.z);
-            cv::Mat pt_transformed = lidar2cam_R_ * pt_mat + lidar2cam_t_;
-
-            pcl::PointXYZI p_transformed;
-            p_transformed.x = pt_transformed.at<double>(0);
-            p_transformed.y = pt_transformed.at<double>(1);
-            p_transformed.z = pt_transformed.at<double>(2);
-            p_transformed.intensity = pt_lidar.intensity;
-            transformed_cloud->points.push_back(p_transformed);
-        }
+        pcl::transformPointCloud(*current_cloud_, *transformed_cloud, T_eig_);
 
         projectLidarToImage(transformed_cloud, current_frame_, image_with_lidar_projection_);
 
         pubTimerCallback();
-        */
     }
 
     void fusionCallback()

@@ -152,8 +152,8 @@ int main(int argc, char **argv)
     std::vector<std::vector<Eigen::Vector3d>> camera_3d_corners = jmh_utils::runCameraPlane(board_params, intrinsic_matrix_, distortion_coeffs_, all_images);
 
     jmh_utils::ROI_PARAMS roi;
-    roi.min_ROI = Eigen::Vector4f(0.0,-1.0,-0.5, 1.0); //-5.0, -1.1, -0.6
-    roi.max_ROI = Eigen::Vector4f(15.0,1.0,1.0, 1.0); //0.0, 0.6, 3.0
+    roi.min_ROI = Eigen::Vector4f(0.0, -1.0, -0.5, 1.0); //-5.0, -1.1, -0.6
+    roi.max_ROI = Eigen::Vector4f(15.0, 1.0, 1.0, 1.0);  // 0.0, 0.6, 3.0
 
     jmh_utils::RANSAC_PARAMS ransac;
     ransac.threshold = 0.02;
@@ -163,9 +163,13 @@ int main(int argc, char **argv)
     intensity.min_threshold = 1.0;
     intensity.max_threshold = 100000;
 
-    jmh_utils::runIntensityLidarPlane(all_pcds, intensity, roi, ransac);
-    jmh_utils::PLANE_RESULT plane_result;
+    jmh_utils::PLANE_RESULT plane_result = jmh_utils::runIntensityLidarPlane(all_pcds, intensity, roi, ransac);
     std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> lidar_plane_pcds = plane_result.all_cloud_planes;
+    std::cout << "Intensity plane result : " << std::endl;
+    std::cout << "Detect plane num : [ " << lidar_plane_pcds.size() << " ]" << std::endl;
+    std::cout << "Plane func num : [ " << plane_result.lidar_plane_abcd.size() << " ]" << std::endl;
+    std::cout << "Plane centroid num : [ " << plane_result.lidar_plane_centroid.size() << " ]" << std::endl;
+    std::cout << "Plane flag num : [ " << plane_result.lidar_facing_flags.size() << " ]" << std::endl;
 
     std::vector<std::vector<Eigen::Vector3d>> lidar_3d_corners;
     for (int i = 0; i < lidar_plane_pcds.size(); i++)
@@ -207,7 +211,7 @@ int main(int argc, char **argv)
         Eigen::Vector4d plane_camera = Eigen::Vector4d(nC.x(), nC.y(), nC.z(), dC);
         Eigen::Vector3d normal_camera = plane_camera.head<3>();
         // 센트로이드도 카메라 좌표계로 변환 (참고용)
- 
+
         Eigen::Vector3d centroid_camera = rotation * plane_result.lidar_plane_centroid[i] + translation;
 
         // 카메라 좌표계 라벨: 원점(카메라 중심)을 향하면 0, 아니면 1
@@ -219,17 +223,17 @@ int main(int argc, char **argv)
         if (lidar_label != cam_label)
         {
             // 불일치 → 이번 프레임 결과 무시 (R,t push/pop 안 함)
-            std::cout << "[FrameGate] Direction mismatch: LiDAR= " 
-                        << lidar_label << "vs Camera= " << cam_label 
-                        << "This frame will be ignored" << std::endl;
+            std::cout << "[FrameGate] Direction mismatch: LiDAR= "
+                      << lidar_label << "vs Camera= " << cam_label
+                      << "This frame will be ignored" << std::endl;
             // 이 프레임의 라벨/평면은 기록으로 남겨두되, extrinsic 누적은 하지 않고 이후 처리 중단
             continue; // ← 이번 프레임의 후속 처리(포인트 변환/프로젝션 등) 스킵
         }
         else
         {
-            std::cout << "[FrameGate] Direction matched: LiDAR=" 
-                        << lidar_label << "vs Camera= " << cam_label 
-                        << "Using this frame" << std::endl;
+            std::cout << "[FrameGate] Direction matched: LiDAR="
+                      << lidar_label << "vs Camera= " << cam_label
+                      << "Using this frame" << std::endl;
         }
         all_rotation.push_back(rotation);
         all_translation.push_back(translation);
