@@ -1,9 +1,9 @@
 ## 사용 센서 빌드 정리
   * __Ouster__
 
-      rosdep install --from-paths ./src/ouster-ros/ -y --ignore-src
+    rosdep install --from-paths ./src/ouster-ros/ -y --ignore-src
 
-      colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select ouster_ros ouster_sensor_msgs
+    colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select ouster_ros ouster_sensor_msgs
 
     ouster page : <https://github.com/ouster-lidar/ouster-ros/tree/humble-devel>
 
