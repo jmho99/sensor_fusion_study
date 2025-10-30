@@ -1,18 +1,22 @@
 ## 사용 센서 빌드 정리
   * __Ouster__
-
+  
+  ```
     rosdep install --from-paths ./src/ouster-ros/ -y --ignore-src
 
     colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select ouster_ros ouster_sensor_msgs
+  ```
 
     ouster page : <https://github.com/ouster-lidar/ouster-ros/tree/humble-devel>
 
   * __Flir__
 
+  ```
       rosdep install --from-paths ./src/flir_camera_driver/ --ignore-src
 
       colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON --packages-select spinnaker_camera_driver spinnaker_synchronized_camera_driver flir_camera_msgs flir_camera_description
-
+  ```
+  
     flir page : <https://github.com/ros-drivers/flir_camera_driver?tab=readme-ov-file>
 
   * __Microstrain__
