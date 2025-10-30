@@ -1,38 +1,38 @@
 ## 사용 센서 빌드 정리
-  * __Ouster__
-  
-  ```
-    rosdep install --from-paths ./src/ouster-ros/ -y --ignore-src
+* __Ouster__
 
-    colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select ouster_ros ouster_sensor_msgs
-  ```
+```
+rosdep install --from-paths ./src/ouster-ros/ -y --ignore-src
 
-  ouster page : <https://github.com/ouster-lidar/ouster-ros/tree/humble-devel>
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-select ouster_ros ouster_sensor_msgs
+```
 
-  * __Flir__
+ouster page : <https://github.com/ouster-lidar/ouster-ros/tree/humble-devel>
 
-  ```
-      rosdep install --from-paths ./src/flir_camera_driver/ --ignore-src
+* __Flir__
 
-      colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON --packages-select spinnaker_camera_driver spinnaker_synchronized_camera_driver flir_camera_msgs flir_camera_description
-  ```
+```
+rosdep install --from-paths ./src/flir_camera_driver/ --ignore-src
 
-  flir page : <https://github.com/ros-drivers/flir_camera_driver?tab=readme-ov-file>
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON --packages-select spinnaker_camera_driver spinnaker_synchronized_camera_driver flir_camera_msgs flir_camera_description
+```
 
-  * __Microstrain__
+flir page : <https://github.com/ros-drivers/flir_camera_driver?tab=readme-ov-file>
 
-  ```
-      rosdep install --from-paths ./src/microstrain_inertial/ -i -r -y
+* __Microstrain__
 
-      colcon build --packages-select microstrain_inertial_driver microstrain_inertial_msgs microstrain_inretial_examples microstrain_inertial_rqt microstrain_inertial_description
-  ```
+```
+rosdep install --from-paths ./src/microstrain_inertial/ -i -r -y
 
-    microstrain page : <https://github.com/LORD-MicroStrain/microstrain_inertial>
+colcon build --packages-select microstrain_inertial_driver microstrain_inertial_msgs microstrain_inretial_examples microstrain_inertial_rqt microstrain_inertial_description
+```
 
-  * __Axis__
+microstrain page : <https://github.com/LORD-MicroStrain/microstrain_inertial>
 
-  ```
-      colcon build --symlink-install --packages-select camera_info_manager_py ptz_action_server_msgs axis_camera axis_description axis_msgs
-  ```
+* __Axis__
 
-    axis page : <https://github.com/ros-drivers/axis_camera/tree/humble-devel>
+```
+colcon build --symlink-install --packages-select camera_info_manager_py ptz_action_server_msgs axis_camera axis_description axis_msgs
+```
+
+axis page : <https://github.com/ros-drivers/axis_camera/tree/humble-devel>
