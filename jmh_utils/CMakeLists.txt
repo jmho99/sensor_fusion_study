@@ -10,6 +10,7 @@ find_package(OpenCV REQUIRED NO_MODULE)
 find_package(PCL REQUIRED NO_MODULE)
 find_package(Ceres REQUIRED)
 find_package(GSL REQUIRED)
+find_package(pybind11 REQUIRED)
 
 # 코너 검출 로직을 위한 정적 라이브러리 생성
 add_library(jmh_utils STATIC

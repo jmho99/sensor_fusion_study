@@ -198,6 +198,8 @@ ament_python_install_package(${PROJECT_NAME})
 install (PROGRAMS
   scripts/intensity.py
   scripts/z_topic_sync_test.py
+  scripts/z_imu_propagator.py
+  scripts/node_lidar_deskew.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

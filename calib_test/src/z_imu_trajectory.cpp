@@ -32,12 +32,12 @@ public:
         std::string what = "hard";
         if (what == "hard")
         {
-        imu_sub__ = this -> create_subscription<sensor_msgs::msg::Imu>("/imu/data", 
-            rclcpp::SensorDataQoS(), 
-            std::bind(&SyncNode::imuCallback, this, _1));
-        lidar_sub__ = this -> create_subscription<sensor_msgs::msg::PointCloud2>("/ouster/points",
-             rclcpp::SensorDataQoS(), 
-             std::bind(&SyncNode::lidCallback, this, _1));
+            imu_sub__ = this->create_subscription<sensor_msgs::msg::Imu>("/imu/data",
+                                                                         rclcpp::SensorDataQoS(),
+                                                                         std::bind(&SyncNode::imuCallback, this, _1));
+            lidar_sub__ = this->create_subscription<sensor_msgs::msg::PointCloud2>("/ouster/points",
+                                                                                   rclcpp::SensorDataQoS(),
+                                                                                   std::bind(&SyncNode::lidCallback, this, _1));
         }
         else if (what == "filter")
         {

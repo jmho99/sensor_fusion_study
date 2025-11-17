@@ -579,3 +579,18 @@ Parsed C implicit link information from above output:
   implicit fwks: []
 
 
+Performing C++ SOURCE FILE Test HAS_FLTO succeeded with the following output:
+Change Dir: /home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/jmh_utils/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_c47b4/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_c47b4.dir/build.make CMakeFiles/cmTC_c47b4.dir/build
+gmake[1]: Entering directory '/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/jmh_utils/build/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_c47b4.dir/src.cxx.o
+/usr/bin/c++ -DHAS_FLTO  -flto -fno-fat-lto-objects -std=gnu++17 -o CMakeFiles/cmTC_c47b4.dir/src.cxx.o -c /home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/jmh_utils/build/CMakeFiles/CMakeTmp/src.cxx
+Linking CXX executable cmTC_c47b4
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_c47b4.dir/link.txt --verbose=1
+/usr/bin/c++ CMakeFiles/cmTC_c47b4.dir/src.cxx.o -o cmTC_c47b4  -flto 
+gmake[1]: Leaving directory '/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/jmh_utils/build/CMakeFiles/CMakeTmp'
+
+
+Source file was:
+int main() { return 0; }
