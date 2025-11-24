@@ -16,6 +16,8 @@ find_package(rclpy REQUIRED)
 #python module
 ament_python_install_package(${PROJECT_NAME})
 install (PROGRAMS
+  python/lid_point_time.py
+  python/lid_pcd_save.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
