@@ -4,6 +4,7 @@ import numpy as np
 from dataclasses import dataclass
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from typing import Tuple
 
 
 @dataclass
@@ -20,43 +21,43 @@ class ImuStateParams:
 
 @dataclass
 class ImuNoise:
-    sigma_g: float = (0.01,)
-    sigma_a: float = (0.1,)
-    sigma_wg: float = (1e-4,)
+    sigma_g: float = 0.01
+    sigma_a: float = 0.1
+    sigma_wg: float = 1e-4
     sigma_wa: float = 1e-3
 
 
 @dataclass
 class CovParams:
-    orient: float = (5.0,)
-    posit: float = (1.0,)
-    vel: float = (0.5,)
-    gyro_b: float = (1.0,)
-    acc_b: float = (0.1,)
+    orient: float = 5.0
+    posit: float = 1.0
+    vel: float = 0.5
+    gyro_b: float = 1.0
+    acc_b: float = 0.1
 
 
 class ImuStatePropagation:
 
-    def __init__(
-        self,
-        init_state: ImuStateParams,
-        imu_noise: ImuNoise | None = None,
-        coveriance: CovParams | None = None,
-    ):
+    def __init__(self, init_state: ImuStateParams):
         self.state = init_state
-        self.noise = imu_noise
-        self.cov_params = coveriance
+        self.noise = ImuNoise()
+        self.cov_params = CovParams()
 
-    def propagate(self, omega_m: np.ndarray, accel_m: np.array, dt: float):
+    def propagate(
+        self, omega_m: np.ndarray, accel_m: np.array, dt: float
+    ) -> Tuple[ImuStateParams, np.ndarray]:
 
-        new_state = self.imuStatePrediction(self.state, omega_m, accel_m, dt)
-        Phi = self.computePhi(self.state, omega_m, accel_m, dt)
-        G = self.computeG(self.state, omega_m, accel_m, dt)
-        P, Qd = self.computePAndQ(self.noise, self.cov_params, dt)
+        new_state = self.imuStatePrediction(omega_m, accel_m, dt)
+        Phi = self.computePhi(omega_m, accel_m, dt)
+        G = self.computeG(omega_m, accel_m, dt)
+        P, Qd = self.computePAndQ(dt)
         P_next = np.zeros((15, 15))
         P_next = Phi @ P @ Phi.T + G @ Qd @ G.T
+        P_next = self.extend_P_15_to_21(P_next)
 
         self.state = new_state
+
+        return new_state, P_next
 
     def imuStatePrediction(
         self,
@@ -227,7 +228,7 @@ class ImuStatePropagation:
 
         return Phi
 
-    def ComputeG(
+    def computeG(
         self, omega_m: np.ndarray, accel_m: np.ndarray, dt: float
     ) -> np.ndarray:
         # -----------setup------------
@@ -322,6 +323,12 @@ class ImuStatePropagation:
         Qd[6:9, 6:9] = swg2 * dt * np.eye(3)  # gyro bias RW
         Qd[9:12, 9:12] = swa2 * dt * np.eye(3)  # accel bias RW
         return P, Qd
+
+    def extend_P_15_to_21(self, P_15: np.ndarray) -> np.ndarray:
+        P_21 = np.zeros((21, 21))
+        P_21[0:15, 0:15] = P_15
+        P_21[15:21, 15:21] = np.eye(6) * 1e-6  # small cov for extrinsic
+        return P_21
 
 
 def main():

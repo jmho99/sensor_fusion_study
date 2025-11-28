@@ -5,6 +5,7 @@ import argparse
 import os
 
 from dataclasses import dataclass
+from typing import Tuple
 
 
 @dataclass
@@ -18,13 +19,33 @@ class LidarDeskewParams:
     p_IL: np.ndarray  # translation, shape (3,)
 
 
+@dataclass
+class ImuStateParams:
+    q_IG: np.ndarray  # quaternion [w,x,y,z], I^G q (IMU orientation w.r.t. G)
+    v_G: np.ndarray  # velocity in G, shape (3,)
+    p_G: np.ndarray  # position in G, shape (3,)
+    b_g: np.ndarray  # gyro bias, shape (3,)
+    b_a: np.ndarray  # accel bias, shape (3,)
+
+    q_IL: np.ndarray  # quaternion [w,x,y,z], I^L q
+    p_IL: np.ndarray  # translation, shape (3,)
+
+
 class LidarDeskew:
-    def __init__(self, imu_csv="", pcd_in="", pcd_out="", params=LidarDeskewParams):
+    def __init__(
+        self,
+        imu_csv="",
+        pcd_in="",
+        pcd_out="",
+        params=LidarDeskewParams,
+        imu_state=ImuStateParams,
+    ):
 
         if imu_csv != "" and pcd_in != "" and pcd_out != "":
             self.deskew_pcd_with_imu(imu_csv, pcd_in, pcd_out)
         else:
             self.deskew_params = params
+            self.imu_params = imu_state
 
     # ---------- Deskew 오프라인 파이프라인 ----------
 
@@ -39,15 +60,15 @@ class LidarDeskew:
 
         R_IL = np.array([[0, 1, 0], [1, 0, 0], [0, 0, -1]])
 
-        print(f"[INFO] Loading IMU CSV: {imu_csv}")
+        # print(f"[INFO] Loading IMU CSV: {imu_csv}")
         t_imu, q_imu = self.imu_state(imu_csv)
-        print(
-            f"[INFO] IMU samples: {t_imu.shape[0]}, t range = [{t_imu[0]:.6f}, {t_imu[-1]:.6f}]"
-        )
+        # print(
+        #    f"[INFO] IMU samples: {t_imu.shape[0]}, t range = [{t_imu[0]:.6f}, {t_imu[-1]:.6f}]"
+        # )
 
-        print(f"[INFO] Loading PCD: {pcd_in}")
+        # print(f"[INFO] Loading PCD: {pcd_in}")
         header_lines, fields, xyz_t = self.load_pcd_ascii_with_t(pcd_in)
-        print(f"[INFO] Loaded {xyz_t.shape[0]} points from PCD.")
+        # print(f"[INFO] Loaded {xyz_t.shape[0]} points from PCD.")
 
         x = xyz_t[:, 0]
         y = xyz_t[:, 1]
@@ -61,7 +82,9 @@ class LidarDeskew:
         t_lid_imu_off = t_points[0] - t_imu[0]
         t_points = t_points - t_lid_imu_off
 
-        print(f"[INFO] Point time range: [{t_points.min():.6f}, {t_points.max():.6f}]")
+        print(
+            f"[Deskew] Point time range: [{t_points.min():.6f}, {t_points.max():.6f}]"
+        )
 
         deskewed_xyz_t = np.zeros_like(xyz_t)
 
@@ -70,6 +93,9 @@ class LidarDeskew:
         r_0 = self.quat_to_R(q_0)
 
         for i in range(xyz_t.shape[0]):
+            if np.isnan(x[i]) and np.isnan(y[i]) and np.isnan(z[i]):
+                continue
+
             p = np.array([x[i], y[i], z[i]], dtype=float)
             t_p = t_points[i]
 
@@ -87,9 +113,9 @@ class LidarDeskew:
             deskewed_xyz_t[i, 5] = t_sec[i]
             deskewed_xyz_t[i, 6] = t_nsec[i]
 
-        print(f"[INFO] Saving deskewed PCD to: {pcd_out}")
+        # print(f"[INFO] Saving deskewed PCD to: {pcd_out}")
         self.save_pcd_ascii(pcd_out, header_lines, fields, deskewed_xyz_t)
-        print("[INFO] Done.")
+        # print("[INFO] Done.")
 
     # ---------- Deskew 오프라인 파이프라인 ----------
 
@@ -98,22 +124,26 @@ class LidarDeskew:
         pcd_in,
         pcd_out,
         imu_time_offset=0.0,
-    ):
+    ) -> Tuple[ImuStateParams, np.ndarray, np.ndarray]:
+
         params = self.deskew_params
         R_IL = self.quat_to_R(params.q_IL[0])
         p_IL = params.p_IL[0]
-        T_IL = self.so3_to_so4(R_IL, p_IL)
 
-        print(f"[INFO] Loading IMU")
+        T_IL = np.eye(4)
+        T_IL[:3, :3] = R_IL
+        T_IL[:3, 3] = p_IL
+
+        # print(f"[INFO] Loading IMU")
         t_imu, q_imu, p_imu = params.t_imu, params.q_IG, params.p_IG
 
-        print(
-            f"[INFO] IMU samples: {t_imu.shape[0]}, t range = [{t_imu[0]:.6f}, {t_imu[-1]:.6f}]"
-        )
+        # print(
+        #    f"[INFO] IMU samples: {t_imu.shape[0]}, t range = [{t_imu[0]:.6f}, {t_imu[-1]:.6f}]"
+        # )
 
-        print(f"[INFO] Loading PCD: {pcd_in}")
+        # print(f"[INFO] Loading PCD: {pcd_in}")
         header_lines, fields, xyz_t = self.load_pcd_ascii_with_t(pcd_in)
-        print(f"[INFO] Loaded {xyz_t.shape[0]} points from PCD.")
+        # print(f"[INFO] Loaded {xyz_t.shape[0]} points from PCD.")
 
         x = xyz_t[:, 0]
         y = xyz_t[:, 1]
@@ -124,9 +154,19 @@ class LidarDeskew:
         t_nsec = xyz_t[:, 6]
         t_points = t_sec + t_nsec * 1e-9 + t_off * 1e-9
 
-        idx = np.searchsorted(t_imu, t_points)
+        idx = np.searchsorted(t_imu, t_points[0])
         t_lid_imu_off = t_points[0] - t_imu[idx]
         t_points = t_points - t_lid_imu_off
+
+        state = ImuStateParams(
+            q_IG=self.imu_params.q_IG[idx],
+            v_G=self.imu_params.v_G[idx],
+            p_G=self.imu_params.p_G[idx],
+            b_g=self.imu_params.b_g,
+            b_a=self.imu_params.b_a,
+            q_IL=self.imu_params.q_IL[idx],
+            p_IL=self.imu_params.p_IL[idx],
+        )
 
         print(f"[INFO] Point time range: [{t_points.min():.6f}, {t_points.max():.6f}]")
 
@@ -136,21 +176,30 @@ class LidarDeskew:
         q_0 = self.get_q_at_time(t_imu, q_imu, t0)
         r_0 = self.quat_to_R(q_0)
         p_0 = self.get_p_at_time(t_imu, p_imu, t0)
-        T_GI_0 = self.so3_to_so4(r_0, p_0)
+
+        T_GI_0 = np.eye(4)
+        T_GI_0[:3, :3] = r_0
+        T_GI_0[:3, 3] = p_0
 
         for i in range(xyz_t.shape[0]):
+            if np.isnan(x[i]) and np.isnan(y[i]) and np.isnan(z[i]):
+                continue
+
             p = np.array([x[i], y[i], z[i]], dtype=float)
             t_p = t_points[i]
 
             q_p = self.get_q_at_time(t_imu, q_imu, t_p)
             r_p = self.quat_to_R(q_p)
             p_p = self.get_p_at_time(t_imu, p_imu, t_p)
-            T_GI_p = self.so3_to_so4(r_p, p_p)
+
+            T_GI_p = np.eye(4)
+            T_GI_p[:3, :3] = r_p
+            T_GI_p[:3, 3] = p_p
             # q_p: 기준(시작) -> t_p 회전
             # 스캔 시작 좌표계로 돌리기 위해 역회전 적용
             T_LL = np.linalg.inv(T_IL) @ np.linalg.inv(T_GI_0) @ T_GI_p @ T_IL
             # print("R:", t_imu, q_imu, t_p, q_p, R)
-            p_deskew = (T_LL[0:2, 0:2] @ p.T + T_LL[0:2, 3]).T
+            p_deskew = (T_LL[0:3, 0:3] @ p.T + T_LL[0:3, 3]).T
 
             deskewed_xyz_t[i, 0:3] = p_deskew
             deskewed_xyz_t[i, 3] = intensity[i]
@@ -158,19 +207,12 @@ class LidarDeskew:
             deskewed_xyz_t[i, 5] = t_sec[i]
             deskewed_xyz_t[i, 6] = t_nsec[i]
 
-        print(f"[INFO] Saving deskewed PCD to: {pcd_out}")
+        # print(f"[INFO] Saving deskewed PCD to: {pcd_out}")
         self.save_pcd_ascii(pcd_out, header_lines, fields, deskewed_xyz_t)
-        print("[INFO] Done.")
-        return T_GI_0, T_IL
+        # print("[INFO] Done.")
+        return state, T_GI_0, T_IL
 
     # ---------- SO3 / 쿼터니언 유틸 ----------
-
-    def so3_to_so4(self, R, p):
-        """SO(3) R(3,3), p(3,) -> SO(4) T(4,4)"""
-        T = np.eye(4)
-        T[0:3, 0:3] = R
-        T[0:3, 3] = p
-        return T
 
     def exp_so3(self, w):
         """회전벡터 w(3,) -> 회전행렬 R(3,3)"""
@@ -460,11 +502,12 @@ class LidarDeskew:
 
 def main(args=None):
 
-    run = LidarDeskew(
-        imu_csv="/home/antlab/imu_test_trim_01.csv",
-        pcd_in="/home/antlab/ROS2/calib_ws/pcd_files/frame_0001.pcd",
-        pcd_out="/home/antlab/ROS2/calib_ws/pcd_files/frame_0001_deskewed.pcd",
-    )
+    # run = LidarDeskew(
+    #    imu_csv="/home/antlab/imu_test_trim_01.csv",
+    #    pcd_in="/home/antlab/ROS2/calib_ws/pcd_files/frame_0001.pcd",
+    #    pcd_out="/home/antlab/ROS2/calib_ws/pcd_files/frame_0001_deskewed.pcd",
+    # )
+    pass
 
 
 if __name__ == "__main__":

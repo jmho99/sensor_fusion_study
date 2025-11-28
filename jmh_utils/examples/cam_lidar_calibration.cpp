@@ -129,8 +129,8 @@ bool optimizeRtWithCeres(
 int main(int argc, char **argv)
 {
 
-    std::string pcd_directory = "/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/calib_data/c_cam_lidar_calib/pointclouds/";
-    std::string image_directory = "/home/antlab/sensor_fusion_study_ws/src/sensor_fusion_study/calib_data/c_cam_lidar_calib/images/";
+    std::string pcd_directory = "/home/antlab/ROS2/calib_ws/src/calib_data/c_cam_lidar_calib/pointclouds/";
+    std::string image_directory = "/home/antlab/ROS2/calib_ws/src/calib_data/c_cam_lidar_calib/images/";
 
     std::vector<std::string> all_pcds = jmh_utils::loadFiles(".pcd", pcd_directory);
     std::vector<std::string> all_images = jmh_utils::loadFiles(".png", image_directory);
@@ -240,7 +240,7 @@ int main(int argc, char **argv)
     }
 
     std::string home_dir = std::getenv("HOME");
-    std::string file_dir = home_dir + "/sensor_fusion_study_ws/src/sensor_fusion_study/calib_data";
+    std::string file_dir = home_dir + "/ROS2/calib_ws/src/calib_data";
     std::filesystem::path file_path = file_dir + "/lid_cam_calib_cpp_result.yaml";
     std::filesystem::create_directories(file_path.parent_path());
 

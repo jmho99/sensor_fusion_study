@@ -5,15 +5,19 @@ import open3d as o3d
 
 class NDTScanMatch:
     def __init__(
-        self, file_path="", target_name="target.pcd", source_name="source.pcd"
+        self,
+        file_path="",
+        target_name="target.pcd",
+        source_name="source.pcd",
+        save_align=True,
     ):
         self.file_path = file_path
         self.target_path = file_path + target_name
         self.source_path = file_path + source_name
         self.align_path = file_path + "frame_0000_aligned.pcd"
-        self.all_process()
+        self.T_result = self.all_process(save_align)
 
-    def all_process(self):
+    def all_process(self, save_align):
         target_header, target_field, target_pcd = self.load_pcd_ascii_with_t(
             self.target_path
         )
@@ -39,15 +43,22 @@ class NDTScanMatch:
         threshold = voxel_size * 2.0
         result_icp = self.run_icp(source_down, target_down, threshold, init_T)
         T_result = result_icp.transformation
-        self.align_and_save(
-            source_o3d_default, T_result, self.file_path, target_header, target_field
-        )
+        if save_align:
+            self.align_and_save(
+                source_o3d_default,
+                T_result,
+                self.file_path,
+                target_header,
+                target_field,
+            )
+        print("result: ", T_result)
+        return T_result
 
     def clean_points(self, pcd):
         pts = np.asarray(pcd.points)
         mask = np.isfinite(pts).all(axis=1)  # 각 행(x,y,z)이 전부 finite인지
         pts_clean = pts[mask]
-        print(f"[DEBUG] removed {len(pts) - len(pts_clean)} invalid points")
+        # print(f"[DEBUG] removed {len(pts) - len(pts_clean)} invalid points")
         pcd_clean = o3d.geometry.PointCloud()
         pcd_clean.points = o3d.utility.Vector3dVector(pts_clean)
         return pcd_clean
@@ -71,10 +82,10 @@ class NDTScanMatch:
         self.save_pcd_ascii(
             self.align_path, header_lines, fields, np.asarray(source_aligned.points)
         )
-        print(f"[INFO] Aligned PCD saved to: {self.align_path}")
+        # print(f"[INFO] Aligned PCD saved to: {self.align_path}")
         result_txt_path = output_path + "0_T_result_4x4.txt"
         np.savetxt(result_txt_path, T, fmt="%.9f")
-        print(f"[INFO] T (4x4) saved to: T_result_4x4.txt")
+        # print(f"[INFO] T (4x4) saved to: T_result_4x4.txt")
 
     def load_pcd_ascii_with_t(self, path):
         """
